@@ -1,0 +1,16 @@
+{
+  "name": "gmail-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gmail OAuth + helper scripts for Knight",
+  "main": "auth.js",
+  "scripts": {
+    "auth": "node auth.js",
+    "check": "node check.js",
+    "send": "node send.js"
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "googleapis": "^140.0.1"
+  }
+}
