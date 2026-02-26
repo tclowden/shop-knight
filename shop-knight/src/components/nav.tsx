@@ -1,0 +1,21 @@
+import Link from 'next/link';
+
+const links = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/admin/users', label: 'Users' },
+  { href: '/sales/opportunities', label: 'Sales' },
+  { href: '/customers', label: 'Customers' },
+  { href: '/vendors', label: 'Vendors' },
+];
+
+export function Nav() {
+  return (
+    <nav className="mb-6 flex flex-wrap gap-2 border-b border-zinc-800 pb-4 text-sm">
+      {links.map((link) => (
+        <Link key={link.href} href={link.href} className="rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800">
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}

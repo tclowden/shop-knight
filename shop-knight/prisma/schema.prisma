@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  ADMIN
+  SALES
+  OPERATIONS
+  PURCHASING
+  FINANCE
+}
+
+enum OpportunityStage {
+  LEAD
+  QUALIFIED
+  QUOTED
+  WON
+  LOST
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum EntityType {
+  OPPORTUNITY
+  QUOTE
+  SALES_ORDER
+  SALES_ORDER_LINE
+  PURCHASE_ORDER
+  PROJECT
+  JOB
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  type         UserType
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  tasks        Task[]
+}
+
+model Customer {
+  id            String        @id @default(cuid())
+  name          String
+  email         String?
+  phone         String?
+  opportunities Opportunity[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Vendor {
+  id        String          @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  poLines   PurchaseOrderLine[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model Opportunity {
+  id          String             @id @default(cuid())
+  name        String
+  stage       OpportunityStage   @default(LEAD)
+  customerId  String
+  ownerId     String?
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  quotes      Quote[]
+  salesOrders SalesOrder[]
+  projects    Project[]
+  jobs        Job[]
+  tasks       Task[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model Quote {
+  id            String       @id @default(cuid())
+  quoteNumber   String       @unique
+  opportunityId String
+  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id])
+  lines         QuoteLine[]
+  tasks         Task[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model QuoteLine {
+  id          String   @id @default(cuid())
+  quoteId     String
+  description String
+  qty         Int
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  quote       Quote    @relation(fields: [quoteId], references: [id])
+}
+
+model SalesOrder {
+  id            String           @id @default(cuid())
+  orderNumber   String           @unique
+  opportunityId String
+  sourceQuoteId String?
+  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id])
+  sourceQuote   Quote?           @relation(fields: [sourceQuoteId], references: [id])
+  lines         SalesOrderLine[]
+  tasks         Task[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model SalesOrderLine {
+  id           String              @id @default(cuid())
+  salesOrderId String
+  description  String
+  qty          Int
+  unitPrice    Decimal             @db.Decimal(12, 2)
+  salesOrder   SalesOrder          @relation(fields: [salesOrderId], references: [id])
+  poLines      PurchaseOrderLine[]
+}
+
+model PurchaseOrder {
+  id          String              @id @default(cuid())
+  poNumber    String              @unique
+  opportunityId String?
+  lines       PurchaseOrderLine[]
+  tasks       Task[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model PurchaseOrderLine {
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  vendorId        String
+  salesOrderLineId String?
+  description     String
+  qty             Int
+  unitCost        Decimal        @db.Decimal(12, 2)
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
+  vendor          Vendor         @relation(fields: [vendorId], references: [id])
+  salesOrderLine  SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id])
+}
+
+model Project {
+  id            String       @id @default(cuid())
+  name          String
+  opportunityId String
+  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id])
+  tasks         Task[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Job {
+  id            String       @id @default(cuid())
+  name          String
+  opportunityId String
+  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id])
+  tasks         Task[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Task {
+  id         String      @id @default(cuid())
+  title      String
+  status     TaskStatus  @default(TODO)
+  assigneeId String?
+  entityType EntityType
+  entityId   String
+  dueAt      DateTime?
+  assignee   User?       @relation(fields: [assigneeId], references: [id])
+
+  opportunityId  String?
+  quoteId        String?
+  salesOrderId   String?
+  purchaseOrderId String?
+  projectId      String?
+  jobId          String?
+
+  opportunity   Opportunity?  @relation(fields: [opportunityId], references: [id])
+  quote         Quote?        @relation(fields: [quoteId], references: [id])
+  salesOrder    SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  project       Project?      @relation(fields: [projectId], references: [id])
+  job           Job?          @relation(fields: [jobId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
