@@ -1,0 +1,62 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import { Nav } from '@/components/nav';
+
+type SalesOrder = {
+  id: string;
+  orderNumber: string;
+  opportunityId: string;
+  sourceQuoteId: string | null;
+  createdAt: string;
+};
+
+export default function SalesOrdersPage() {
+  const [items, setItems] = useState<SalesOrder[]>([]);
+
+  async function load() {
+    const res = await fetch('/api/sales-orders');
+    setItems(await res.json());
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, []);
+
+  return (
+    <main className="mx-auto max-w-5xl p-8">
+      <h1 className="text-2xl font-semibold">Sales Orders</h1>
+      <p className="text-sm text-zinc-400">All sales orders in the system.</p>
+      <Nav />
+
+      <div className="overflow-hidden rounded border border-zinc-800">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-zinc-900 text-zinc-300">
+            <tr>
+              <th className="p-3">Order #</th>
+              <th className="p-3">Opportunity ID</th>
+              <th className="p-3">Source Quote ID</th>
+              <th className="p-3">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((so) => (
+              <tr key={so.id} className="border-t border-zinc-800">
+                <td className="p-3">{so.orderNumber}</td>
+                <td className="p-3">{so.opportunityId}</td>
+                <td className="p-3">{so.sourceQuoteId || '—'}</td>
+                <td className="p-3">{new Date(so.createdAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+            {items.length === 0 ? (
+              <tr>
+                <td className="p-3 text-zinc-400" colSpan={4}>No sales orders yet.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
+}

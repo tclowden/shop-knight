@@ -10,6 +10,7 @@ export const config = {
     '/api/opportunities/:path*',
     '/api/quotes/:path*',
     '/api/sales-orders/:path*',
+    '/api/admin/users/:path*',
     '/api/sales-order-lines/:path*',
   ],
 };
