@@ -47,10 +47,18 @@ async function authorizeManual() {
   const content = fs.readFileSync(CREDENTIALS_PATH, 'utf8');
   const keys = JSON.parse(content);
   const key = keys.installed || keys.web;
-  const redirectUri = (key.redirect_uris || []).find((u) => u.includes('localhost')) || key.redirect_uris?.[0];
+  let redirectUri = (key.redirect_uris || []).find((u) => u.includes('localhost')) || key.redirect_uris?.[0];
 
   if (!redirectUri) {
     throw new Error('OAuth client has no redirect URI. Re-download Desktop app credentials.');
+  }
+
+  // If Google provided bare http://localhost (port 80), switch to a high loopback port.
+  // Desktop OAuth supports loopback redirect URIs with dynamic ports.
+  const redirectUrl = new URL(redirectUri);
+  if (!redirectUrl.port) {
+    redirectUrl.port = String(Number(process.env.GMAIL_OAUTH_PORT || 53682));
+    redirectUri = redirectUrl.toString();
   }
 
   const oauth2Client = new google.auth.OAuth2(key.client_id, key.client_secret, redirectUri);
