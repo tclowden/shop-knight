@@ -50,9 +50,17 @@ async function authorize() {
     throw new Error(`Missing OAuth client file at ${CREDENTIALS_PATH}`);
   }
 
+  const noBrowser = process.env.GMAIL_NO_BROWSER === '1';
   client = await authenticate({
     scopes: SCOPES,
     keyfilePath: CREDENTIALS_PATH,
+    openBrowser: noBrowser
+      ? async (url) => {
+          console.log('\nOpen this URL in any browser, then finish sign-in:\n');
+          console.log(url);
+          console.log('\nWaiting for OAuth callback...\n');
+        }
+      : undefined,
   });
 
   if (client.credentials?.refresh_token) {
