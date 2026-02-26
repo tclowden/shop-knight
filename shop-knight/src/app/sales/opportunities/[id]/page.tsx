@@ -5,7 +5,8 @@ import { Nav } from '@/components/nav';
 
 type Quote = { id: string; quoteNumber: string; status: string };
 type SalesOrder = { id: string; orderNumber: string; sourceQuoteId: string };
-type SalesOrderLine = { id: string; description: string; qty: number; unitPrice: number };
+type SalesOrderLine = { id: string; description: string; qty: number; unitPrice: number; productId?: string | null };
+type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type PoLine = {
   id: string;
   description: string;
@@ -21,10 +22,12 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [lines, setLines] = useState<SalesOrderLine[]>([]);
   const [poLines, setPoLines] = useState<PoLine[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [lineDescription, setLineDescription] = useState('');
   const [lineQty, setLineQty] = useState('1');
   const [linePrice, setLinePrice] = useState('100');
+  const [lineProductId, setLineProductId] = useState('');
 
   const [vendorName, setVendorName] = useState('');
   const [poNumber, setPoNumber] = useState('');
@@ -36,6 +39,9 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   const primaryLine = useMemo(() => lines[0], [lines]);
 
   async function load(opportunityId: string) {
+    const productsRes = await fetch('/api/admin/products');
+    setProducts(await productsRes.json());
+
     const qRes = await fetch(`/api/opportunities/${opportunityId}/quotes`);
     setQuotes(await qRes.json());
 
@@ -81,12 +87,14 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
         description: lineDescription,
         qty: Number(lineQty),
         unitPrice: Number(linePrice),
+        productId: lineProductId || null,
       }),
     });
 
     setLineDescription('');
     setLineQty('1');
     setLinePrice('100');
+    setLineProductId('');
     load(id);
   }
 
@@ -163,10 +171,28 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           {primarySo ? (
             <>
               <form onSubmit={addSoLine} className="mb-3 grid gap-2">
-                <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Line description" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
+                <select
+                  value={lineProductId}
+                  onChange={(e) => {
+                    const productId = e.target.value;
+                    setLineProductId(productId);
+                    const p = products.find((x) => x.id === productId);
+                    if (p) {
+                      setLineDescription(p.name);
+                      setLinePrice(String(p.salePrice));
+                    }
+                  }}
+                  className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900"
+                >
+                  <option value="">Select product (optional)</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
+                  ))}
+                </select>
+                <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Line description" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={lineQty} onChange={(e) => setLineQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
-                  <input value={linePrice} onChange={(e) => setLinePrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
+                  <input value={lineQty} onChange={(e) => setLineQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
+                  <input value={linePrice} onChange={(e) => setLinePrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 </div>
                 <button className="rounded bg-blue-600 px-3 py-2 text-sm">Add SO Line</button>
               </form>
@@ -189,12 +215,12 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           {primaryLine ? (
             <>
               <form onSubmit={attachPoLine} className="mb-3 grid gap-2">
-                <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="Vendor name" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
-                <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="PO number" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
-                <input value={poDescription} onChange={(e) => setPoDescription(e.target.value)} placeholder="PO line description" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
+                <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="Vendor name" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
+                <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="PO number" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
+                <input value={poDescription} onChange={(e) => setPoDescription(e.target.value)} placeholder="PO line description" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={poQty} onChange={(e) => setPoQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
-                  <input value={poCost} onChange={(e) => setPoCost(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-zinc-900 p-2 text-sm" required />
+                  <input value={poQty} onChange={(e) => setPoQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
+                  <input value={poCost} onChange={(e) => setPoCost(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 </div>
                 <button className="rounded bg-blue-600 px-3 py-2 text-sm">Attach PO Line</button>
               </form>

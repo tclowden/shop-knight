@@ -17,27 +17,37 @@ type Quote = {
   customer: string;
 };
 
+type Product = { id: string; sku: string; name: string; salePrice: string | number };
+
 export default function NewSalesOrderPage() {
   const router = useRouter();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [orderNumber, setOrderNumber] = useState('');
   const [opportunityId, setOpportunityId] = useState('');
   const [sourceQuoteId, setSourceQuoteId] = useState('');
+  const [lineProductId, setLineProductId] = useState('');
+  const [lineDescription, setLineDescription] = useState('');
+  const [lineQty, setLineQty] = useState('1');
+  const [lineUnitPrice, setLineUnitPrice] = useState('0.00');
   const [error, setError] = useState('');
 
   async function load() {
-    const [oppRes, quoteRes] = await Promise.all([
+    const [oppRes, quoteRes, productRes] = await Promise.all([
       fetch('/api/opportunities'),
       fetch('/api/quotes'),
+      fetch('/api/admin/products'),
     ]);
 
     const oppItems = await oppRes.json();
     const quoteItems = await quoteRes.json();
+    const productItems = await productRes.json();
 
     setOpportunities(oppItems);
     setQuotes(quoteItems);
+    setProducts(productItems);
     if (oppItems.length > 0) setOpportunityId(oppItems[0].id);
   }
 
@@ -52,6 +62,14 @@ export default function NewSalesOrderPage() {
         orderNumber,
         opportunityId,
         sourceQuoteId: sourceQuoteId || null,
+        initialLine: lineDescription
+          ? {
+              productId: lineProductId || null,
+              description: lineDescription,
+              qty: Number(lineQty || 1),
+              unitPrice: Number(lineUnitPrice || 0),
+            }
+          : null,
       }),
     });
 
@@ -119,6 +137,33 @@ export default function NewSalesOrderPage() {
             ))}
           </select>
         </label>
+
+        <div className="rounded border border-zinc-700 p-3">
+          <h2 className="mb-2 font-medium">Initial Line Item (optional)</h2>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+            <select
+              value={lineProductId}
+              onChange={(e) => {
+                const productId = e.target.value;
+                setLineProductId(productId);
+                const p = products.find((x) => x.id === productId);
+                if (p) {
+                  setLineDescription(p.name);
+                  setLineUnitPrice(String(p.salePrice));
+                }
+              }}
+              className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+            >
+              <option value="">Select product</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
+              ))}
+            </select>
+            <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={lineQty} onChange={(e) => setLineQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </div>
+        </div>
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
 

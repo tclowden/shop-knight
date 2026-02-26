@@ -40,6 +40,7 @@ export async function POST(req: Request) {
   const orderNumber = String(body?.orderNumber || '').trim();
   const opportunityId = String(body?.opportunityId || '').trim();
   const sourceQuoteId = body?.sourceQuoteId ? String(body.sourceQuoteId).trim() : null;
+  const initialLine = body?.initialLine && typeof body.initialLine === 'object' ? body.initialLine : null;
 
   if (!orderNumber || !opportunityId) {
     return NextResponse.json({ error: 'orderNumber and opportunityId are required' }, { status: 400 });
@@ -63,6 +64,16 @@ export async function POST(req: Request) {
         orderNumber,
         opportunityId,
         sourceQuoteId,
+        lines: initialLine
+          ? {
+              create: {
+                description: String(initialLine.description || 'Line item'),
+                qty: Number(initialLine.qty || 1),
+                unitPrice: Number(initialLine.unitPrice || 0),
+                productId: initialLine.productId ? String(initialLine.productId) : null,
+              },
+            }
+          : undefined,
       },
     });
 

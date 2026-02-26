@@ -31,6 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       description: String(body.description),
       qty: Number(body.qty),
       unitPrice: Number(body.unitPrice),
+      productId: body?.productId ? String(body.productId) : null,
     },
   });
 

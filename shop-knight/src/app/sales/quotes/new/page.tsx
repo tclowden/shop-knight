@@ -6,7 +6,10 @@ import { Nav } from '@/components/nav';
 
 type Opportunity = { id: string; name: string; customer: string };
 
+type Product = { id: string; sku: string; name: string; salePrice: string | number };
+
 type LineItem = {
+  productId: string;
   name: string;
   description: string;
   quantity: string;
@@ -17,6 +20,7 @@ type LineItem = {
 export default function NewQuotePage() {
   const router = useRouter();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [opportunityId, setOpportunityId] = useState('');
   const [txnNumber, setTxnNumber] = useState('');
@@ -26,15 +30,20 @@ export default function NewQuotePage() {
   const [expiryDate, setExpiryDate] = useState('');
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' },
+    { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' },
   ]);
   const [error, setError] = useState('');
 
   async function load() {
-    const res = await fetch('/api/opportunities');
-    const data = await res.json();
-    setOpportunities(data);
-    if (data.length > 0) setOpportunityId(data[0].id);
+    const [oppRes, productRes] = await Promise.all([
+      fetch('/api/opportunities'),
+      fetch('/api/admin/products'),
+    ]);
+    const oppData = await oppRes.json();
+    const productData = await productRes.json();
+    setOpportunities(oppData);
+    setProducts(productData);
+    if (oppData.length > 0) setOpportunityId(oppData[0].id);
   }
 
   function updateLine(index: number, key: keyof LineItem, value: string) {
@@ -42,7 +51,7 @@ export default function NewQuotePage() {
   }
 
   function addLine() {
-    setLineItems((prev) => [...prev, { name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' }]);
+    setLineItems((prev) => [...prev, { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' }]);
   }
 
   async function submitQuote(e: FormEvent) {
@@ -56,6 +65,7 @@ export default function NewQuotePage() {
       const totalPriceInDollars = qty * price;
       const totalTaxInDollars = totalPriceInDollars * taxRate;
       return {
+        productId: l.productId || null,
         name: l.name,
         description: l.description || l.name,
         quantity: qty,
@@ -157,7 +167,25 @@ export default function NewQuotePage() {
           </div>
           <div className="space-y-2">
             {lineItems.map((line, i) => (
-              <div key={i} className="grid grid-cols-1 gap-2 md:grid-cols-5">
+              <div key={i} className="grid grid-cols-1 gap-2 md:grid-cols-6">
+                <select
+                  value={line.productId}
+                  onChange={(e) => {
+                    const productId = e.target.value;
+                    updateLine(i, 'productId', productId);
+                    const p = products.find((x) => x.id === productId);
+                    if (p) {
+                      updateLine(i, 'name', p.name);
+                      updateLine(i, 'priceInDollars', String(p.salePrice));
+                    }
+                  }}
+                  className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                >
+                  <option value="">Select product</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
+                  ))}
+                </select>
                 <input value={line.name} onChange={(e) => updateLine(i, 'name', e.target.value)} placeholder="Line item name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
                 <input value={line.description} onChange={(e) => updateLine(i, 'description', e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
                 <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />

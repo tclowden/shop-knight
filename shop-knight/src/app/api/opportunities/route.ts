@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
+function toDate(value: unknown) {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function toNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
 export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
@@ -17,6 +29,14 @@ export async function GET() {
       name: o.name,
       customer: o.customer.name,
       stage: o.stage,
+      source: o.source,
+      priority: o.priority,
+      estimatedValue: o.estimatedValue,
+      probability: o.probability,
+      expectedCloseDate: o.expectedCloseDate,
+      dueDate: o.dueDate,
+      inHandDate: o.inHandDate,
+      description: o.description,
     }))
   );
 }
@@ -37,8 +57,18 @@ export async function POST(req: Request) {
 
   const opportunity = await prisma.opportunity.create({
     data: {
-      name: String(body.name),
+      name: String(body.name).trim(),
       customerId: customer.id,
+      description: body?.description ? String(body.description) : null,
+      source: body?.source ? String(body.source) : null,
+      priority: body?.priority ? String(body.priority) : null,
+      expectedCloseDate: toDate(body?.expectedCloseDate),
+      probability: toNumber(body?.probability),
+      estimatedValue: toNumber(body?.estimatedValue),
+      customerPoNumber: body?.customerPoNumber ? String(body.customerPoNumber) : null,
+      customerPoDate: toDate(body?.customerPoDate),
+      dueDate: toDate(body?.dueDate),
+      inHandDate: toDate(body?.inHandDate),
     },
     include: { customer: true },
   });
@@ -49,6 +79,14 @@ export async function POST(req: Request) {
       name: opportunity.name,
       customer: opportunity.customer.name,
       stage: opportunity.stage,
+      source: opportunity.source,
+      priority: opportunity.priority,
+      estimatedValue: opportunity.estimatedValue,
+      probability: opportunity.probability,
+      expectedCloseDate: opportunity.expectedCloseDate,
+      dueDate: opportunity.dueDate,
+      inHandDate: opportunity.inHandDate,
+      description: opportunity.description,
     },
     { status: 201 }
   );
