@@ -1,0 +1,25 @@
+{
+  "opportunities": [
+    {
+      "id": "opp-1001",
+      "name": "Downtown Rebrand",
+      "customer": "Acme Foods",
+      "stage": "QUOTED"
+    },
+    {
+      "id": "opp-1002",
+      "name": "Fleet Wrap Program",
+      "customer": "Northline Logistics",
+      "stage": "QUALIFIED"
+    }
+  ],
+  "quotes": [
+    {
+      "id": "q-1001",
+      "opportunityId": "opp-1001",
+      "quoteNumber": "Q-1001",
+      "status": "SENT"
+    }
+  ],
+  "salesOrders": []
+}
