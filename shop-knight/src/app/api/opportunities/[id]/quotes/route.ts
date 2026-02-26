@@ -1,26 +1,37 @@
 import { NextResponse } from 'next/server';
-import { newId, readDb, writeDb } from '@/lib/dev-store';
+import { prisma } from '@/lib/prisma';
+
+function quoteNumber() {
+  return `Q-${Date.now().toString().slice(-6)}`;
+}
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = await readDb();
-  return NextResponse.json(db.quotes.filter((q) => q.opportunityId === id));
+  const quotes = await prisma.quote.findMany({
+    where: { opportunityId: id },
+    orderBy: { createdAt: 'desc' },
+  });
+  return NextResponse.json(quotes);
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = await readDb();
-  const opportunity = db.opportunities.find((o) => o.id === id);
+
+  const opportunity = await prisma.opportunity.findUnique({ where: { id } });
   if (!opportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
 
-  const quote = {
-    id: newId('q'),
-    opportunityId: id,
-    quoteNumber: `Q-${Math.floor(Math.random() * 9000) + 1000}`,
-    status: 'DRAFT' as const,
-  };
-  db.quotes.unshift(quote);
-  opportunity.stage = 'QUOTED';
-  await writeDb(db);
+  const quote = await prisma.quote.create({
+    data: {
+      opportunityId: id,
+      quoteNumber: quoteNumber(),
+      status: 'DRAFT',
+    },
+  });
+
+  await prisma.opportunity.update({
+    where: { id },
+    data: { stage: 'QUOTED' },
+  });
+
   return NextResponse.json(quote, { status: 201 });
 }

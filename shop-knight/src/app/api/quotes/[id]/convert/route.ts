@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server';
-import { newId, readDb, writeDb } from '@/lib/dev-store';
+import { prisma } from '@/lib/prisma';
+
+function orderNumber() {
+  return `SO-${Date.now().toString().slice(-6)}`;
+}
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = await readDb();
-  const quote = db.quotes.find((q) => q.id === id);
+
+  const quote = await prisma.quote.findUnique({ where: { id } });
   if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 
-  const existing = db.salesOrders.find((s) => s.sourceQuoteId === id);
+  const existing = await prisma.salesOrder.findFirst({ where: { sourceQuoteId: id } });
   if (existing) return NextResponse.json(existing);
 
-  const so = {
-    id: newId('so'),
-    opportunityId: quote.opportunityId,
-    sourceQuoteId: quote.id,
-    orderNumber: `SO-${Math.floor(Math.random() * 9000) + 1000}`,
-  };
-  db.salesOrders.unshift(so);
+  const so = await prisma.salesOrder.create({
+    data: {
+      opportunityId: quote.opportunityId,
+      sourceQuoteId: quote.id,
+      orderNumber: orderNumber(),
+    },
+  });
 
-  const opp = db.opportunities.find((o) => o.id === quote.opportunityId);
-  if (opp) opp.stage = 'WON';
+  await prisma.quote.update({ where: { id }, data: { status: 'ACCEPTED' } });
+  await prisma.opportunity.update({ where: { id: quote.opportunityId }, data: { stage: 'WON' } });
 
-  await writeDb(db);
   return NextResponse.json(so, { status: 201 });
 }

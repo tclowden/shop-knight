@@ -16,9 +16,8 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     const qRes = await fetch(`/api/opportunities/${opportunityId}/quotes`);
     setQuotes(await qRes.json());
 
-    const soRes = await fetch('/api/sales-orders');
-    const allSos = await soRes.json();
-    setSalesOrders(allSos.filter((s: SalesOrder & { opportunityId: string }) => s.opportunityId === opportunityId));
+    const soRes = await fetch(`/api/sales-orders?opportunityId=${opportunityId}`);
+    setSalesOrders(await soRes.json());
   }
 
   async function addQuote() {

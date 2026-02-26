@@ -32,7 +32,7 @@ npm run dev
 
 Open: http://localhost:3000
 
-## Prisma setup
+## Prisma/PostgreSQL setup
 
 1. Set your DB URL in `.env`:
 
@@ -40,12 +40,20 @@ Open: http://localhost:3000
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/shop_knight?schema=public"
 ```
 
-2. Create migration + generate client:
+2. Apply schema + generate client:
 
 ```bash
 npx prisma migrate dev --name init
 npx prisma generate
 ```
+
+3. Start the app:
+
+```bash
+npm run dev
+```
+
+> Note: API routes now read/write directly via Prisma. If DB is not running, those routes will fail.
 
 ## Immediate next build steps
 
