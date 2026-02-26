@@ -132,7 +132,11 @@ function sendJson(res, statusCode, payload) {
 function serveStatic(req, res) {
   const reqPath = req.url === '/' ? '/index.html' : req.url;
   const safePath = path.normalize(reqPath).replace(/^\.\.(\/|\\|$)/, '');
-  const filePath = path.join(PUBLIC_DIR, safePath);
+  let filePath = path.join(PUBLIC_DIR, safePath);
+
+  if (safePath.endsWith('/')) {
+    filePath = path.join(PUBLIC_DIR, safePath, 'index.html');
+  }
 
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
@@ -141,6 +145,20 @@ function serveStatic(req, res) {
   }
 
   fs.readFile(filePath, (err, content) => {
+    if (err && !path.extname(filePath)) {
+      const withHtml = `${filePath}.html`;
+      fs.readFile(withHtml, (err2, content2) => {
+        if (err2) {
+          res.writeHead(404);
+          res.end('Not found');
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(content2);
+      });
+      return;
+    }
+
     if (err) {
       res.writeHead(404);
       res.end('Not found');

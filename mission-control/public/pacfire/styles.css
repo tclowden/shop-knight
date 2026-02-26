@@ -1,0 +1,7 @@
+body{margin:0;background:#06070a;color:#f7f7f7;font-family:monospace;display:flex;justify-content:center}
+.wrap{padding:12px;max-width:860px}
+h1{margin:6px 0 8px;color:#ffd54a;text-shadow:0 0 8px #ff6a00}
+.hud{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+#musicBtn{background:#1f2937;color:#fff;border:1px solid #4b5563;padding:4px 8px;cursor:pointer}
+canvas{border:3px solid #20304d;background:#000;image-rendering:pixelated}
+.help{color:#93a3b8;font-size:12px}
