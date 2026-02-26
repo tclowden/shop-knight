@@ -1,12 +1,14 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type SalesOrder = {
   id: string;
   orderNumber: string;
-  opportunityId: string;
+  opportunity: string;
+  customer: string;
   sourceQuoteId: string | null;
   createdAt: string;
 };
@@ -30,12 +32,19 @@ export default function SalesOrdersPage() {
       <p className="text-sm text-zinc-400">All sales orders in the system.</p>
       <Nav />
 
+      <div className="mb-4 flex justify-end">
+        <Link href="/sales/orders/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">
+          + New Sales Order
+        </Link>
+      </div>
+
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-300">
             <tr>
               <th className="p-3">Order #</th>
-              <th className="p-3">Opportunity ID</th>
+              <th className="p-3">Opportunity</th>
+              <th className="p-3">Customer</th>
               <th className="p-3">Source Quote ID</th>
               <th className="p-3">Created</th>
             </tr>
@@ -44,14 +53,15 @@ export default function SalesOrdersPage() {
             {items.map((so) => (
               <tr key={so.id} className="border-t border-zinc-800">
                 <td className="p-3">{so.orderNumber}</td>
-                <td className="p-3">{so.opportunityId}</td>
+                <td className="p-3">{so.opportunity}</td>
+                <td className="p-3">{so.customer}</td>
                 <td className="p-3">{so.sourceQuoteId || '—'}</td>
                 <td className="p-3">{new Date(so.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
             {items.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={4}>No sales orders yet.</td>
+                <td className="p-3 text-zinc-400" colSpan={5}>No sales orders yet.</td>
               </tr>
             ) : null}
           </tbody>

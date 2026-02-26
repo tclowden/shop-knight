@@ -62,10 +62,10 @@ export default function UsersAdminPage() {
       <Nav />
 
       <form onSubmit={createUser} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-zinc-900 p-2" required />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-zinc-900 p-2" required />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-zinc-900 p-2" required />
-        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-zinc-900 p-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           {userTypes.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
