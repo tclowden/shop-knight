@@ -1,0 +1,10 @@
+{
+  "name": "mission-control-board",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mission control board with OpenClaw status, health, security audit, and kanban",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

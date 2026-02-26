@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knight Mission Control</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Knight Mission Control</h1>
+      <div class="actions">
+        <button id="refreshBtn">Refresh Status</button>
+        <button id="runAuditBtn" class="secondary">Run Deep Security Audit</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid top-grid">
+        <article class="card">
+          <h2>Status</h2>
+          <pre id="statusText">Loading...</pre>
+        </article>
+
+        <article class="card">
+          <h2>Health</h2>
+          <pre id="healthText">Loading...</pre>
+        </article>
+
+        <article class="card score-card">
+          <h2>Security Score</h2>
+          <div id="securityScore" class="score">--</div>
+          <small id="securityUpdated">Not yet updated</small>
+        </article>
+      </section>
+
+      <section class="grid bottom-grid">
+        <article class="card issues-card">
+          <h2>Outstanding Security Issues</h2>
+          <ul id="issuesList" class="issues-list">
+            <li>Loading...</li>
+          </ul>
+        </article>
+
+        <article class="card kanban-card">
+          <h2>Kanban Board</h2>
+          <div id="kanban" class="kanban"></div>
+        </article>
+      </section>
+    </main>
+
+    <template id="taskTemplate">
+      <div class="task" draggable="true">
+        <div class="task-title"></div>
+        <button class="delete-task" title="Delete task">×</button>
+      </div>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
