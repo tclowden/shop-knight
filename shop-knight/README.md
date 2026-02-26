@@ -34,10 +34,12 @@ Open: http://localhost:3000
 
 ## Prisma/PostgreSQL setup
 
-1. Set your DB URL in `.env`:
+1. Set your env in `.env`:
 
 ```bash
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/shop_knight?schema=public"
+NEXTAUTH_SECRET="replace-with-long-random-secret"
+NEXTAUTH_URL="http://localhost:3000"
 ```
 
 2. Apply schema + generate client:
@@ -47,13 +49,19 @@ npx prisma migrate dev --name init
 npx prisma generate
 ```
 
-3. Start the app:
+3. Seed an initial admin user:
+
+```bash
+ADMIN_EMAIL="you@company.com" ADMIN_PASSWORD="change-me" ADMIN_NAME="Tommy" npm run seed:admin
+```
+
+4. Start the app:
 
 ```bash
 npm run dev
 ```
 
-> Note: API routes now read/write directly via Prisma. If DB is not running, those routes will fail.
+> Note: API routes now read/write directly via Prisma and are auth-protected.
 
 ## Immediate next build steps
 

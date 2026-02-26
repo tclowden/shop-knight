@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireRoles } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  if (!auth.ok) return auth.response;
+
   const opportunities = await prisma.opportunity.findMany({
     include: { customer: true },
     orderBy: { createdAt: 'desc' },
@@ -18,6 +22,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireRoles(['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+
   const body = await req.json();
   if (!body?.name || !body?.customer) {
     return NextResponse.json({ error: 'name and customer required' }, { status: 400 });

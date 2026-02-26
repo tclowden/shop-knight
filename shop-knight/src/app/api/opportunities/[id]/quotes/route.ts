@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireRoles } from '@/lib/api-auth';
 
 function quoteNumber() {
   return `Q-${Date.now().toString().slice(-6)}`;
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
   const quotes = await prisma.quote.findMany({
     where: { opportunityId: id },
@@ -15,6 +19,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
 
   const opportunity = await prisma.opportunity.findUnique({ where: { id } });
