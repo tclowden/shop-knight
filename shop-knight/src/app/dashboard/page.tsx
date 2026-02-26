@@ -25,6 +25,11 @@ export default async function DashboardPage() {
       <p className="text-sm text-zinc-400">Mission control for sales, operations, and purchasing.</p>
       <Nav />
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <a href="/admin/users" className="rounded border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">User Admin</a>
+        <a href="/admin/products" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">Product Admin</a>
+      </div>
+
       <section className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {cards.map((card) => {
           const content = (
