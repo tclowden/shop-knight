@@ -67,7 +67,49 @@ function updateParticles(){particles=particles.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.
 
 function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);
 for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){const c=grid[y][x],px=x*TILE,py=y*TILE;if(c==='#'){ctx.fillStyle='#15376f';ctx.fillRect(px,py,TILE,TILE);}else if(c==='.'||c==='o'){ctx.fillStyle=c==='o'?'#ff9':'#f2f2f2';ctx.beginPath();ctx.arc(px+16,py+16,c==='o'?5:2.7,0,Math.PI*2);ctx.fill();}}
-ctx.fillStyle='#ffd54a';ctx.beginPath();ctx.arc(pac.x,pac.y,pac.r,0.25*Math.PI,1.75*Math.PI);ctx.lineTo(pac.x,pac.y);ctx.fill();
+// Pac-Man re-skinned as a tiny Eagles-inspired bird head icon
+ctx.save();
+ctx.translate(pac.x,pac.y);
+
+// rotate with movement direction
+const angleMap={right:0,left:Math.PI,up:-Math.PI/2,down:Math.PI/2};
+ctx.rotate(angleMap[pac.dir]||0);
+
+// dark green head
+ctx.fillStyle='#0B5A43';
+ctx.beginPath();
+ctx.arc(0,0,pac.r,0,Math.PI*2);
+ctx.fill();
+
+// silver/white wing stripe
+ctx.fillStyle='#C0C7CE';
+ctx.beginPath();
+ctx.moveTo(-pac.r*0.9,-pac.r*0.15);
+ctx.quadraticCurveTo(-pac.r*0.15,-pac.r*0.95,pac.r*0.55,-pac.r*0.3);
+ctx.quadraticCurveTo(-pac.r*0.05,-pac.r*0.2,-pac.r*0.7,pac.r*0.35);
+ctx.closePath();
+ctx.fill();
+
+// beak
+ctx.fillStyle='#f4c542';
+ctx.beginPath();
+ctx.moveTo(pac.r*0.45,-pac.r*0.15);
+ctx.lineTo(pac.r*1.05,0);
+ctx.lineTo(pac.r*0.45,pac.r*0.15);
+ctx.closePath();
+ctx.fill();
+
+// eye
+ctx.fillStyle='#fff';
+ctx.beginPath();
+ctx.arc(pac.r*0.2,-pac.r*0.35,pac.r*0.18,0,Math.PI*2);
+ctx.fill();
+ctx.fillStyle='#111';
+ctx.beginPath();
+ctx.arc(pac.r*0.25,-pac.r*0.35,pac.r*0.08,0,Math.PI*2);
+ctx.fill();
+
+ctx.restore();
 for(const g of ghosts){if(g.dead>0)continue;ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(g.x,g.y,g.r,Math.PI,0);ctx.lineTo(g.x+g.r,g.y+g.r);ctx.lineTo(g.x-g.r,g.y+g.r);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(g.x-7,g.y-2,4,4);ctx.fillRect(g.x+3,g.y-2,4,4);} 
 ctx.fillStyle='#ff7a00';for(const b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}
 for(const p of particles){ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,2,2);} 
