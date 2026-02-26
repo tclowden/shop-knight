@@ -1,7 +1,7 @@
 const { authorize, google } = require('./lib');
 
 function usage() {
-  console.log('Usage: node send.js "to@example.com" "Subject" "Body text" "optional-cc@example.com"');
+  console.log('Usage: node send.js --to "to@example.com" --subject "Subject" --body "Body text" [--cc "cc@example.com"]');
 }
 
 function makeRawMessage(to, subject, body, cc) {
@@ -22,8 +22,27 @@ function makeRawMessage(to, subject, body, cc) {
     .replace(/=+$/, '');
 }
 
+function parseArgs(argv) {
+  // Preferred: --to ... --subject ... --body ... [--cc ...]
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--to') out.to = argv[++i];
+    else if (a === '--subject') out.subject = argv[++i];
+    else if (a === '--body') out.body = argv[++i];
+    else if (a === '--cc') out.cc = argv[++i];
+  }
+
+  if (out.to && out.subject && out.body) return out;
+
+  // Backward-compatible positional mode:
+  // node send.js <to> <subject> <body> [cc]
+  const [to, subject, body, cc] = argv;
+  return { to, subject, body, cc };
+}
+
 (async () => {
-  const [to, subject, body, cc] = process.argv.slice(2);
+  const { to, subject, body, cc } = parseArgs(process.argv.slice(2));
   if (!to || !subject || !body) {
     usage();
     process.exit(1);
