@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 
 type User = { id: string; name: string };
@@ -32,6 +33,7 @@ function taskEntityHref(t: Task) {
 }
 
 export default function TaskCalendarPage() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState('');
@@ -112,6 +114,12 @@ export default function TaskCalendarPage() {
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) || null;
   const entityTypes = Array.from(new Set(tasks.map((t) => t.entityType))).sort();
 
+  function openTaskOnRecord(task: Task) {
+    const href = taskEntityHref(task);
+    if (href === '#') return;
+    router.push(`${href}#task-${task.id}`);
+  }
+
   return (
     <main className="mx-auto max-w-7xl p-8">
       <h1 className="text-2xl font-semibold">Open Tasks Calendar</h1>
@@ -155,7 +163,7 @@ export default function TaskCalendarPage() {
               <option value="">Unassigned</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
-            <a href={taskEntityHref(selectedTask)} className="rounded border border-zinc-700 px-3 py-2 text-center">Open record</a>
+            <a href={`${taskEntityHref(selectedTask)}#task-${selectedTask.id}`} className="rounded border border-zinc-700 px-3 py-2 text-center">Open record</a>
           </div>
         </section>
       ) : null}
@@ -184,7 +192,7 @@ export default function TaskCalendarPage() {
                 {dayTasks.slice(0, 4).map((t) => {
                   const hover = `Task: ${t.title}\nAssignee: ${t.assignee?.name || 'Unassigned'}\nAssigned to: ${t.entityType} • ${t.entityLabel || t.entityId}`;
                   return (
-                    <button key={t.id} title={hover} onClick={() => setSelectedTaskId(t.id)} className={`w-full rounded px-2 py-1 text-left text-xs ${selectedTaskId === t.id ? 'bg-blue-700' : 'bg-zinc-800'}`}>
+                    <button key={t.id} title={hover} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className={`w-full rounded px-2 py-1 text-left text-xs ${selectedTaskId === t.id ? 'bg-blue-700' : 'bg-zinc-800'}`}>
                       <p className="truncate">{t.entityType}: {t.entityLabel || t.entityId}</p>
                       <p className="truncate text-[10px] text-zinc-300">{t.title}</p>
                     </button>
@@ -201,7 +209,7 @@ export default function TaskCalendarPage() {
         <h2 className="mb-2 font-medium">Open Tasks (list)</h2>
         <div className="space-y-2 text-sm">
           {filteredTasks.map((t) => (
-            <button key={t.id} onClick={() => setSelectedTaskId(t.id)} className="w-full rounded border border-zinc-700 p-2 text-left">
+            <button key={t.id} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className="w-full rounded border border-zinc-700 p-2 text-left">
               <p className="font-medium">{t.title}</p>
               <p className="text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : 'No due date'} • {t.entityType} • {t.entityLabel || t.entityId} • {t.assignee?.name || 'Unassigned'}</p>
             </button>

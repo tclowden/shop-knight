@@ -101,6 +101,17 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     load();
   }, [entityId, load]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (!hash.startsWith('#task-')) return;
+    const taskId = hash.replace('#task-', '');
+    if (!tasks.some((t) => t.id === taskId)) return;
+
+    const el = document.getElementById(`task-${taskId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [tasks]);
+
   return (
     <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
       <article className="rounded border border-zinc-800 p-4">
@@ -157,7 +168,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
 
         <div className="space-y-2">
           {tasks.map((t) => (
-            <div key={t.id} className="rounded border border-zinc-700 p-2 text-sm">
+            <div id={`task-${t.id}`} key={t.id} className="rounded border border-zinc-700 p-2 text-sm target:border-blue-500 target:bg-blue-950/20">
               <p className="font-medium">{t.title}</p>
               <p className="mt-1 text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : '—'} • Assignee: {t.assignee?.name || 'Unassigned'}</p>
               <div className="mt-2 flex gap-2">
