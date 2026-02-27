@@ -10,6 +10,7 @@ const links = [
   { href: '/customers', label: 'Customers' },
   { href: '/vendors', label: 'Vendors' },
   { href: '/tasks/calendar', label: 'Task Calendar' },
+  { href: '/tasks/templates', label: 'Task Templates' },
 ];
 
 export function Nav() {

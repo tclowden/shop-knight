@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 type User = { id: string; name: string; email: string };
+type TaskTemplate = { id: string; name: string };
 type Note = { id: string; body: string; createdAt: string; createdBy?: { id: string; name: string } | null };
 type Task = { id: string; title: string; status: string; dueAt: string | null; assignee?: { id: string; name: string } | null };
 
 export function ModuleNotesTasks({ entityType, entityId }: { entityType: string; entityId: string }) {
   const [users, setUsers] = useState<User[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -16,14 +18,21 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskAssigneeId, setTaskAssigneeId] = useState('');
 
+  const [templateId, setTemplateId] = useState('');
+  const [templateAnchorDate, setTemplateAnchorDate] = useState('');
+  const [templatePmUserId, setTemplatePmUserId] = useState('');
+  const [templateProjectCoordinatorUserId, setTemplateProjectCoordinatorUserId] = useState('');
+
   const load = useCallback(async () => {
-    const [usersRes, notesRes, tasksRes] = await Promise.all([
+    const [usersRes, templatesRes, notesRes, tasksRes] = await Promise.all([
       fetch('/api/users'),
+      fetch('/api/task-templates'),
       fetch(`/api/notes?entityType=${entityType}&entityId=${entityId}`),
       fetch(`/api/tasks?entityType=${entityType}&entityId=${entityId}`),
     ]);
 
     if (usersRes.ok) setUsers(await usersRes.json());
+    if (templatesRes.ok) setTemplates(await templatesRes.json());
     if (notesRes.ok) setNotes(await notesRes.json());
     if (tasksRes.ok) setTasks(await tasksRes.json());
   }, [entityType, entityId]);
@@ -67,6 +76,25 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     await load();
   }
 
+  async function applyTemplate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!templateId) return;
+
+    await fetch(`/api/task-templates/${templateId}/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entityType,
+        entityId,
+        anchorDate: templateAnchorDate || null,
+        pmUserId: templatePmUserId || null,
+        projectCoordinatorUserId: templateProjectCoordinatorUserId || null,
+      }),
+    });
+
+    await load();
+  }
+
   useEffect(() => {
     if (!entityId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -94,6 +122,27 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
 
       <article className="rounded border border-zinc-800 p-4">
         <h2 className="mb-2 text-lg font-medium">Tasks</h2>
+
+        <form onSubmit={applyTemplate} className="mb-4 space-y-2 rounded border border-zinc-700 p-3">
+          <p className="text-sm font-medium">Apply Task Template</p>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Select template</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <input type="date" value={templateAnchorDate} onChange={(e) => setTemplateAnchorDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <select value={templatePmUserId} onChange={(e) => setTemplatePmUserId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">PM (optional)</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            <select value={templateProjectCoordinatorUserId} onChange={(e) => setTemplateProjectCoordinatorUserId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Project Coordinator (optional)</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+          <button className="rounded bg-indigo-600 px-3 py-2 text-sm">Apply Template</button>
+        </form>
+
         <form onSubmit={addTask} className="mb-3 grid grid-cols-1 gap-2">
           <input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Task title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           <div className="grid grid-cols-2 gap-2">

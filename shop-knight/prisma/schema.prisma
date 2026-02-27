@@ -29,6 +29,13 @@ enum TaskStatus {
   DONE
 }
 
+enum TemplateAssigneeMode {
+  UNASSIGNED
+  SPECIFIC_USER
+  PM
+  PROJECT_COORDINATOR
+}
+
 enum QuoteStatus {
   DRAFT
   SENT
@@ -60,6 +67,7 @@ model User {
   updatedAt    DateTime     @updatedAt
   tasks        Task[]
   notes        Note[]
+  templateSteps TaskTemplateStep[] @relation("TemplateSpecificAssignee")
 }
 
 model Customer {
@@ -330,4 +338,25 @@ model Note {
   createdById String?
   createdBy  User?      @relation(fields: [createdById], references: [id])
   createdAt  DateTime   @default(now())
+}
+
+model TaskTemplate {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  active    Boolean            @default(true)
+  steps     TaskTemplateStep[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model TaskTemplateStep {
+  id                 String               @id @default(cuid())
+  templateId         String
+  title              String
+  sortOrder          Int                  @default(0)
+  dueOffsetDays      Int                  @default(0)
+  assigneeMode       TemplateAssigneeMode @default(UNASSIGNED)
+  specificAssigneeId String?
+  template           TaskTemplate         @relation(fields: [templateId], references: [id])
+  specificAssignee   User?                @relation("TemplateSpecificAssignee", fields: [specificAssigneeId], references: [id])
 }

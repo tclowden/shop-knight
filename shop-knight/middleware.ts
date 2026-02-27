@@ -22,5 +22,6 @@ export const config = {
     '/api/users/:path*',
     '/api/customers/:path*',
     '/api/vendors/:path*',
+    '/api/task-templates/:path*',
   ],
 };
