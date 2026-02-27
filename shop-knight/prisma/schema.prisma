@@ -43,6 +43,10 @@ enum EntityType {
   PURCHASE_ORDER
   PROJECT
   JOB
+  CUSTOMER
+  VENDOR
+  PRODUCT
+  USER
 }
 
 model User {

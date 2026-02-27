@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
-
 type Product = {
   id: string;
   sku: string;
@@ -157,6 +157,8 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <tbody>{attributes.map((a) => (<tr key={a.id} className="border-t border-zinc-800"><td className="p-3">{a.code}</td><td className="p-3">{a.name}</td><td className="p-3">{a.inputType}</td><td className="p-3">{a.defaultValue || '—'}</td><td className="p-3">{a.options?.join(', ') || '—'}</td><td className="p-3">{a.required ? 'Yes' : 'No'}</td></tr>))}</tbody>
         </table>
       </div>
+
+      <ModuleNotesTasks entityType="PRODUCT" entityId={id} />
     </main>
   );
 }

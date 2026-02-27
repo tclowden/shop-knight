@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 
@@ -88,7 +89,7 @@ export default function UsersAdminPage() {
           <tbody>
             {users.map((u) => (
               <tr key={u.id} className="border-t border-zinc-800">
-                <td className="p-3">{u.name}</td>
+                <td className="p-3"><Link href={`/admin/users/${u.id}`} className="text-blue-400">{u.name}</Link></td>
                 <td className="p-3">{u.email}</td>
                 <td className="p-3">{u.type}</td>
                 <td className="p-3">{u.active ? 'Active' : 'Disabled'}</td>

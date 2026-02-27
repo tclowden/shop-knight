@@ -19,5 +19,7 @@ export const config = {
     '/api/notes/:path*',
     '/api/tasks/:path*',
     '/api/users/:path*',
+    '/api/customers/:path*',
+    '/api/vendors/:path*',
   ],
 };
