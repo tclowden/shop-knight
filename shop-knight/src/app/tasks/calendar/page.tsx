@@ -10,6 +10,7 @@ type Task = {
   dueAt: string | null;
   entityType: string;
   entityId: string;
+  entityLabel?: string;
   assignee?: { id: string; name: string } | null;
 };
 
@@ -87,12 +88,15 @@ export default function TaskCalendarPage() {
             <div key={key} className={`min-h-28 rounded border p-2 ${inMonth ? 'border-zinc-700' : 'border-zinc-900 opacity-50'}`}>
               <p className="mb-1 text-xs font-medium">{d.getDate()}</p>
               <div className="space-y-1">
-                {dayTasks.slice(0, 4).map((t) => (
-                  <div key={t.id} className="rounded bg-zinc-800 px-2 py-1 text-xs">
-                    <p className="truncate">{t.title}</p>
-                    <p className="text-[10px] text-zinc-400">{t.assignee?.name || 'Unassigned'}</p>
-                  </div>
-                ))}
+                {dayTasks.slice(0, 4).map((t) => {
+                  const hover = `Task: ${t.title}\nAssignee: ${t.assignee?.name || 'Unassigned'}\nAssigned to: ${t.entityType} • ${t.entityLabel || t.entityId}`;
+                  return (
+                    <div key={t.id} title={hover} className="rounded bg-zinc-800 px-2 py-1 text-xs">
+                      <p className="truncate">{t.entityType}: {t.entityLabel || t.entityId}</p>
+                      <p className="truncate text-[10px] text-zinc-400">{t.title}</p>
+                    </div>
+                  );
+                })}
                 {dayTasks.length > 4 ? <p className="text-[10px] text-zinc-400">+{dayTasks.length - 4} more</p> : null}
               </div>
             </div>
@@ -106,7 +110,7 @@ export default function TaskCalendarPage() {
           {tasks.map((t) => (
             <div key={t.id} className="rounded border border-zinc-700 p-2">
               <p className="font-medium">{t.title}</p>
-              <p className="text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : 'No due date'} • {t.entityType} • {t.assignee?.name || 'Unassigned'}</p>
+              <p className="text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : 'No due date'} • {t.entityType} • {t.entityLabel || t.entityId} • {t.assignee?.name || 'Unassigned'}</p>
             </div>
           ))}
           {tasks.length === 0 ? <p className="text-zinc-400">No open tasks found.</p> : null}
