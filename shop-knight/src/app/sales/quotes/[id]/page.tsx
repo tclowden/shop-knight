@@ -61,17 +61,32 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     await load(id);
   }
 
+  async function reorderLines(lines: Line[]) {
+    await fetch(`/api/quotes/${id}/lines/reorder`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: lines.map((l, i) => ({ id: l.id, sortOrder: i + 1, parentLineId: l.parentLineId || null })) }),
+    });
+    await load(id);
+  }
+
   async function moveLine(lineId: string, dir: -1 | 1) {
     const lines = [...(quote?.lines || [])].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     const idx = lines.findIndex((l) => l.id === lineId);
     const target = idx + dir;
     if (idx < 0 || target < 0 || target >= lines.length) return;
     [lines[idx], lines[target]] = [lines[target], lines[idx]];
-    await fetch(`/api/quotes/${id}/lines/reorder`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: lines.map((l, i) => ({ id: l.id, sortOrder: i + 1, parentLineId: l.parentLineId || null })) }),
-    });
-    await load(id);
+    await reorderLines(lines);
+  }
+
+  async function dragMoveLine(sourceId: string, targetId: string) {
+    if (sourceId === targetId) return;
+    const lines = [...(quote?.lines || [])].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    const from = lines.findIndex((l) => l.id === sourceId);
+    const to = lines.findIndex((l) => l.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = lines.splice(from, 1);
+    lines.splice(to, 0, moved);
+    await reorderLines(lines);
   }
 
   async function toggleCollapse(line: Line) {
@@ -168,6 +183,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 onSave={saveLine}
                 onDelete={deleteLine}
                 onMove={moveLine}
+                onDragMove={dragMoveLine}
                 onToggleCollapse={toggleCollapse}
                 onMakeChild={makeChild}
               />
@@ -185,7 +201,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
+function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
@@ -195,7 +211,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   }, [draft, dirty, onSave]);
 
   return (
-    <tr className="border-t border-zinc-800">
+    <tr className="border-t border-zinc-800" draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', line.id)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
       <td className="p-3">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
           {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}

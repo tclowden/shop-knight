@@ -44,17 +44,32 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     await load(id);
   }
 
+  async function reorderLines(lines: Line[]) {
+    await fetch(`/api/sales-orders/${id}/lines/reorder`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: lines.map((l, i) => ({ id: l.id, sortOrder: i + 1, parentLineId: l.parentLineId || null })) }),
+    });
+    await load(id);
+  }
+
   async function moveLine(lineId: string, dir: -1 | 1) {
     const lines = [...(order?.lines || [])].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     const idx = lines.findIndex((l) => l.id === lineId);
     const target = idx + dir;
     if (idx < 0 || target < 0 || target >= lines.length) return;
     [lines[idx], lines[target]] = [lines[target], lines[idx]];
-    await fetch(`/api/sales-orders/${id}/lines/reorder`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: lines.map((l, i) => ({ id: l.id, sortOrder: i + 1, parentLineId: l.parentLineId || null })) }),
-    });
-    await load(id);
+    await reorderLines(lines);
+  }
+
+  async function dragMoveLine(sourceId: string, targetId: string) {
+    if (sourceId === targetId) return;
+    const lines = [...(order?.lines || [])].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    const from = lines.findIndex((l) => l.id === sourceId);
+    const to = lines.findIndex((l) => l.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = lines.splice(from, 1);
+    lines.splice(to, 0, moved);
+    await reorderLines(lines);
   }
 
   async function toggleCollapse(line: Line) { await saveLine({ ...line, collapsed: !line.collapsed }); }
@@ -118,7 +133,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Line Total</th><th className="p-3">Actions</th></tr></thead>
-          <tbody>{visibleLines.map(({ line, depth }) => <SalesOrderLineRow key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`} line={line} depth={depth} roots={roots} displayTotal={lineDisplayTotals.get(line.id) || 0} hasChildren={(childrenMap.get(line.id) || []).length > 0} onSave={saveLine} onDelete={deleteLine} onMove={moveLine} onToggleCollapse={toggleCollapse} onMakeChild={makeChild} />)}</tbody>
+          <tbody>{visibleLines.map(({ line, depth }) => <SalesOrderLineRow key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`} line={line} depth={depth} roots={roots} displayTotal={lineDisplayTotals.get(line.id) || 0} hasChildren={(childrenMap.get(line.id) || []).length > 0} onSave={saveLine} onDelete={deleteLine} onMove={moveLine} onDragMove={dragMoveLine} onToggleCollapse={toggleCollapse} onMakeChild={makeChild} />)}</tbody>
         </table>
       </div>
 
@@ -127,7 +142,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
@@ -136,7 +151,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     return () => clearTimeout(t);
   }, [draft, dirty, onSave]);
   return (
-    <tr className="border-t border-zinc-800">
+    <tr className="border-t border-zinc-800" draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', line.id)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
       <td className="p-3"><div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">{depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}<input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div></td>
       <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
       <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
