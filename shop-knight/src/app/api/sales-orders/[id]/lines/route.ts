@@ -9,7 +9,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const lines = await prisma.salesOrderLine.findMany({
     where: { salesOrderId: id },
-    orderBy: { id: 'desc' },
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
   });
   return NextResponse.json(lines);
 }
@@ -25,12 +25,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'description, qty, unitPrice required' }, { status: 400 });
   }
 
+  const last = await prisma.salesOrderLine.findFirst({ where: { salesOrderId: id }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } });
+
   const line = await prisma.salesOrderLine.create({
     data: {
       salesOrderId: id,
       description: String(body.description),
       qty: Number(body.qty),
       unitPrice: Number(body.unitPrice),
+      sortOrder: (last?.sortOrder || 0) + 1,
+      parentLineId: body?.parentLineId ? String(body.parentLineId) : null,
+      collapsed: Boolean(body?.collapsed),
       productId: body?.productId ? String(body.productId) : null,
       attributeValues: body?.attributeValues && typeof body.attributeValues === 'object' ? body.attributeValues : null,
     },

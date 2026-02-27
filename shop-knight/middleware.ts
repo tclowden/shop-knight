@@ -14,5 +14,7 @@ export const config = {
     '/api/admin/products/:path*',
     '/api/sales-order-lines/:path*',
     '/api/quote-lines/:path*',
+    '/api/quotes/:path*/lines/reorder',
+    '/api/sales-orders/:path*/lines/reorder',
   ],
 };

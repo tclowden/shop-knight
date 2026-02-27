@@ -153,6 +153,9 @@ model QuoteLine {
   description             String
   qty                     Int
   unitPrice               Decimal  @db.Decimal(12, 2)
+  sortOrder               Int      @default(0)
+  parentLineId            String?
+  collapsed               Boolean  @default(false)
   attributeValues         Json?
   productId               String?
   name                    String?
@@ -233,6 +236,9 @@ model SalesOrderLine {
   description  String
   qty          Int
   unitPrice    Decimal             @db.Decimal(12, 2)
+  sortOrder    Int                 @default(0)
+  parentLineId String?
+  collapsed    Boolean             @default(false)
   attributeValues Json?
   productId    String?
   salesOrder   SalesOrder          @relation(fields: [salesOrderId], references: [id])
