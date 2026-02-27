@@ -1,13 +1,14 @@
 const { authorize, google } = require('./lib');
 
 function usage() {
-  console.log('Usage: node send.js --to "to@example.com" --subject "Subject" --body "Body text" [--cc "cc@example.com"]');
+  console.log('Usage: node send.js --to "to@example.com" --subject "Subject" --body "Body text" [--cc "cc@example.com"] [--bcc "bcc@example.com"]');
 }
 
-function makeRawMessage(to, subject, body, cc) {
+function makeRawMessage(to, subject, body, cc, bcc) {
   const email = [
     `To: ${to}`,
     cc ? `Cc: ${cc}` : null,
+    bcc ? `Bcc: ${bcc}` : null,
     'Content-Type: text/plain; charset="UTF-8"',
     'MIME-Version: 1.0',
     `Subject: ${subject}`,
@@ -31,18 +32,19 @@ function parseArgs(argv) {
     else if (a === '--subject') out.subject = argv[++i];
     else if (a === '--body') out.body = argv[++i];
     else if (a === '--cc') out.cc = argv[++i];
+    else if (a === '--bcc') out.bcc = argv[++i];
   }
 
   if (out.to && out.subject && out.body) return out;
 
   // Backward-compatible positional mode:
   // node send.js <to> <subject> <body> [cc]
-  const [to, subject, body, cc] = argv;
-  return { to, subject, body, cc };
+  const [to, subject, body, cc, bcc] = argv;
+  return { to, subject, body, cc, bcc };
 }
 
 (async () => {
-  const { to, subject, body, cc } = parseArgs(process.argv.slice(2));
+  const { to, subject, body, cc, bcc } = parseArgs(process.argv.slice(2));
   if (!to || !subject || !body) {
     usage();
     process.exit(1);
@@ -51,7 +53,7 @@ function parseArgs(argv) {
   try {
     const auth = await authorize();
     const gmail = google.gmail({ version: 'v1', auth });
-    const raw = makeRawMessage(to, subject, body, cc);
+    const raw = makeRawMessage(to, subject, body, cc, bcc);
 
     const result = await gmail.users.messages.send({
       userId: 'me',
