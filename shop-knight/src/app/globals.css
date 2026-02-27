@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0b1020;
+  --surface: #121a2f;
+  --surface-soft: #18223d;
+  --foreground: #eef2ff;
+  --muted: #9ca3af;
+  --brand: #f97316;
+  --brand-2: #fb923c;
 }
 
 @theme inline {
@@ -12,17 +17,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background:
+    radial-gradient(1000px 400px at 10% -10%, rgba(249, 115, 22, 0.18), transparent),
+    radial-gradient(900px 300px at 90% -20%, rgba(59, 130, 246, 0.16), transparent),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+main {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, white 10%, transparent);
+  border-radius: 16px;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }
 
 input,
@@ -35,4 +44,23 @@ select {
 input::placeholder,
 textarea::placeholder {
   color: #6b7280 !important;
+}
+
+button,
+a.rounded.bg-blue-600,
+button.rounded.bg-blue-600 {
+  transition: all 120ms ease;
+}
+
+button.rounded.bg-blue-600,
+a.rounded.bg-blue-600 {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2)) !important;
+  border: none;
+  color: #fff;
+}
+
+button.rounded.bg-blue-600:hover,
+a.rounded.bg-blue-600:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }

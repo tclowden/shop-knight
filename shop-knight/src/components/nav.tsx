@@ -15,9 +15,13 @@ const links = [
 
 export function Nav() {
   return (
-    <nav className="mb-6 flex flex-wrap gap-2 border-b border-zinc-800 pb-4 text-sm">
+    <nav className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-4 text-sm">
       {links.map((link) => (
-        <Link key={link.href} href={link.href} className="rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800">
+        <Link
+          key={link.href}
+          href={link.href}
+          className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-zinc-100 hover:border-orange-300/40 hover:bg-orange-400/10"
+        >
           {link.label}
         </Link>
       ))}
