@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <main className="ml-4 mr-4 max-w-none p-6 md:ml-6 md:mr-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="text-sm text-zinc-400">Mission control for sales, operations, and purchasing.</p>
       <Nav />
