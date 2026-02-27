@@ -109,6 +109,27 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     return out.filter(({ line }) => line.description.toLowerCase().includes(filterText.trim().toLowerCase()));
   }, [roots, childrenMap, filterText]);
 
+  const lineOwnTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    (quote?.lines || []).forEach((l) => {
+      map.set(l.id, Number(l.qty) * Number(l.unitPrice || 0) * (1 + Number(l.taxRate ?? 0)));
+    });
+    return map;
+  }, [quote?.lines]);
+
+  const lineDisplayTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    (quote?.lines || []).forEach((l) => {
+      const kids = childrenMap.get(l.id) || [];
+      if (kids.length > 0) {
+        map.set(l.id, kids.reduce((sum, k) => sum + (lineOwnTotals.get(k.id) || 0), 0));
+      } else {
+        map.set(l.id, lineOwnTotals.get(l.id) || 0);
+      }
+    });
+    return map;
+  }, [quote?.lines, childrenMap, lineOwnTotals]);
+
   const subtotal = useMemo(() => (quote?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0), 0), [quote?.lines]);
   const taxTotal = useMemo(() => (quote?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0) * Number(l.taxRate ?? 0), 0), [quote?.lines]);
 
@@ -137,13 +158,25 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Tax</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
-              <QuoteLineRow key={line.id} line={line} depth={depth} roots={roots} onSave={saveLine} onDelete={deleteLine} onMove={moveLine} onToggleCollapse={toggleCollapse} onMakeChild={makeChild} />
+              <QuoteLineRow
+                key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.taxRate ?? ''}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`}
+                line={line}
+                depth={depth}
+                roots={roots}
+                displayTotal={lineDisplayTotals.get(line.id) || 0}
+                hasChildren={(childrenMap.get(line.id) || []).length > 0}
+                onSave={saveLine}
+                onDelete={deleteLine}
+                onMove={moveLine}
+                onToggleCollapse={toggleCollapse}
+                onMakeChild={makeChild}
+              />
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="mt-4 ml-auto w-full max-w-sm rounded border border-zinc-800 p-3 text-sm">
+      <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded border border-zinc-800 bg-zinc-950/90 p-3 text-sm backdrop-blur">
         <p className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></p>
         <p className="mt-1 flex justify-between"><span>Tax</span><span>${taxTotal.toFixed(2)}</span></p>
         <p className="mt-2 flex justify-between text-base font-semibold"><span>Total</span><span>${(subtotal + taxTotal).toFixed(2)}</span></p>
@@ -152,27 +185,29 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-function QuoteLineRow({ line, depth, roots, onSave, onDelete, onMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
+function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
   const [draft, setDraft] = useState<Line>(line);
+  const [dirty, setDirty] = useState(false);
   useEffect(() => {
-    setDraft(line);
-  }, [line]);
-  const total = Number(draft.qty || 0) * Number(draft.unitPrice || 0) * (1 + Number(draft.taxRate ?? 0));
+    if (!dirty) return;
+    const t = setTimeout(() => onSave(draft), 700);
+    return () => clearTimeout(t);
+  }, [draft, dirty, onSave]);
 
   return (
     <tr className="border-t border-zinc-800">
       <td className="p-3">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
           {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}
-          <input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         </div>
       </td>
-      <td className="p-3"><input value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: Number(e.target.value) })} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><input value={draft.unitPrice} onChange={(e) => setDraft({ ...draft, unitPrice: Number(e.target.value) })} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><input value={draft.taxRate ?? 0} onChange={(e) => setDraft({ ...draft, taxRate: Number(e.target.value) })} type="number" min="0" step="0.0001" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3">${total.toFixed(2)}</td>
+      <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
+      <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
+      <td className="p-3"><input value={draft.taxRate ?? 0} onChange={(e) => { setDirty(true); setDraft({ ...draft, taxRate: Number(e.target.value) }); }} type="number" min="0" step="0.0001" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
+      <td className="p-3">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
       <td className="p-3 space-x-1">
-        <button onClick={() => onSave(draft)} className="rounded border border-zinc-600 px-2 py-1">Save</button>
+        <button onClick={() => onSave(draft)} className="rounded border border-zinc-600 px-2 py-1">Save now</button>
         <button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button>
         <button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button>
         <button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button>
