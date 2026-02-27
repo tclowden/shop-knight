@@ -132,7 +132,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Line Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Line Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>{visibleLines.map(({ line, depth }) => <SalesOrderLineRow key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`} line={line} depth={depth} roots={roots} displayTotal={lineDisplayTotals.get(line.id) || 0} hasChildren={(childrenMap.get(line.id) || []).length > 0} onSave={saveLine} onDelete={deleteLine} onMove={moveLine} onDragMove={dragMoveLine} onToggleCollapse={toggleCollapse} onMakeChild={makeChild} />)}</tbody>
         </table>
       </div>
@@ -151,7 +151,20 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     return () => clearTimeout(t);
   }, [draft, dirty, onSave]);
   return (
-    <tr className="border-t border-zinc-800" draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', line.id)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+    <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="p-3 align-top">
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', line.id);
+          }}
+          className="inline-flex cursor-grab select-none rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300"
+          title="Drag to reorder"
+        >
+          ⋮⋮
+        </span>
+      </td>
       <td className="p-3"><div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">{depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}<input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div></td>
       <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
       <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>

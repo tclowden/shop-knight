@@ -170,7 +170,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Tax</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Tax</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
               <QuoteLineRow
@@ -211,7 +211,20 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   }, [draft, dirty, onSave]);
 
   return (
-    <tr className="border-t border-zinc-800" draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', line.id)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+    <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="p-3 align-top">
+        <span
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', line.id);
+          }}
+          className="inline-flex cursor-grab select-none rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300"
+          title="Drag to reorder"
+        >
+          ⋮⋮
+        </span>
+      </td>
       <td className="p-3">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
           {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}
