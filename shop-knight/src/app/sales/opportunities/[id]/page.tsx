@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Quote = { id: string; quoteNumber: string; status: string };
 type SalesOrder = { id: string; orderNumber: string; sourceQuoteId: string };
 type SalesOrderLine = { id: string; description: string; qty: number; unitPrice: number; productId?: string | null };
-type Product = { id: string; sku: string; name: string; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
+type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 type PoLine = {
   id: string;
   description: string;
@@ -28,6 +30,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   const [lineQty, setLineQty] = useState('1');
   const [linePrice, setLinePrice] = useState('100');
   const [lineProductId, setLineProductId] = useState('');
+  const [lineAttributeValues, setLineAttributeValues] = useState<Record<string, string>>({});
 
   const [vendorName, setVendorName] = useState('');
   const [poNumber, setPoNumber] = useState('');
@@ -76,6 +79,14 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     load(id);
   }
 
+  function recalcSoLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    const basePrice = Number(p.salePrice || 0);
+    const vars = buildPricingVars(Number(qty || 1), basePrice, attrs);
+    setLinePrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
+  }
+
   async function addSoLine(e: React.FormEvent) {
     e.preventDefault();
     if (!primarySo) return;
@@ -88,6 +99,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
         qty: Number(lineQty),
         unitPrice: Number(linePrice),
         productId: lineProductId || null,
+        attributeValues: lineAttributeValues,
       }),
     });
 
@@ -95,6 +107,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     setLineQty('1');
     setLinePrice('100');
     setLineProductId('');
+    setLineAttributeValues({});
     load(id);
   }
 
@@ -178,22 +191,62 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
                     setLineProductId(productId);
                     const p = products.find((x) => x.id === productId);
                     if (p) {
+                      const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || '']));
+                      setLineAttributeValues(defaults);
                       setLineDescription(p.name);
-                      setLinePrice(String(p.salePrice));
+                      recalcSoLinePrice(productId, lineQty, defaults);
                     }
                   }}
                   className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900"
                 >
                   <option value="">Select product (optional)</option>
                   {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
+                    <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
                   ))}
                 </select>
                 <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Line description" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={lineQty} onChange={(e) => setLineQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
+                  <input value={lineQty} onChange={(e) => { const q = e.target.value; setLineQty(q); recalcSoLinePrice(lineProductId, q, lineAttributeValues); }} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                   <input value={linePrice} onChange={(e) => setLinePrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-sm text-zinc-900" required />
                 </div>
+                {(() => {
+                  const selected = products.find((p) => p.id === lineProductId);
+                  if (!selected?.attributes?.length) return null;
+                  return (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      {selected.attributes.map((attr) => (
+                        <label key={attr.id} className="text-xs text-zinc-300">
+                          {attr.name}
+                          {attr.inputType === 'SELECT' ? (
+                            <select
+                              value={lineAttributeValues[attr.code] || ''}
+                              onChange={(e) => {
+                                const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                                setLineAttributeValues(next);
+                                recalcSoLinePrice(lineProductId, lineQty, next);
+                              }}
+                              className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                            >
+                              <option value="">Select</option>
+                              {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              value={lineAttributeValues[attr.code] || ''}
+                              onChange={(e) => {
+                                const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                                setLineAttributeValues(next);
+                                recalcSoLinePrice(lineProductId, lineQty, next);
+                              }}
+                              type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                              className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <button className="rounded bg-blue-600 px-3 py-2 text-sm">Add SO Line</button>
               </form>
               <div className="space-y-2">

@@ -71,6 +71,10 @@ export async function POST(req: Request) {
                 qty: Number(initialLine.qty || 1),
                 unitPrice: Number(initialLine.unitPrice || 0),
                 productId: initialLine.productId ? String(initialLine.productId) : null,
+                attributeValues:
+                  initialLine.attributeValues && typeof initialLine.attributeValues === 'object'
+                    ? initialLine.attributeValues
+                    : null,
               },
             }
           : undefined,

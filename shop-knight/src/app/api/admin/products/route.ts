@@ -41,6 +41,7 @@ export async function POST(req: Request) {
         name,
         category: body?.category ? String(body.category) : null,
         description: body?.description ? String(body.description) : null,
+        uom: body?.uom ? String(body.uom) : 'EA',
         salePrice,
         costPrice,
         taxable: body?.taxable === false ? false : true,

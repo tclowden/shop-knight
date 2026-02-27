@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = {
   id: string;
@@ -17,7 +18,8 @@ type Quote = {
   customer: string;
 };
 
-type Product = { id: string; sku: string; name: string; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
+type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 
 export default function NewSalesOrderPage() {
   const router = useRouter();
@@ -32,6 +34,7 @@ export default function NewSalesOrderPage() {
   const [lineDescription, setLineDescription] = useState('');
   const [lineQty, setLineQty] = useState('1');
   const [lineUnitPrice, setLineUnitPrice] = useState('0.00');
+  const [lineAttributeValues, setLineAttributeValues] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
 
   async function load() {
@@ -51,6 +54,14 @@ export default function NewSalesOrderPage() {
     if (oppItems.length > 0) setOpportunityId(oppItems[0].id);
   }
 
+  function recalcLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    const basePrice = Number(p.salePrice || 0);
+    const vars = buildPricingVars(Number(qty || 1), basePrice, attrs);
+    setLineUnitPrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
+  }
+
   async function createOrder(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -68,6 +79,7 @@ export default function NewSalesOrderPage() {
               description: lineDescription,
               qty: Number(lineQty || 1),
               unitPrice: Number(lineUnitPrice || 0),
+              attributeValues: lineAttributeValues,
             }
           : null,
       }),
@@ -149,20 +161,60 @@ export default function NewSalesOrderPage() {
                 const p = products.find((x) => x.id === productId);
                 if (p) {
                   setLineDescription(p.name);
-                  setLineUnitPrice(String(p.salePrice));
+                  const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || '']));
+                  setLineAttributeValues(defaults);
+                  recalcLinePrice(productId, lineQty, defaults);
                 }
               }}
               className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
             >
               <option value="">Select product</option>
               {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
+                <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
               ))}
             </select>
             <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <input value={lineQty} onChange={(e) => setLineQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={lineQty} onChange={(e) => { const q = e.target.value; setLineQty(q); recalcLinePrice(lineProductId, q, lineAttributeValues); }} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </div>
+          {(() => {
+            const selected = products.find((p) => p.id === lineProductId);
+            if (!selected?.attributes?.length) return null;
+            return (
+              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+                {selected.attributes.map((attr) => (
+                  <label key={attr.id} className="text-xs text-zinc-300">
+                    {attr.name}
+                    {attr.inputType === 'SELECT' ? (
+                      <select
+                        value={lineAttributeValues[attr.code] || ''}
+                        onChange={(e) => {
+                          const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                          setLineAttributeValues(next);
+                          recalcLinePrice(lineProductId, lineQty, next);
+                        }}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      >
+                        <option value="">Select</option>
+                        {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        value={lineAttributeValues[attr.code] || ''}
+                        onChange={(e) => {
+                          const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                          setLineAttributeValues(next);
+                          recalcLinePrice(lineProductId, lineQty, next);
+                        }}
+                        type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
