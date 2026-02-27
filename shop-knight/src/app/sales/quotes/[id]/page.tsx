@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
 type Line = {
@@ -197,6 +198,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         <p className="mt-1 flex justify-between"><span>Tax</span><span>${taxTotal.toFixed(2)}</span></p>
         <p className="mt-2 flex justify-between text-base font-semibold"><span>Total</span><span>${(subtotal + taxTotal).toFixed(2)}</span></p>
       </div>
+
+      <ModuleNotesTasks entityType="QUOTE" entityId={id} />
     </main>
   );
 }

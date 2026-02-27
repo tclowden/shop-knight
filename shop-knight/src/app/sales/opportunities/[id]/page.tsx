@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
-
 type Quote = { id: string; quoteNumber: string; status: string };
 type SalesOrder = { id: string; orderNumber: string; sourceQuoteId: string };
 type SalesOrderLine = { id: string; description: string; qty: number; unitPrice: number; productId?: string | null };
@@ -291,6 +291,8 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           )}
         </article>
       </section>
+
+      <ModuleNotesTasks entityType="OPPORTUNITY" entityId={id} />
     </main>
   );
 }

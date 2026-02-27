@@ -16,5 +16,8 @@ export const config = {
     '/api/quote-lines/:path*',
     '/api/quotes/:path*/lines/reorder',
     '/api/sales-orders/:path*/lines/reorder',
+    '/api/notes/:path*',
+    '/api/tasks/:path*',
+    '/api/users/:path*',
   ],
 };

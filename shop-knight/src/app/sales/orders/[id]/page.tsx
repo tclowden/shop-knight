@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
@@ -138,6 +139,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded border border-zinc-800 bg-zinc-950/90 p-3 text-sm backdrop-blur"><p className="flex justify-between text-base font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p></div>
+
+      <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} />
     </main>
   );
 }

@@ -55,6 +55,7 @@ model User {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   tasks        Task[]
+  notes        Note[]
 }
 
 model Customer {
@@ -315,4 +316,14 @@ model Task {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Note {
+  id         String     @id @default(cuid())
+  body       String
+  entityType EntityType
+  entityId   String
+  createdById String?
+  createdBy  User?      @relation(fields: [createdById], references: [id])
+  createdAt  DateTime   @default(now())
 }
