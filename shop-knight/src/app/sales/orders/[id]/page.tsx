@@ -22,6 +22,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [newQty, setNewQty] = useState('1');
   const [newUnitPrice, setNewUnitPrice] = useState('0');
 
+  const [filterText, setFilterText] = useState('');
+  const [sortBy, setSortBy] = useState<'description' | 'qty' | 'unitPrice' | 'lineTotal'>('description');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
   async function load(orderId: string) {
     const [soRes, pRes] = await Promise.all([fetch(`/api/sales-orders/${orderId}`), fetch('/api/admin/products')]);
     if (soRes.ok) setOrder(await soRes.json());
@@ -51,6 +55,23 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     await load(id);
   }
 
+  const visibleLines = useMemo(() => {
+    const lines = [...(order?.lines || [])].filter((l) =>
+      l.description.toLowerCase().includes(filterText.trim().toLowerCase())
+    );
+    lines.sort((a, b) => {
+      const aLineTotal = Number(a.qty) * Number(a.unitPrice || 0);
+      const bLineTotal = Number(b.qty) * Number(b.unitPrice || 0);
+      let cmp = 0;
+      if (sortBy === 'description') cmp = a.description.localeCompare(b.description);
+      if (sortBy === 'qty') cmp = Number(a.qty) - Number(b.qty);
+      if (sortBy === 'unitPrice') cmp = Number(a.unitPrice || 0) - Number(b.unitPrice || 0);
+      if (sortBy === 'lineTotal') cmp = aLineTotal - bLineTotal;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return lines;
+  }, [order?.lines, filterText, sortBy, sortDir]);
+
   const total = useMemo(() => (order?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0), 0), [order?.lines]);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
@@ -73,10 +94,24 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <button className="rounded bg-blue-600 px-3 py-2">+ Add Line</button>
       </form>
 
+      <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+        <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'description' | 'qty' | 'unitPrice' | 'lineTotal')} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="description">Sort: Description</option>
+          <option value="qty">Sort: Qty</option>
+          <option value="unitPrice">Sort: Unit Price</option>
+          <option value="lineTotal">Sort: Line Total</option>
+        </select>
+        <select value={sortDir} onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
+
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Line Total</th><th className="p-3">Actions</th></tr></thead>
-          <tbody>{order.lines.map((line) => <SalesOrderLineRow key={line.id} line={line} onSave={saveLine} onDelete={deleteLine} />)}</tbody>
+          <tbody>{visibleLines.map((line) => <SalesOrderLineRow key={line.id} line={line} onSave={saveLine} onDelete={deleteLine} />)}</tbody>
         </table>
       </div>
 
