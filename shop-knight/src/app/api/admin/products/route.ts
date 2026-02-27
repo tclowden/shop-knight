@@ -13,6 +13,7 @@ export async function GET() {
 
   const products = await prisma.product.findMany({
     where: { active: true },
+    include: { attributes: { orderBy: { sortOrder: 'asc' } } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       data: {
         sku,
         name,
+        category: body?.category ? String(body.category) : null,
         description: body?.description ? String(body.description) : null,
         salePrice,
         costPrice,

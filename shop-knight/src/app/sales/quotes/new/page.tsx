@@ -3,10 +3,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = { id: string; name: string; customer: string };
 
-type Product = { id: string; sku: string; name: string; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
+type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 
 type LineItem = {
   productId: string;
@@ -15,6 +17,7 @@ type LineItem = {
   quantity: string;
   priceInDollars: string;
   taxRate: string;
+  attributeValues: Record<string, string>;
 };
 
 export default function NewQuotePage() {
@@ -30,7 +33,7 @@ export default function NewQuotePage() {
   const [expiryDate, setExpiryDate] = useState('');
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' },
+    { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} },
   ]);
   const [error, setError] = useState('');
 
@@ -46,12 +49,30 @@ export default function NewQuotePage() {
     if (oppData.length > 0) setOpportunityId(oppData[0].id);
   }
 
+  function recalcLinePrice(line: LineItem) {
+    const product = products.find((p) => p.id === line.productId);
+    if (!product) return line;
+    const basePrice = Number(product.salePrice || 0);
+    const qty = Number(line.quantity || 1);
+    const vars = buildPricingVars(qty, basePrice, line.attributeValues);
+    const computed = computeUnitPrice(basePrice, product.pricingFormula, vars);
+    return { ...line, priceInDollars: String(computed) };
+  }
+
   function updateLine(index: number, key: keyof LineItem, value: string) {
-    setLineItems((prev) => prev.map((l, i) => (i === index ? { ...l, [key]: value } : l)));
+    setLineItems((prev) => prev.map((l, i) => (i === index ? recalcLinePrice({ ...l, [key]: value }) : l)));
+  }
+
+  function updateLineAttribute(index: number, code: string, value: string) {
+    setLineItems((prev) =>
+      prev.map((l, i) =>
+        i === index ? recalcLinePrice({ ...l, attributeValues: { ...l.attributeValues, [code]: value } }) : l
+      )
+    );
   }
 
   function addLine() {
-    setLineItems((prev) => [...prev, { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075' }]);
+    setLineItems((prev) => [...prev, { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} }]);
   }
 
   async function submitQuote(e: FormEvent) {
@@ -66,6 +87,7 @@ export default function NewQuotePage() {
       const totalTaxInDollars = totalPriceInDollars * taxRate;
       return {
         productId: l.productId || null,
+        attributeValues: l.attributeValues,
         name: l.name,
         description: l.description || l.name,
         quantity: qty,
@@ -166,33 +188,80 @@ export default function NewQuotePage() {
             <button type="button" onClick={addLine} className="rounded border border-zinc-600 px-2 py-1 text-xs">+ Add line</button>
           </div>
           <div className="space-y-2">
-            {lineItems.map((line, i) => (
-              <div key={i} className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                <select
-                  value={line.productId}
-                  onChange={(e) => {
-                    const productId = e.target.value;
-                    updateLine(i, 'productId', productId);
-                    const p = products.find((x) => x.id === productId);
-                    if (p) {
-                      updateLine(i, 'name', p.name);
-                      updateLine(i, 'priceInDollars', String(p.salePrice));
-                    }
-                  }}
-                  className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-                >
-                  <option value="">Select product</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>
-                  ))}
-                </select>
-                <input value={line.name} onChange={(e) => updateLine(i, 'name', e.target.value)} placeholder="Line item name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                <input value={line.description} onChange={(e) => updateLine(i, 'description', e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-                <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                <input value={line.taxRate} onChange={(e) => updateLine(i, 'taxRate', e.target.value)} type="number" min="0" step="0.0001" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-              </div>
-            ))}
+            {lineItems.map((line, i) => {
+              const selectedProduct = products.find((p) => p.id === line.productId);
+              return (
+                <div key={i} className="space-y-2 rounded border border-zinc-700 p-2">
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
+                    <select
+                      value={line.productId}
+                      onChange={(e) => {
+                        const productId = e.target.value;
+                        updateLine(i, 'productId', productId);
+                        const p = products.find((x) => x.id === productId);
+                        if (p) {
+                          const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || '']));
+                          setLineItems((prev) =>
+                            prev.map((line, idx) =>
+                              idx === i
+                                ? recalcLinePrice({
+                                    ...line,
+                                    productId,
+                                    name: p.name,
+                                    description: line.description || p.name,
+                                    attributeValues: defaults,
+                                  })
+                                : line
+                            )
+                          );
+                        }
+                      }}
+                      className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                    >
+                      <option value="">Select product</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
+                      ))}
+                    </select>
+                    <input value={line.name} onChange={(e) => updateLine(i, 'name', e.target.value)} placeholder="Line item name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    <input value={line.description} onChange={(e) => updateLine(i, 'description', e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    <input value={line.taxRate} onChange={(e) => updateLine(i, 'taxRate', e.target.value)} type="number" min="0" step="0.0001" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                  </div>
+
+                  {selectedProduct?.attributes?.length ? (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                      {selectedProduct.attributes.map((attr) => (
+                        <label key={attr.id} className="text-xs text-zinc-300">
+                          <span className="mb-1 block">{attr.name}</span>
+                          {attr.inputType === 'SELECT' ? (
+                            <select
+                              value={line.attributeValues[attr.code] || ''}
+                              onChange={(e) => updateLineAttribute(i, attr.code, e.target.value)}
+                              className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                            >
+                              <option value="">Select</option>
+                              {(attr.options || []).map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={line.attributeValues[attr.code] || ''}
+                              onChange={(e) => updateLineAttribute(i, attr.code, e.target.value)}
+                              type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                              className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                              required={attr.required}
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
 

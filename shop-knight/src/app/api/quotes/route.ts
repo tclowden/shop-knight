@@ -109,6 +109,7 @@ export async function POST(req: Request) {
             qty: Number(line?.quantity || 1),
             unitPrice: Number(line?.priceInDollars || line?.unitPrice || 0),
             productId: line?.productId ? String(line.productId) : null,
+            attributeValues: line?.attributeValues && typeof line.attributeValues === 'object' ? line.attributeValues : null,
             name: line?.name ? String(line.name) : null,
             fullDescription: line?.fullDescription ? String(line.fullDescription) : null,
             uom: line?.uom ? String(line.uom) : null,

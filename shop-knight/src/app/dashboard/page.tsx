@@ -26,8 +26,8 @@ export default async function DashboardPage() {
       <Nav />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <a href="/admin/users" className="rounded border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">User Admin</a>
-        <a href="/admin/products" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">Product Admin</a>
+        <Link href="/admin/users" className="rounded border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">User Admin</Link>
+        <Link href="/admin/products" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">Product Admin</Link>
       </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-5">
