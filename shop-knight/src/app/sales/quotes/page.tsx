@@ -56,8 +56,8 @@ export default function QuotesPage() {
           </thead>
           <tbody>
             {items.map((q) => (
-              <tr key={q.id} className="border-t border-zinc-800">
-                <td className="p-3">{q.quoteNumber}</td>
+              <tr key={q.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                <td className="p-3"><Link href={`/sales/quotes/${q.id}`} className="text-blue-400">{q.quoteNumber}</Link></td>
                 <td className="p-3">{q.title || '—'}</td>
                 <td className="p-3">{q.workflowState || q.status}</td>
                 <td className="p-3">{q.opportunity}</td>

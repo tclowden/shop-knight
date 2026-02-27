@@ -51,8 +51,8 @@ export default function SalesOrdersPage() {
           </thead>
           <tbody>
             {items.map((so) => (
-              <tr key={so.id} className="border-t border-zinc-800">
-                <td className="p-3">{so.orderNumber}</td>
+              <tr key={so.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                <td className="p-3"><Link href={`/sales/orders/${so.id}`} className="text-blue-400">{so.orderNumber}</Link></td>
                 <td className="p-3">{so.opportunity}</td>
                 <td className="p-3">{so.customer}</td>
                 <td className="p-3">{so.sourceQuoteId || '—'}</td>

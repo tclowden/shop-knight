@@ -13,5 +13,6 @@ export const config = {
     '/api/admin/users/:path*',
     '/api/admin/products/:path*',
     '/api/sales-order-lines/:path*',
+    '/api/quote-lines/:path*',
   ],
 };

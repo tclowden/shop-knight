@@ -1,0 +1,58 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { requireRoles } from '@/lib/api-auth';
+
+function toDate(value: unknown) {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function toNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  if (!auth.ok) return auth.response;
+
+  const { id } = await params;
+  const quote = await prisma.quote.findUnique({
+    where: { id },
+    include: {
+      opportunity: { include: { customer: true } },
+      lines: { include: { product: true }, orderBy: { id: 'asc' } },
+    },
+  });
+
+  if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+  return NextResponse.json(quote);
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+
+  const { id } = await params;
+  const body = await req.json();
+
+  const updated = await prisma.quote.update({
+    where: { id },
+    data: {
+      title: body?.title !== undefined ? String(body.title || '') : undefined,
+      description: body?.description !== undefined ? String(body.description || '') : undefined,
+      workflowState: body?.workflowState !== undefined ? String(body.workflowState || 'draft') : undefined,
+      status: body?.status !== undefined ? body.status : undefined,
+      expiryDate: body?.expiryDate !== undefined ? toDate(body.expiryDate) : undefined,
+      txnDate: body?.txnDate !== undefined ? toDate(body.txnDate) : undefined,
+      customerPoNumber: body?.customerPoNumber !== undefined ? String(body.customerPoNumber || '') : undefined,
+      totalPriceInDollars: body?.totalPriceInDollars !== undefined ? toNumber(body.totalPriceInDollars) : undefined,
+      totalTaxInDollars: body?.totalTaxInDollars !== undefined ? toNumber(body.totalTaxInDollars) : undefined,
+      totalPriceWithTaxInDollars: body?.totalPriceWithTaxInDollars !== undefined ? toNumber(body.totalPriceWithTaxInDollars) : undefined,
+    },
+  });
+
+  return NextResponse.json(updated);
+}
