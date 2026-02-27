@@ -7,6 +7,7 @@ export const config = {
     '/sales/:path*',
     '/customers/:path*',
     '/vendors/:path*',
+    '/tasks/:path*',
     '/api/opportunities/:path*',
     '/api/quotes/:path*',
     '/api/sales-orders/:path*',
