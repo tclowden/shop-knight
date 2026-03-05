@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { TemplateAssigneeMode } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
@@ -34,7 +33,7 @@ export async function POST(req: Request) {
           title: String(s.title || `Step ${idx + 1}`),
           sortOrder: Number(s.sortOrder ?? idx + 1),
           dueOffsetDays: Number(s.dueOffsetDays ?? 0),
-          assigneeMode: (s.assigneeMode as TemplateAssigneeMode) || 'UNASSIGNED',
+          assigneeMode: (String(s.assigneeMode || 'UNASSIGNED') as never),
           specificAssigneeId: s.specificAssigneeId ? String(s.specificAssigneeId) : null,
         })),
       },

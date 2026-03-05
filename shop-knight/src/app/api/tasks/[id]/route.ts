@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { TaskStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
@@ -20,7 +19,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id },
     data: {
       title: body?.title !== undefined ? String(body.title) : undefined,
-      status: body?.status !== undefined ? (body.status as TaskStatus) : undefined,
+      status: body?.status !== undefined ? (String(body.status) as never) : undefined,
       assigneeId: body?.assigneeId !== undefined ? (body.assigneeId ? String(body.assigneeId) : null) : undefined,
       dueAt: body?.dueAt !== undefined ? toDate(body.dueAt) : undefined,
     },

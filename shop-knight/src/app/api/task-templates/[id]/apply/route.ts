@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { TaskStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
@@ -41,7 +40,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           title: step.title,
           entityType: entityType as never,
           entityId,
-          status: 'TODO' as TaskStatus,
+          status: 'TODO' as never,
           assigneeId,
           dueAt: plusDays(anchorDate, step.dueOffsetDays),
         },

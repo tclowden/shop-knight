@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
-import { UserType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
-const ALLOWED_TYPES: UserType[] = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const ALLOWED_TYPES = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
+type UserTypeValue = (typeof ALLOWED_TYPES)[number];
 
 export async function GET() {
   const auth = await requireRoles(['ADMIN']);
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   const email = String(body?.email || '').trim().toLowerCase();
   const password = String(body?.password || '');
-  const type = String(body?.type || 'SALES') as UserType;
+  const type = String(body?.type || 'SALES') as UserTypeValue;
   const customRoleId = body?.customRoleId ? String(body.customRoleId) : null;
 
   if (!name || !email || !password) {
