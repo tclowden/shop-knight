@@ -1,4 +1,7 @@
+"use client";
+
 import Link from 'next/link';
+import { signOut } from 'next-auth/react';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -27,6 +30,14 @@ export function Nav() {
           {link.label}
         </Link>
       ))}
+
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: '/login' })}
+        className="rounded-full border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-zinc-100 hover:border-red-300/60 hover:bg-red-500/20"
+      >
+        Logout
+      </button>
     </nav>
   );
 }
