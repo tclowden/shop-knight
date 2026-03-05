@@ -29,7 +29,7 @@ export default function NewQuotePage() {
   const [users, setUsers] = useState<User[]>([]);
 
   const [opportunityId, setOpportunityId] = useState('');
-  const [txnNumber, setTxnNumber] = useState('');
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [txnDate, setTxnDate] = useState('');
@@ -134,7 +134,7 @@ export default function NewQuotePage() {
       txnDate: txnDate || null,
       quoteDate: quoteDate || null,
       dueDate: dueDate || null,
-      txnNumber,
+
       customerContactRole: customerContactRole || null,
       billingAddress: billingAddress || null,
       billingAttentionTo: billingAttentionTo || null,
@@ -191,8 +191,8 @@ export default function NewQuotePage() {
             </select>
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-zinc-300">Quote Number (txnNumber)</span>
-            <input value={txnNumber} onChange={(e) => setTxnNumber(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="1003" required />
+            <span className="mb-1 block text-zinc-300">Quote Number</span>
+            <input value="Auto-assigned when saved" disabled className="w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-zinc-300">Title</span>
@@ -275,41 +275,53 @@ export default function NewQuotePage() {
               return (
                 <div key={i} className="space-y-2 rounded border border-zinc-700 p-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                    <select
-                      value={line.productId}
-                      onChange={(e) => {
-                        const productId = e.target.value;
-                        updateLine(i, 'productId', productId);
-                        const p = products.find((x) => x.id === productId);
-                        if (p) {
-                          const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || '']));
-                          setLineItems((prev) =>
-                            prev.map((line, idx) =>
-                              idx === i
-                                ? recalcLinePrice({
-                                    ...line,
-                                    productId,
-                                    name: p.name,
-                                    description: line.description || p.name,
-                                    attributeValues: defaults,
-                                  })
-                                : line
-                            )
-                          );
-                        }
-                      }}
-                      className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-                    >
-                      <option value="">Select product</option>
-                      {sortedProducts.map((p) => (
-                        <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
-                      ))}
-                    </select>
-                    <input value={line.name} onChange={(e) => updateLine(i, 'name', e.target.value)} placeholder="Line item name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                    <input value={line.description} onChange={(e) => updateLine(i, 'description', e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-                    <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                    <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-                    <input value={line.taxRate} onChange={(e) => updateLine(i, 'taxRate', e.target.value)} type="number" min="0" step="0.0001" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    <label className="text-xs text-zinc-300">Product
+                      <select
+                        value={line.productId}
+                        onChange={(e) => {
+                          const productId = e.target.value;
+                          updateLine(i, 'productId', productId);
+                          const p = products.find((x) => x.id === productId);
+                          if (p) {
+                            const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || '']));
+                            setLineItems((prev) =>
+                              prev.map((line, idx) =>
+                                idx === i
+                                  ? recalcLinePrice({
+                                      ...line,
+                                      productId,
+                                      name: p.name,
+                                      description: line.description || p.name,
+                                      attributeValues: defaults,
+                                    })
+                                  : line
+                              )
+                            );
+                          }
+                        }}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      >
+                        <option value="">Select product</option>
+                        {sortedProducts.map((p) => (
+                          <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs text-zinc-300">Line Name
+                      <input value={line.name} onChange={(e) => updateLine(i, 'name', e.target.value)} placeholder="Line item name" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    </label>
+                    <label className="text-xs text-zinc-300">Description
+                      <input value={line.description} onChange={(e) => updateLine(i, 'description', e.target.value)} placeholder="Description" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    </label>
+                    <label className="text-xs text-zinc-300">Quantity
+                      <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    </label>
+                    <label className="text-xs text-zinc-300">Unit Price
+                      <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    </label>
+                    <label className="text-xs text-zinc-300">Tax Rate
+                      <input value={line.taxRate} onChange={(e) => updateLine(i, 'taxRate', e.target.value)} type="number" min="0" step="0.0001" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    </label>
                   </div>
 
                   {selectedProduct?.attributes?.length ? (

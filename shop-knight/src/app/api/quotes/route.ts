@@ -14,6 +14,24 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
+function extractTrailingNumber(value: string) {
+  const match = value.match(/(\d+)$/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function generateNextQuoteNumber() {
+  const latest = await prisma.quote.findFirst({
+    orderBy: { createdAt: 'desc' },
+    select: { quoteNumber: true },
+  });
+
+  const base = latest?.quoteNumber ? extractTrailingNumber(latest.quoteNumber) : null;
+  const next = (base ?? 0) + 1;
+  return `Q-${String(next).padStart(5, '0')}`;
+}
+
 export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
@@ -71,10 +89,10 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   const opportunityId = String(body?.opportunityId || '').trim();
-  const quoteNumber = String(body?.txnNumber || body?.quoteNumber || '').trim();
+  const providedQuoteNumber = String(body?.txnNumber || body?.quoteNumber || '').trim();
 
-  if (!opportunityId || !quoteNumber) {
-    return NextResponse.json({ error: 'opportunityId and txnNumber/quoteNumber are required' }, { status: 400 });
+  if (!opportunityId) {
+    return NextResponse.json({ error: 'opportunityId is required' }, { status: 400 });
   }
 
   const opportunity = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
@@ -83,6 +101,8 @@ export async function POST(req: Request) {
   const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
 
   try {
+    const quoteNumber = providedQuoteNumber || await generateNextQuoteNumber();
+
     const created = await prisma.quote.create({
       data: {
         opportunityId,
