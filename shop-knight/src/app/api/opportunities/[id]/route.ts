@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
+function toDate(value: unknown) {
+  if (!value) return null;
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function toNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
@@ -18,6 +30,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     id: opportunity.id,
     name: opportunity.name,
     stage: opportunity.stage,
+    customerId: opportunity.customerId,
     customer: opportunity.customer.name,
     source: opportunity.source,
     priority: opportunity.priority,
@@ -26,8 +39,70 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     expectedCloseDate: opportunity.expectedCloseDate,
     dueDate: opportunity.dueDate,
     inHandDate: opportunity.inHandDate,
+    salesRepId: opportunity.salesRepId,
     salesRepName: opportunity.salesRep?.name ?? null,
+    projectManagerId: opportunity.projectManagerId,
     projectManagerName: opportunity.projectManager?.name ?? null,
     description: opportunity.description,
+  });
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SALES']);
+  if (!auth.ok) return auth.response;
+
+  const { id } = await params;
+  const body = await req.json();
+
+  let customerId: string | undefined;
+  if (body?.customerId || body?.customer) {
+    if (body?.customerId) {
+      customerId = String(body.customerId);
+    } else {
+      const customerName = String(body.customer || '').trim();
+      if (customerName) {
+        const c = (await prisma.customer.findFirst({ where: { name: customerName } })) || (await prisma.customer.create({ data: { name: customerName } }));
+        customerId = c.id;
+      }
+    }
+  }
+
+  const updated = await prisma.opportunity.update({
+    where: { id },
+    data: {
+      name: body?.name !== undefined ? String(body.name || '') : undefined,
+      customerId,
+      source: body?.source !== undefined ? String(body.source || '') : undefined,
+      priority: body?.priority !== undefined ? String(body.priority || '') : undefined,
+      estimatedValue: body?.estimatedValue !== undefined ? toNumber(body.estimatedValue) : undefined,
+      probability: body?.probability !== undefined ? toNumber(body.probability) : undefined,
+      expectedCloseDate: body?.expectedCloseDate !== undefined ? toDate(body.expectedCloseDate) : undefined,
+      dueDate: body?.dueDate !== undefined ? toDate(body.dueDate) : undefined,
+      inHandDate: body?.inHandDate !== undefined ? toDate(body.inHandDate) : undefined,
+      salesRepId: body?.salesRepId !== undefined ? (body.salesRepId ? String(body.salesRepId) : null) : undefined,
+      projectManagerId: body?.projectManagerId !== undefined ? (body.projectManagerId ? String(body.projectManagerId) : null) : undefined,
+      description: body?.description !== undefined ? String(body.description || '') : undefined,
+    },
+    include: { customer: true, salesRep: true, projectManager: true },
+  });
+
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    stage: updated.stage,
+    customerId: updated.customerId,
+    customer: updated.customer.name,
+    source: updated.source,
+    priority: updated.priority,
+    estimatedValue: updated.estimatedValue,
+    probability: updated.probability,
+    expectedCloseDate: updated.expectedCloseDate,
+    dueDate: updated.dueDate,
+    inHandDate: updated.inHandDate,
+    salesRepId: updated.salesRepId,
+    salesRepName: updated.salesRep?.name ?? null,
+    projectManagerId: updated.projectManagerId,
+    projectManagerName: updated.projectManager?.name ?? null,
+    description: updated.description,
   });
 }

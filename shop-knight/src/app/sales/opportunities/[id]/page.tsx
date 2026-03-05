@@ -9,6 +9,7 @@ type Opportunity = {
   id: string;
   name: string;
   stage: string;
+  customerId?: string;
   customer: string;
   source?: string | null;
   priority?: string | null;
@@ -17,10 +18,15 @@ type Opportunity = {
   expectedCloseDate?: string | null;
   dueDate?: string | null;
   inHandDate?: string | null;
+  salesRepId?: string | null;
   salesRepName?: string | null;
+  projectManagerId?: string | null;
   projectManagerName?: string | null;
   description?: string | null;
 };
+
+type User = { id: string; name: string; type: string };
+type Customer = { id: string; name: string };
 
 type Quote = { id: string; quoteNumber: string; status: string };
 type SalesOrder = { id: string; orderNumber: string; sourceQuoteId: string };
@@ -41,6 +47,23 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [name, setName] = useState('');
+  const [customerInput, setCustomerInput] = useState('');
+  const [source, setSource] = useState('');
+  const [priority, setPriority] = useState('');
+  const [estimatedValue, setEstimatedValue] = useState('');
+  const [probability, setProbability] = useState('');
+  const [expectedCloseDate, setExpectedCloseDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [inHandDate, setInHandDate] = useState('');
+  const [salesRepId, setSalesRepId] = useState('');
+  const [projectManagerId, setProjectManagerId] = useState('');
+  const [description, setDescription] = useState('');
   const [lines, setLines] = useState<SalesOrderLine[]>([]);
   const [poLines, setPoLines] = useState<PoLine[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,17 +82,39 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
   const primarySo = useMemo(() => salesOrders[0], [salesOrders]);
   const primaryLine = useMemo(() => lines[0], [lines]);
+  const sortedCustomers = useMemo(() => [...customers].sort((a, b) => a.name.localeCompare(b.name)), [customers]);
+  const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
   async function load(opportunityId: string) {
-    const [oppRes, productsRes, qRes] = await Promise.all([
+    const [oppRes, productsRes, qRes, usersRes, customersRes] = await Promise.all([
       fetch(`/api/opportunities/${opportunityId}`),
       fetch('/api/admin/products'),
       fetch(`/api/opportunities/${opportunityId}/quotes`),
+      fetch('/api/users'),
+      fetch('/api/customers'),
     ]);
 
-    if (oppRes.ok) setOpportunity(await oppRes.json());
+    if (oppRes.ok) {
+      const opp = await oppRes.json();
+      setOpportunity(opp);
+      setName(opp.name || '');
+      setCustomerInput(opp.customer || '');
+      setSource(opp.source || '');
+      setPriority(opp.priority || '');
+      setEstimatedValue(opp.estimatedValue ? String(opp.estimatedValue) : '');
+      setProbability(opp.probability ? String(opp.probability) : '');
+      setExpectedCloseDate(opp.expectedCloseDate ? String(opp.expectedCloseDate).slice(0, 10) : '');
+      setDueDate(opp.dueDate ? String(opp.dueDate).slice(0, 10) : '');
+      setInHandDate(opp.inHandDate ? String(opp.inHandDate).slice(0, 10) : '');
+      setSalesRepId(opp.salesRepId || '');
+      setProjectManagerId(opp.projectManagerId || '');
+      setDescription(opp.description || '');
+    }
     setProducts(await productsRes.json());
     setQuotes(await qRes.json());
+    if (usersRes.ok) setUsers(await usersRes.json());
+    if (customersRes.ok) setCustomers(await customersRes.json());
 
     const soRes = await fetch(`/api/sales-orders?opportunityId=${opportunityId}`);
     const soData = await soRes.json();
@@ -96,6 +141,36 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   async function convertQuote(quoteId: string) {
     await fetch(`/api/quotes/${quoteId}/convert`, { method: 'POST' });
     load(id);
+  }
+
+  async function saveOpportunity(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    const matchedCustomer = sortedCustomers.find((c) => c.name.toLowerCase() === customerInput.trim().toLowerCase());
+
+    await fetch(`/api/opportunities/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        customerId: matchedCustomer?.id || null,
+        customer: matchedCustomer ? null : customerInput.trim(),
+        source,
+        priority,
+        estimatedValue,
+        probability,
+        expectedCloseDate: expectedCloseDate || null,
+        dueDate: dueDate || null,
+        inHandDate: inHandDate || null,
+        salesRepId: salesRepId || null,
+        projectManagerId: projectManagerId || null,
+        description,
+      }),
+    });
+
+    await load(id);
+    setEditing(false);
+    setSaving(false);
   }
 
   function recalcSoLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
@@ -168,19 +243,49 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
       <Nav />
 
       {opportunity ? (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
-          <p><span className="text-zinc-400">Customer:</span> {opportunity.customer}</p>
-          <p><span className="text-zinc-400">Stage:</span> {opportunity.stage}</p>
-          <p><span className="text-zinc-400">Source:</span> {opportunity.source || '—'}</p>
-          <p><span className="text-zinc-400">Priority:</span> {opportunity.priority || '—'}</p>
-          <p><span className="text-zinc-400">Estimated Value:</span> {opportunity.estimatedValue ?? '—'}</p>
-          <p><span className="text-zinc-400">Probability:</span> {opportunity.probability ?? '—'}</p>
-          <p><span className="text-zinc-400">Expected Close Date:</span> {opportunity.expectedCloseDate ? new Date(opportunity.expectedCloseDate).toLocaleDateString() : '—'}</p>
-          <p><span className="text-zinc-400">Due Date:</span> {opportunity.dueDate ? new Date(opportunity.dueDate).toLocaleDateString() : '—'}</p>
-          <p><span className="text-zinc-400">In-Hand Date:</span> {opportunity.inHandDate ? new Date(opportunity.inHandDate).toLocaleDateString() : '—'}</p>
-          <p><span className="text-zinc-400">Sales Rep:</span> {opportunity.salesRepName || '—'}</p>
-          <p><span className="text-zinc-400">Project Manager:</span> {opportunity.projectManagerName || '—'}</p>
-          <p className="md:col-span-2"><span className="text-zinc-400">Description:</span> {opportunity.description || '—'}</p>
+        <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+          <div className="mb-3 flex justify-end">
+            {!editing ? (
+              <button onClick={() => setEditing(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button>
+            ) : null}
+          </div>
+
+          {!editing ? (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <p><span className="text-zinc-400">Customer:</span> {opportunity.customer}</p>
+              <p><span className="text-zinc-400">Stage:</span> {opportunity.stage}</p>
+              <p><span className="text-zinc-400">Source:</span> {opportunity.source || '—'}</p>
+              <p><span className="text-zinc-400">Priority:</span> {opportunity.priority || '—'}</p>
+              <p><span className="text-zinc-400">Estimated Value:</span> {opportunity.estimatedValue ?? '—'}</p>
+              <p><span className="text-zinc-400">Probability:</span> {opportunity.probability ?? '—'}</p>
+              <p><span className="text-zinc-400">Expected Close Date:</span> {opportunity.expectedCloseDate ? new Date(opportunity.expectedCloseDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Due Date:</span> {opportunity.dueDate ? new Date(opportunity.dueDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">In-Hand Date:</span> {opportunity.inHandDate ? new Date(opportunity.inHandDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Sales Rep:</span> {opportunity.salesRepName || '—'}</p>
+              <p><span className="text-zinc-400">Project Manager:</span> {opportunity.projectManagerName || '—'}</p>
+              <p className="md:col-span-2"><span className="text-zinc-400">Description:</span> {opportunity.description || '—'}</p>
+            </div>
+          ) : (
+            <form onSubmit={saveOpportunity} className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Opportunity Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input list="customer-options" value={customerInput} onChange={(e) => setCustomerInput(e.target.value)} placeholder="Customer" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <datalist id="customer-options">{sortedCustomers.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+              <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="Source" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={priority} onChange={(e) => setPriority(e.target.value)} placeholder="Priority" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={estimatedValue} onChange={(e) => setEstimatedValue(e.target.value)} type="number" step="0.01" placeholder="Estimated Value" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={probability} onChange={(e) => setProbability(e.target.value)} type="number" min="0" max="1" step="0.01" placeholder="Probability" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={expectedCloseDate} onChange={(e) => setExpectedCloseDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <input value={inHandDate} onChange={(e) => setInHandDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Sales Rep</option>{sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+              <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Project Manager</option>{sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+              <div className="md:col-span-2 flex gap-2">
+                <button disabled={saving} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{saving ? 'Saving…' : 'Save'}</button>
+                <button type="button" onClick={() => setEditing(false)} className="rounded border border-zinc-600 px-4 py-2">Cancel</button>
+              </div>
+            </form>
+          )}
         </div>
       ) : null}
 
