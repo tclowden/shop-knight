@@ -6,7 +6,7 @@ export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS']);
   if (!auth.ok) return auth.response;
 
-  const customers = await prisma.customer.findMany({ orderBy: { createdAt: 'desc' } });
+  const customers = await prisma.customer.findMany({ orderBy: { name: 'asc' } });
   return NextResponse.json(customers);
 }
 

@@ -20,7 +20,7 @@ export async function GET() {
 
   const opportunities = await prisma.opportunity.findMany({
     include: { customer: true, salesRep: true, projectManager: true },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { name: 'asc' },
   });
 
   return NextResponse.json(

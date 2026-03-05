@@ -10,7 +10,7 @@ export async function GET() {
   const templates = await prisma.taskTemplate.findMany({
     where: { active: true },
     include: { steps: { include: { specificAssignee: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { name: 'asc' },
   });
   return NextResponse.json(templates);
 }

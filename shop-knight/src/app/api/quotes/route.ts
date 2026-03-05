@@ -29,7 +29,7 @@ export async function GET() {
       projectManager: true,
       lines: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { quoteNumber: 'asc' },
   });
 
   return NextResponse.json(

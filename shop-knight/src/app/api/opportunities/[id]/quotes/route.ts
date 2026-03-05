@@ -13,7 +13,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const quotes = await prisma.quote.findMany({
     where: { opportunityId: id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { quoteNumber: 'asc' },
   });
   return NextResponse.json(quotes);
 }

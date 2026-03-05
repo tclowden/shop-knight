@@ -6,7 +6,7 @@ export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
-  const vendors = await prisma.vendor.findMany({ orderBy: { createdAt: 'desc' } });
+  const vendors = await prisma.vendor.findMany({ orderBy: { name: 'asc' } });
   return NextResponse.json(vendors);
 }
 

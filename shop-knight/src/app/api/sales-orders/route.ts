@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       projectManager: true,
       designer: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { orderNumber: 'asc' },
   });
 
   return NextResponse.json(

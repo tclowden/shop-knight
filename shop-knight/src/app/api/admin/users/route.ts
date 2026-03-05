@@ -11,7 +11,7 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,
