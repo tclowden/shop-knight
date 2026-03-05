@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { StatusChip } from '@/components/status-chip';
 
 type Quote = {
   id: string;
@@ -18,6 +19,18 @@ type Quote = {
 
 export default function QuotesPage() {
   const [items, setItems] = useState<Quote[]>([]);
+  const [q, setQ] = useState('');
+
+  const visibleItems = useMemo(() => {
+    const text = q.trim().toLowerCase();
+    return items.filter((row) => {
+      if (!text) return true;
+      return [row.quoteNumber, row.title || '', row.opportunity, row.customer, row.workflowState || row.status]
+        .join(' ')
+        .toLowerCase()
+        .includes(text);
+    });
+  }, [items, q]);
 
   async function load() {
     const res = await fetch('/api/quotes');
@@ -35,8 +48,14 @@ export default function QuotesPage() {
       <p className="text-sm text-zinc-400">All quotes in the system.</p>
       <Nav />
 
-      <div className="mb-4 flex justify-end">
-        <Link href="/sales/quotes/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search quotes..."
+          className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:max-w-sm"
+        />
+        <Link href="/sales/quotes/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-center">
           + New Quote
         </Link>
       </div>
@@ -55,20 +74,20 @@ export default function QuotesPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((q) => (
-              <tr key={q.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
-                <td className="p-3"><Link href={`/sales/quotes/${q.id}`} className="text-blue-400">{q.quoteNumber}</Link></td>
-                <td className="p-3">{q.title || '—'}</td>
-                <td className="p-3">{q.workflowState || q.status}</td>
-                <td className="p-3">{q.opportunity}</td>
-                <td className="p-3">{q.customer}</td>
-                <td className="p-3">{q.totalPriceWithTaxInDollars ?? '—'}</td>
-                <td className="p-3">{new Date(q.createdAt).toLocaleDateString()}</td>
+            {visibleItems.map((qRow) => (
+              <tr key={qRow.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
+                <td className="p-3"><Link href={`/sales/quotes/${qRow.id}`} className="text-blue-400">{qRow.quoteNumber}</Link></td>
+                <td className="p-3">{qRow.title || '—'}</td>
+                <td className="p-3"><StatusChip value={qRow.workflowState || qRow.status} /></td>
+                <td className="p-3">{qRow.opportunity}</td>
+                <td className="p-3">{qRow.customer}</td>
+                <td className="p-3">{qRow.totalPriceWithTaxInDollars ?? '—'}</td>
+                <td className="p-3">{new Date(qRow.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
-            {items.length === 0 ? (
+            {visibleItems.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={7}>No quotes yet.</td>
+                <td className="p-3 text-zinc-400" colSpan={7}>No quotes found.</td>
               </tr>
             ) : null}
           </tbody>

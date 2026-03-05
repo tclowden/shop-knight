@@ -1,8 +1,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { StatusChip } from '@/components/status-chip';
 
 type SalesOrder = {
   id: string;
@@ -17,6 +18,18 @@ type SalesOrder = {
 
 export default function SalesOrdersPage() {
   const [items, setItems] = useState<SalesOrder[]>([]);
+  const [q, setQ] = useState('');
+
+  const visibleItems = useMemo(() => {
+    const text = q.trim().toLowerCase();
+    return items.filter((row) => {
+      if (!text) return true;
+      return [row.orderNumber, row.title || '', row.status || '', row.opportunity, row.customer]
+        .join(' ')
+        .toLowerCase()
+        .includes(text);
+    });
+  }, [items, q]);
 
   async function load() {
     const res = await fetch('/api/sales-orders');
@@ -34,8 +47,14 @@ export default function SalesOrdersPage() {
       <p className="text-sm text-zinc-400">All sales orders in the system.</p>
       <Nav />
 
-      <div className="mb-4 flex justify-end">
-        <Link href="/sales/orders/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search sales orders..."
+          className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:max-w-sm"
+        />
+        <Link href="/sales/orders/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-center">
           + New Sales Order
         </Link>
       </div>
@@ -54,20 +73,20 @@ export default function SalesOrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((so) => (
+            {visibleItems.map((so) => (
               <tr key={so.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
                 <td className="p-3"><Link href={`/sales/orders/${so.id}`} className="text-blue-400">{so.orderNumber}</Link></td>
                 <td className="p-3">{so.title || '—'}</td>
-                <td className="p-3">{so.status || '—'}</td>
+                <td className="p-3"><StatusChip value={so.status || 'Unknown'} /></td>
                 <td className="p-3">{so.opportunity}</td>
                 <td className="p-3">{so.customer}</td>
                 <td className="p-3">{so.sourceQuoteId || '—'}</td>
                 <td className="p-3">{new Date(so.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
-            {items.length === 0 ? (
+            {visibleItems.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={7}>No sales orders yet.</td>
+                <td className="p-3 text-zinc-400" colSpan={7}>No sales orders found.</td>
               </tr>
             ) : null}
           </tbody>
