@@ -16,6 +16,7 @@ type Line = {
   qty: number;
   unitPrice: string | number;
   taxRate?: string | number | null;
+  taxable?: boolean;
   productId?: string | null;
   sortOrder?: number;
   parentLineId?: string | null;
@@ -58,7 +59,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [newDescription, setNewDescription] = useState('');
   const [newQty, setNewQty] = useState('1');
   const [newUnitPrice, setNewUnitPrice] = useState('0');
-  const [newTaxRate, setNewTaxRate] = useState('0.075');
+  const [newTaxable, setNewTaxable] = useState(true);
+  const [newUnitCost, setNewUnitCost] = useState('0.00');
+  const [newGpmPercent, setNewGpmPercent] = useState('35');
 
   const [customerContactRole, setCustomerContactRole] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
@@ -120,13 +123,20 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     setEditingHeader(false);
   }
 
+  function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
+    const cost = Number(unitCost || 0);
+    const gpm = Number(gpmPercent || 0) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
+    return (cost / (1 - gpm)).toFixed(2);
+  }
+
   async function addLine(e: React.FormEvent) {
     e.preventDefault();
     await fetch(`/api/quotes/${id}/lines`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxRate: Number(newTaxRate) }),
+      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0 }),
     });
-    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0');
+    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35');
     await load(id);
   }
 
@@ -298,20 +308,27 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-6">
-        <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
-        <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={newTaxRate} onChange={(e) => setNewTaxRate(e.target.value)} type="number" min="0" step="0.0001" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <button className="rounded bg-blue-600 px-3 py-2">+ Add Line</button>
+      <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
+          <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+          <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          <label className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /> Taxable</label>
+          <button className="rounded bg-blue-600 px-3 py-2">+ Add Line</button>
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="Unit Cost" />
+          <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="GPM %" />
+          <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" placeholder="Extended Price" />
+        </div>
       </form>
 
       <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
 
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Tax</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
               <QuoteLineRow
@@ -376,7 +393,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
       </td>
       <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
       <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><input value={draft.taxRate ?? 0} onChange={(e) => { setDirty(true); setDraft({ ...draft, taxRate: Number(e.target.value) }); }} type="number" min="0" step="0.0001" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
+      <td className="p-3"><label className="flex items-center gap-2"><input type="checkbox" checked={Number(draft.taxRate ?? 0) > 0} onChange={(e) => { setDirty(true); setDraft({ ...draft, taxRate: e.target.checked ? 0.075 : 0 }); }} /><span className="text-xs">Taxable</span></label></td>
       <td className="p-3">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
       <td className="p-3 space-x-1">
         <button onClick={() => onSave(draft)} className="rounded border border-zinc-600 px-2 py-1">Save now</button>

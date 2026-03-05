@@ -52,6 +52,9 @@ export default function NewSalesOrderPage() {
   const [lineDescription, setLineDescription] = useState('');
   const [lineQty, setLineQty] = useState('1');
   const [lineUnitPrice, setLineUnitPrice] = useState('0.00');
+  const [lineTaxable, setLineTaxable] = useState(true);
+  const [lineUnitCost, setLineUnitCost] = useState('0.00');
+  const [lineGpmPercent, setLineGpmPercent] = useState('35');
   const [lineAttributeValues, setLineAttributeValues] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
 
@@ -103,6 +106,13 @@ export default function NewSalesOrderPage() {
     setLineUnitPrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
   }
 
+  function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
+    const cost = Number(unitCost || 0);
+    const gpm = Number(gpmPercent || 0) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
+    return (cost / (1 - gpm)).toFixed(2);
+  }
+
   async function createOrder(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -141,7 +151,7 @@ export default function NewSalesOrderPage() {
               description: lineDescription,
               qty: Number(lineQty || 1),
               unitPrice: Number(lineUnitPrice || 0),
-              attributeValues: lineAttributeValues,
+              attributeValues: { ...lineAttributeValues, _taxable: lineTaxable ? 'true' : 'false', _unitCost: lineUnitCost, _gpmPercent: lineGpmPercent },
             }
           : null,
       }),
@@ -225,14 +235,20 @@ export default function NewSalesOrderPage() {
 
         <div className="rounded border border-zinc-700 p-3">
           <h2 className="mb-2 font-medium">Initial Line Item (optional)</h2>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <select value={lineProductId} onChange={(e) => { const productId = e.target.value; setLineProductId(productId); const p = products.find((x) => x.id === productId); if (p) { setLineDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setLineAttributeValues(defaults); recalcLinePrice(productId, lineQty, defaults); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-              <option value="">Select product</option>
+              <option value="">Custom / no product</option>
               {sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
             </select>
             <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             <input value={lineQty} onChange={(e) => { const q = e.target.value; setLineQty(q); recalcLinePrice(lineProductId, q, lineAttributeValues); }} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="Unit Price" />
+            <label className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900"><input type="checkbox" checked={lineTaxable} onChange={(e) => setLineTaxable(e.target.checked)} /> Taxable</label>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+            <input value={lineUnitCost} onChange={(e) => { const v = e.target.value; setLineUnitCost(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(v, lineGpmPercent)); }} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="Unit Cost" />
+            <input value={lineGpmPercent} onChange={(e) => { const v = e.target.value; setLineGpmPercent(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(lineUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="GPM %" />
+            <input value={(Number(lineQty || 0) * Number(lineUnitPrice || 0)).toFixed(2)} disabled className="rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" placeholder="Extended Price" />
           </div>
         </div>
 

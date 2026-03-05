@@ -18,7 +18,9 @@ type LineItem = {
   description: string;
   quantity: string;
   priceInDollars: string;
-  taxRate: string;
+  taxable: boolean;
+  unitCost: string;
+  gpmPercent: string;
   attributeValues: Record<string, string>;
 };
 
@@ -46,7 +48,7 @@ export default function NewQuotePage() {
   const [projectManagerId, setProjectManagerId] = useState('');
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} },
+    { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxable: true, unitCost: '0.00', gpmPercent: '35', attributeValues: {} },
   ]);
   const [error, setError] = useState('');
 
@@ -96,8 +98,26 @@ export default function NewQuotePage() {
     );
   }
 
+  function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
+    const cost = Number(unitCost || 0);
+    const gpm = Number(gpmPercent || 0) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
+    const unitPrice = cost / (1 - gpm);
+    return unitPrice.toFixed(2);
+  }
+
+  function updateLineCostGpm(index: number, key: 'unitCost' | 'gpmPercent', value: string) {
+    setLineItems((prev) =>
+      prev.map((line, i) => {
+        if (i !== index) return line;
+        const next = { ...line, [key]: value };
+        return { ...next, priceInDollars: calculateUnitPriceFromCostGpm(next.unitCost, next.gpmPercent) };
+      })
+    );
+  }
+
   function addLine() {
-    setLineItems((prev) => [...prev, { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} }]);
+    setLineItems((prev) => [...prev, { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxable: true, unitCost: '0.00', gpmPercent: '35', attributeValues: {} }]);
   }
 
   async function submitQuote(e: FormEvent) {
@@ -107,7 +127,7 @@ export default function NewQuotePage() {
     const normalized = lineItems.map((l) => {
       const qty = Number(l.quantity || 0);
       const price = Number(l.priceInDollars || 0);
-      const taxRate = Number(l.taxRate || 0);
+      const taxRate = l.taxable ? 0.075 : 0;
       const totalPriceInDollars = qty * price;
       const totalTaxInDollars = totalPriceInDollars * taxRate;
       return {
@@ -120,7 +140,7 @@ export default function NewQuotePage() {
         totalPriceInDollars,
         totalTaxInDollars,
         taxRate,
-        taxable: true,
+        taxable: l.taxable,
       };
     });
 
@@ -319,8 +339,22 @@ export default function NewQuotePage() {
                     <label className="text-xs text-zinc-300">Unit Price
                       <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
                     </label>
-                    <label className="text-xs text-zinc-300">Tax Rate
-                      <input value={line.taxRate} onChange={(e) => updateLine(i, 'taxRate', e.target.value)} type="number" min="0" step="0.0001" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    <label className="text-xs text-zinc-300">Taxable
+                      <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                        <input type="checkbox" checked={line.taxable} onChange={(e) => setLineItems((prev) => prev.map((l, idx) => idx === i ? { ...l, taxable: e.target.checked } : l))} />
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <label className="text-xs text-zinc-300">Unit Cost
+                      <input value={line.unitCost} onChange={(e) => updateLineCostGpm(i, 'unitCost', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    </label>
+                    <label className="text-xs text-zinc-300">GPM %
+                      <input value={line.gpmPercent} onChange={(e) => updateLineCostGpm(i, 'gpmPercent', e.target.value)} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    </label>
+                    <label className="text-xs text-zinc-300">Extended Price
+                      <input value={(Number(line.quantity || 0) * Number(line.priceInDollars || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
                     </label>
                   </div>
 
