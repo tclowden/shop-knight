@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
+import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
@@ -255,9 +256,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Expiration Date</span><input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Billing Attention To</span><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Attention To</span><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Billing Address</span><textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Shipping Address</span><textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Install Address</span><textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <div className="md:col-span-2"><AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} /></div>
+            <div className="md:col-span-2"><AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} /></div>
+            <div className="md:col-span-2"><AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} /></div>
             <div className="md:col-span-2 flex gap-2"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
           </form>
         )}

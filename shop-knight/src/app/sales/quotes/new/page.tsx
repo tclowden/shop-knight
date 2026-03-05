@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Nav } from '@/components/nav';
+import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = { id: string; name: string; customer: string };
@@ -244,18 +245,15 @@ export default function NewQuotePage() {
               ))}
             </select>
           </label>
-          <label className="text-sm md:col-span-2">
-            <span className="mb-1 block text-zinc-300">Billing Address</span>
-            <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
-          </label>
-          <label className="text-sm md:col-span-2">
-            <span className="mb-1 block text-zinc-300">Shipping Address</span>
-            <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
-          </label>
-          <label className="text-sm md:col-span-2">
-            <span className="mb-1 block text-zinc-300">Install Address</span>
-            <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
-          </label>
+          <div className="md:col-span-2">
+            <AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
+          </div>
+          <div className="md:col-span-2">
+            <AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
+          </div>
+          <div className="md:col-span-2">
+            <AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} />
+          </div>
           <label className="text-sm">
             <span className="mb-1 block text-zinc-300">Customer PO Number</span>
             <input value={customerPoNumber} onChange={(e) => setCustomerPoNumber(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="12345" />

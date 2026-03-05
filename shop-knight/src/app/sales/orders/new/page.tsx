@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
+import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = { id: string; name: string; customer: string; customerId: string };
@@ -217,9 +218,9 @@ export default function NewSalesOrderPage() {
             <option value="">Designer</option>
             {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-          <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Billing Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} placeholder="Install Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
+          <AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
+          <AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} />
         </div>
 
         <div className="rounded border border-zinc-700 p-3">
