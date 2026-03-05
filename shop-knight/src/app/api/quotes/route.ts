@@ -33,7 +33,7 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    quotes.map((q) => ({
+    quotes.map((q: any) => ({
       id: q.id,
       quoteNumber: q.quoteNumber,
       title: q.title,

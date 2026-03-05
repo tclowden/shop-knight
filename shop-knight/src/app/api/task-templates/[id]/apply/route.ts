@@ -29,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!template) return NextResponse.json({ error: 'template not found' }, { status: 404 });
 
   const created = await prisma.$transaction(
-    template.steps.map((step) => {
+    template.steps.map((step: any) => {
       let assigneeId: string | null = null;
       if (step.assigneeMode === 'SPECIFIC_USER') assigneeId = step.specificAssigneeId || null;
       if (step.assigneeMode === 'PM') assigneeId = pmUserId;
