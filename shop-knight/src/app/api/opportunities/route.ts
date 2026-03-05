@@ -19,7 +19,7 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const opportunities = await prisma.opportunity.findMany({
-    include: { customer: true },
+    include: { customer: true, salesRep: true, projectManager: true },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -36,6 +36,10 @@ export async function GET() {
       expectedCloseDate: o.expectedCloseDate,
       dueDate: o.dueDate,
       inHandDate: o.inHandDate,
+      salesRepId: o.salesRepId,
+      salesRepName: o.salesRep?.name ?? null,
+      projectManagerId: o.projectManagerId,
+      projectManagerName: o.projectManager?.name ?? null,
       description: o.description,
     }))
   );
@@ -69,8 +73,10 @@ export async function POST(req: Request) {
       customerPoDate: toDate(body?.customerPoDate),
       dueDate: toDate(body?.dueDate),
       inHandDate: toDate(body?.inHandDate),
+      salesRepId: body?.salesRepId ? String(body.salesRepId) : null,
+      projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : null,
     },
-    include: { customer: true },
+    include: { customer: true, salesRep: true, projectManager: true },
   });
 
   return NextResponse.json(
@@ -86,6 +92,10 @@ export async function POST(req: Request) {
       expectedCloseDate: opportunity.expectedCloseDate,
       dueDate: opportunity.dueDate,
       inHandDate: opportunity.inHandDate,
+      salesRepId: opportunity.salesRepId,
+      salesRepName: opportunity.salesRep?.name ?? null,
+      projectManagerId: opportunity.projectManagerId,
+      projectManagerName: opportunity.projectManager?.name ?? null,
       description: opportunity.description,
     },
     { status: 201 }

@@ -9,6 +9,8 @@ datasource db {
 enum UserType {
   ADMIN
   SALES
+  SALES_REP
+  PROJECT_MANAGER
   OPERATIONS
   PURCHASING
   FINANCE
@@ -65,9 +67,11 @@ model User {
   active       Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  tasks        Task[]
-  notes        Note[]
-  templateSteps TaskTemplateStep[] @relation("TemplateSpecificAssignee")
+  tasks                          Task[]
+  notes                          Note[]
+  templateSteps                  TaskTemplateStep[] @relation("TemplateSpecificAssignee")
+  salesRepOpportunities          Opportunity[]      @relation("OpportunitySalesRep")
+  projectManagerOpportunities    Opportunity[]      @relation("OpportunityProjectManager")
 }
 
 model Customer {
@@ -96,6 +100,8 @@ model Opportunity {
   stage               OpportunityStage   @default(LEAD)
   customerId          String
   ownerId             String?
+  salesRepId          String?
+  projectManagerId    String?
   description         String?
   source              String?
   priority            String?
@@ -107,6 +113,8 @@ model Opportunity {
   dueDate             DateTime?
   inHandDate          DateTime?
   customer            Customer           @relation(fields: [customerId], references: [id])
+  salesRep            User?              @relation("OpportunitySalesRep", fields: [salesRepId], references: [id])
+  projectManager      User?              @relation("OpportunityProjectManager", fields: [projectManagerId], references: [id])
   quotes              Quote[]
   salesOrders         SalesOrder[]
   projects            Project[]

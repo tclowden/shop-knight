@@ -12,7 +12,7 @@ type User = {
   active: boolean;
 };
 
-const userTypes = ['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const userTypes = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 export default function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
