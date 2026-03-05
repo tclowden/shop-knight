@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
@@ -24,7 +24,6 @@ type LineItem = {
 
 export default function NewQuotePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -69,7 +68,7 @@ export default function NewQuotePage() {
     setProducts(productData);
     setUsers(usersData);
 
-    const requestedOpportunityId = searchParams.get('opportunityId');
+    const requestedOpportunityId = new URLSearchParams(window.location.search).get('opportunityId');
     const exists = requestedOpportunityId ? oppData.some((o: Opportunity) => o.id === requestedOpportunityId) : false;
     if (requestedOpportunityId && exists) setOpportunityId(requestedOpportunityId);
     else if (oppData.length > 0) setOpportunityId(oppData[0].id);
@@ -335,7 +334,7 @@ export default function NewQuotePage() {
                               onChange={(e) => updateLineAttribute(i, attr.code, e.target.value)}
                               type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
                               className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-                              required={attr.required}
+                              required={Boolean((attr as { required?: boolean }).required)}
                             />
                           )}
                         </label>

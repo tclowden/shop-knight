@@ -24,7 +24,7 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    opportunities.map((o) => ({
+    opportunities.map((o: any) => ({
       id: o.id,
       name: o.name,
       customer: o.customer.name,
