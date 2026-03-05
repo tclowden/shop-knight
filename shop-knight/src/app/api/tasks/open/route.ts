@@ -45,7 +45,7 @@ export async function GET() {
   });
 
   const withEntity = await Promise.all(
-    tasks.map(async (t) => ({
+    tasks.map(async (t: any) => ({
       ...t,
       entityLabel: await getEntityLabel(t.entityType, t.entityId),
     }))
