@@ -33,8 +33,7 @@ export default function OpportunitiesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [name, setName] = useState('');
-  const [customerId, setCustomerId] = useState('');
-  const [newCustomerName, setNewCustomerName] = useState('');
+  const [customerInput, setCustomerInput] = useState('');
   const [source, setSource] = useState('Referral');
   const [priority, setPriority] = useState('Medium');
   const [estimatedValue, setEstimatedValue] = useState('0');
@@ -42,7 +41,9 @@ export default function OpportunitiesPage() {
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [salesRepId, setSalesRepId] = useState('');
+  const [salesRepInput, setSalesRepInput] = useState('');
   const [projectManagerId, setProjectManagerId] = useState('');
+  const [projectManagerInput, setProjectManagerInput] = useState('');
 
   const sortedCustomers = useMemo(() => [...customers].sort((a, b) => a.name.localeCompare(b.name)), [customers]);
   const sortedItems = useMemo(() => [...items].sort((a, b) => a.name.localeCompare(b.name)), [items]);
@@ -57,20 +58,21 @@ export default function OpportunitiesPage() {
     ]);
     setItems(await oppsRes.json());
     setUsers(await usersRes.json());
-    const customerItems = await customersRes.json();
-    setCustomers(customerItems);
-    if (customerItems.length > 0 && !customerId) setCustomerId(customerItems[0].id);
+    setCustomers(await customersRes.json());
   }
 
   async function createOpportunity(e: React.FormEvent) {
     e.preventDefault();
+
+    const matchedCustomer = sortedCustomers.find((c) => c.name.toLowerCase() === customerInput.trim().toLowerCase());
+
     await fetch('/api/opportunities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
-        customerId: customerId === '__new__' ? null : customerId,
-        customer: customerId === '__new__' ? newCustomerName : null,
+        customerId: matchedCustomer?.id || null,
+        customer: matchedCustomer ? null : customerInput.trim(),
         source,
         priority,
         estimatedValue,
@@ -81,14 +83,17 @@ export default function OpportunitiesPage() {
         projectManagerId: projectManagerId || null,
       }),
     });
+
     setName('');
-    setNewCustomerName('');
+    setCustomerInput('');
     setEstimatedValue('0');
     setProbability('0.50');
     setExpectedCloseDate('');
     setDueDate('');
     setSalesRepId('');
+    setSalesRepInput('');
     setProjectManagerId('');
+    setProjectManagerInput('');
     load();
   }
 
@@ -105,16 +110,21 @@ export default function OpportunitiesPage() {
 
       <form onSubmit={createOpportunity} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Opportunity name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
-          <option value="">Select customer</option>
+
+        <input
+          list="customer-options"
+          value={customerInput}
+          onChange={(e) => setCustomerInput(e.target.value)}
+          placeholder="Customer (type to search or create)"
+          className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500"
+          required
+        />
+        <datalist id="customer-options">
           {sortedCustomers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.name} />
           ))}
-          <option value="__new__">+ Quick create new customer</option>
-        </select>
-        {customerId === '__new__' ? (
-          <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="New customer name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        ) : null}
+        </datalist>
+
         <select value={source} onChange={(e) => setSource(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option>Referral</option>
           <option>Website</option>
@@ -130,18 +140,43 @@ export default function OpportunitiesPage() {
         <input value={probability} onChange={(e) => setProbability(e.target.value)} type="number" min="0" max="1" step="0.01" placeholder="Close probability (0-1)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <input value={expectedCloseDate} onChange={(e) => setExpectedCloseDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Sales Rep (optional)</option>
+
+        <input
+          list="sales-rep-options"
+          value={salesRepInput}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSalesRepInput(val);
+            const match = sortedSalesReps.find((u) => u.name.toLowerCase() === val.toLowerCase());
+            setSalesRepId(match?.id || '');
+          }}
+          placeholder="Sales Rep (type to search)"
+          className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+        />
+        <datalist id="sales-rep-options">
           {sortedSalesReps.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
+            <option key={u.id} value={u.name} />
           ))}
-        </select>
-        <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Project Manager (optional)</option>
+        </datalist>
+
+        <input
+          list="pm-options"
+          value={projectManagerInput}
+          onChange={(e) => {
+            const val = e.target.value;
+            setProjectManagerInput(val);
+            const match = sortedProjectManagers.find((u) => u.name.toLowerCase() === val.toLowerCase());
+            setProjectManagerId(match?.id || '');
+          }}
+          placeholder="Project Manager (type to search)"
+          className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+        />
+        <datalist id="pm-options">
           {sortedProjectManagers.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
+            <option key={u.id} value={u.name} />
           ))}
-        </select>
+        </datalist>
+
         <button className="rounded bg-blue-600 px-3 py-2">Create Opportunity</button>
       </form>
 
