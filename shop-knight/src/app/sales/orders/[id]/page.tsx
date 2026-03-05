@@ -233,6 +233,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   const total = useMemo(() => (order?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0), 0), [order?.lines]);
 
+  const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
+  const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
+  const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
   if (!order) return <main className="mx-auto max-w-6xl p-8">Loading sales order…</main>;
 
@@ -246,7 +252,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Status</option>
-          {statuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+          {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
         </select>
         <input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} placeholder="Primary Customer Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} placeholder="Customer Invoice Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
@@ -266,15 +272,15 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Sales Rep</option>
-          {users.filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          {sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Project Manager</option>
-          {users.filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          {sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Designer</option>
-          {users.filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} placeholder="Billing Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} placeholder="Shipping Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
@@ -287,7 +293,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </form>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
-        <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+        <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
         <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
         <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
         <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />

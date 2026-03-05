@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
@@ -53,6 +53,14 @@ export default function NewSalesOrderPage() {
   const [lineUnitPrice, setLineUnitPrice] = useState('0.00');
   const [lineAttributeValues, setLineAttributeValues] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
+
+  const sortedOpportunities = useMemo(() => [...opportunities].sort((a, b) => a.name.localeCompare(b.name)), [opportunities]);
+  const sortedQuotes = useMemo(() => [...quotes].sort((a, b) => a.quoteNumber.localeCompare(b.quoteNumber)), [quotes]);
+  const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
+  const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
+  const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
 
   async function load() {
@@ -170,14 +178,14 @@ export default function NewSalesOrderPage() {
             const c = customers.find((x) => x.id === opp?.customerId);
             setPaymentTerms(c?.paymentTerms || '');
           }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
-            {opportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
+            {sortedOpportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
           </select>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            {statuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+            {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
           <select value={sourceQuoteId} onChange={(e) => setSourceQuoteId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             <option value="">Source Quote (optional)</option>
-            {quotes.map((q) => <option key={q.id} value={q.id}>{q.quoteNumber} — {q.customer}</option>)}
+            {sortedQuotes.map((q) => <option key={q.id} value={q.id}>{q.quoteNumber} — {q.customer}</option>)}
           </select>
           <input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} placeholder="Primary Customer Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           <input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} placeholder="Customer Invoice Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
@@ -199,15 +207,15 @@ export default function NewSalesOrderPage() {
           </div>
           <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             <option value="">Sales Rep</option>
-            {users.filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            {sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
           <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             <option value="">Project Manager</option>
-            {users.filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            {sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
           <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             <option value="">Designer</option>
-            {users.filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
           <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Billing Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
@@ -219,7 +227,7 @@ export default function NewSalesOrderPage() {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <select value={lineProductId} onChange={(e) => { const productId = e.target.value; setLineProductId(productId); const p = products.find((x) => x.id === productId); if (p) { setLineDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setLineAttributeValues(defaults); recalcLinePrice(productId, lineQty, defaults); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
               <option value="">Select product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
+              {sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
             </select>
             <input value={lineDescription} onChange={(e) => setLineDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             <input value={lineQty} onChange={(e) => { const q = e.target.value; setLineQty(q); recalcLinePrice(lineProductId, q, lineAttributeValues); }} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />

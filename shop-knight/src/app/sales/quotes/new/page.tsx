@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
@@ -48,6 +48,11 @@ export default function NewQuotePage() {
     { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} },
   ]);
   const [error, setError] = useState('');
+
+  const sortedOpportunities = useMemo(() => [...opportunities].sort((a, b) => a.name.localeCompare(b.name)), [opportunities]);
+  const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
+  const sortedSalesReps = useMemo(() => [...users].filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
   async function load() {
     const [oppRes, productRes, usersRes] = await Promise.all([
@@ -175,7 +180,7 @@ export default function NewQuotePage() {
           <label className="text-sm">
             <span className="mb-1 block text-zinc-300">Opportunity</span>
             <select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
-              {opportunities.map((o) => (
+              {sortedOpportunities.map((o) => (
                 <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>
               ))}
             </select>
@@ -220,7 +225,7 @@ export default function NewQuotePage() {
             <span className="mb-1 block text-zinc-300">Sales Rep</span>
             <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
               <option value="">Unassigned</option>
-              {users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => (
+              {sortedSalesReps.map((u) => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
@@ -229,7 +234,7 @@ export default function NewQuotePage() {
             <span className="mb-1 block text-zinc-300">Project Manager</span>
             <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
               <option value="">Unassigned</option>
-              {users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => (
+              {sortedProjectManagers.map((u) => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
@@ -294,7 +299,7 @@ export default function NewQuotePage() {
                       className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
                     >
                       <option value="">Select product</option>
-                      {products.map((p) => (
+                      {sortedProducts.map((p) => (
                         <option key={p.id} value={p.id}>{p.sku} — {p.name}{p.category ? ` (${p.category})` : ''}</option>
                       ))}
                     </select>

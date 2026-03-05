@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Opportunity = {
@@ -43,6 +43,11 @@ export default function OpportunitiesPage() {
   const [dueDate, setDueDate] = useState('');
   const [salesRepId, setSalesRepId] = useState('');
   const [projectManagerId, setProjectManagerId] = useState('');
+
+  const sortedCustomers = useMemo(() => [...customers].sort((a, b) => a.name.localeCompare(b.name)), [customers]);
+  const sortedItems = useMemo(() => [...items].sort((a, b) => a.name.localeCompare(b.name)), [items]);
+  const sortedSalesReps = useMemo(() => [...users].filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
   async function load() {
     const [oppsRes, usersRes, customersRes] = await Promise.all([
@@ -102,7 +107,7 @@ export default function OpportunitiesPage() {
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Opportunity name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
         <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
           <option value="">Select customer</option>
-          {customers.map((c) => (
+          {sortedCustomers.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
           <option value="__new__">+ Quick create new customer</option>
@@ -127,13 +132,13 @@ export default function OpportunitiesPage() {
         <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} type="date" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Sales Rep (optional)</option>
-          {users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => (
+          {sortedSalesReps.map((u) => (
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
         <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option value="">Project Manager (optional)</option>
-          {users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => (
+          {sortedProjectManagers.map((u) => (
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
@@ -141,7 +146,7 @@ export default function OpportunitiesPage() {
       </form>
 
       <div className="space-y-3">
-        {items.map((opp) => (
+        {sortedItems.map((opp) => (
           <Link key={opp.id} href={`/sales/opportunities/${opp.id}`} className="block rounded border border-zinc-800 p-4 hover:bg-zinc-900">
             <p className="font-medium">{opp.name}</p>
             <p className="text-sm text-zinc-400">
