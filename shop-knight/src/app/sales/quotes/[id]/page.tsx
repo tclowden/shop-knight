@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
+import { StatusChip } from '@/components/status-chip';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
 type User = { id: string; name: string; type: string };
@@ -22,6 +23,8 @@ type Line = {
 type Quote = {
   id: string;
   quoteNumber: string;
+  status?: string | null;
+  workflowState?: string | null;
   opportunity: { name: string; customer: { name: string } };
   customerContactRole?: string | null;
   billingAddress?: string | null;
@@ -227,6 +230,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <h1 className="text-2xl font-semibold">Quote {quote.quoteNumber}</h1>
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
       <Nav />
+
+      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">State</p><div className="mt-1"><StatusChip value={quote.workflowState || quote.status} /></div></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Lines</p><p className="text-xl font-semibold">{quote.lines.length}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Subtotal</p><p className="text-xl font-semibold">${subtotal.toFixed(0)}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">${(subtotal + taxTotal).toFixed(0)}</p></div>
+      </div>
 
       <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
         {!editingHeader ? (

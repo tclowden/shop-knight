@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
+import { StatusChip } from '@/components/status-chip';
 
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type User = { id: string; name: string; type: string };
@@ -250,6 +251,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       <h1 className="text-2xl font-semibold">Sales Order {order.orderNumber}</h1>
       <p className="text-sm text-zinc-400">{order.opportunity.name} • {order.opportunity.customer.name}</p>
       <Nav />
+
+      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Status</p><div className="mt-1"><StatusChip value={order.status?.name || 'Unknown'} /></div></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Lines</p><p className="text-xl font-semibold">{order.lines.length}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Down Payment</p><p className="text-xl font-semibold">{order.downPaymentValue ? String(order.downPaymentValue) : '—'}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">${total.toFixed(0)}</p></div>
+      </div>
 
       <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
         {!editingHeader ? (

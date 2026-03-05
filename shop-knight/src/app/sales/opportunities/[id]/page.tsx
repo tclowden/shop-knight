@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
+import { StatusChip } from '@/components/status-chip';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 type Opportunity = {
   id: string;
@@ -241,6 +242,13 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
       <h1 className="text-2xl font-semibold">{opportunity?.name || `Opportunity ${id}`}</h1>
       <p className="text-sm text-zinc-400">Working flow: quotes → sales orders → sales order lines → linked PO lines.</p>
       <Nav />
+
+      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Stage</p><div className="mt-1"><StatusChip value={opportunity?.stage || 'Unknown'} /></div></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Quotes</p><p className="text-xl font-semibold">{quotes.length}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Sales Orders</p><p className="text-xl font-semibold">{salesOrders.length}</p></div>
+        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Line Items</p><p className="text-xl font-semibold">{lines.length}</p></div>
+      </div>
 
       {opportunity ? (
         <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
