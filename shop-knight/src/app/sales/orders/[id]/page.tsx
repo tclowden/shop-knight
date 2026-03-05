@@ -47,6 +47,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
+  const [editingHeader, setEditingHeader] = useState(false);
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -144,6 +145,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     });
     await load(id);
     setSavingHeader(false);
+    setEditingHeader(false);
   }
 
   async function addLine(e: React.FormEvent) {
@@ -248,49 +250,59 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       <p className="text-sm text-zinc-400">{order.opportunity.name} • {order.opportunity.customer.name}</p>
       <Nav />
 
-      <form onSubmit={saveHeader} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Status</option>
-          {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
-        </select>
-        <input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} placeholder="Primary Customer Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} placeholder="Customer Invoice Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} placeholder="Shipping Method" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} placeholder="Shipping Tracking" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <div className="grid grid-cols-2 gap-2">
-          <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option value="DOLLARS">Down Payment ($)</option>
-            <option value="PERCENT">Down Payment (%)</option>
-          </select>
-          <input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" step="0.01" min="0" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        </div>
-        <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Sales Rep</option>
-          {sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-        <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Project Manager</option>
-          {sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-        <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Designer</option>
-          {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-        <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} placeholder="Billing Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} placeholder="Shipping Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Billing Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
-        <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
-        <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} placeholder="Install Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
-        <div className="md:col-span-2">
-          <button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button>
-        </div>
-      </form>
+      <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+        {!editingHeader ? (
+          <>
+            <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <p><span className="text-zinc-400">Title:</span> {order.title || '—'}</p>
+              <p><span className="text-zinc-400">Status:</span> {order.status?.name || '—'}</p>
+              <p><span className="text-zinc-400">Primary Customer Contact:</span> {order.primaryCustomerContact || '—'}</p>
+              <p><span className="text-zinc-400">Customer Invoice Contact:</span> {order.customerInvoiceContact || '—'}</p>
+              <p><span className="text-zinc-400">Sales Order Date:</span> {order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Due Date:</span> {order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Install Date:</span> {order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Shipping Date:</span> {order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'}</p>
+              <p><span className="text-zinc-400">Shipping Method:</span> {order.shippingMethod || '—'}</p>
+              <p><span className="text-zinc-400">Shipping Tracking:</span> {order.shippingTracking || '—'}</p>
+              <p><span className="text-zinc-400">Payment Terms:</span> {order.paymentTerms || '—'}</p>
+              <p><span className="text-zinc-400">Down Payment:</span> {order.downPaymentValue ? `${order.downPaymentValue} ${order.downPaymentType === 'PERCENT' ? '%' : '$'}` : '—'}</p>
+              <p><span className="text-zinc-400">Sales Rep:</span> {order.salesRep?.name || '—'}</p>
+              <p><span className="text-zinc-400">Project Manager:</span> {order.projectManager?.name || '—'}</p>
+              <p><span className="text-zinc-400">Designer:</span> {order.designer?.name || '—'}</p>
+              <p><span className="text-zinc-400">Billing Attention To:</span> {order.billingAttentionTo || '—'}</p>
+              <p><span className="text-zinc-400">Shipping Attention To:</span> {order.shippingAttentionTo || '—'}</p>
+              <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {order.billingAddress || '—'}</p>
+              <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {order.shippingAddress || '—'}</p>
+              <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {order.installAddress || '—'}</p>
+            </div>
+          </>
+        ) : (
+          <form onSubmit={saveHeader} className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Status</span><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Primary Customer Contact</span><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Customer Invoice Contact</span><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Order Date</span><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Due Date</span><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Install Date</span><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Date</span><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Method</span><input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Tracking</span><input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Payment Terms</span><input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Down Payment</span><div className="grid grid-cols-2 gap-2"><select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="DOLLARS">$</option><option value="PERCENT">%</option></select><input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" step="0.01" min="0" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Rep</span><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Project Manager</span><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Designer</span><select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Billing Attention To</span><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Attention To</span><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Billing Address</span><textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Shipping Address</span><textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Install Address</span><textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+            <div className="md:col-span-2 flex gap-2"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
+          </form>
+        )}
+      </div>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
         <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
