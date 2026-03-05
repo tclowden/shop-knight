@@ -5,6 +5,8 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { useUnsavedGuard } from '@/components/use-unsaved-guard';
+import { useToast } from '@/components/toast-provider';
 
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type User = { id: string; name: string; type: string };
@@ -42,6 +44,7 @@ type SalesOrder = {
 };
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { push } = useToast();
   const [id, setId] = useState('');
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -118,7 +121,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   async function saveHeader(e: React.FormEvent) {
     e.preventDefault();
     setSavingHeader(true);
-    await fetch(`/api/sales-orders/${id}`, {
+    const res = await fetch(`/api/sales-orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -145,6 +148,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         designerId: designerId || null,
       }),
     });
+    if (res.ok) push('Sales order saved', 'success');
+    else push('Failed to save sales order', 'error');
     await load(id);
     setSavingHeader(false);
     setEditingHeader(false);
@@ -237,11 +242,40 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   const total = useMemo(() => (order?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0), 0), [order?.lines]);
 
+  const headerDirty = useMemo(() => {
+    if (!order || !editingHeader) return false;
+    return (
+      title !== (order.title || '') ||
+      statusName !== (order.status?.name || '') ||
+      primaryCustomerContact !== (order.primaryCustomerContact || '') ||
+      customerInvoiceContact !== (order.customerInvoiceContact || '') ||
+      billingAddress !== (order.billingAddress || '') ||
+      billingAttentionTo !== (order.billingAttentionTo || '') ||
+      shippingAddress !== (order.shippingAddress || '') ||
+      shippingAttentionTo !== (order.shippingAttentionTo || '') ||
+      installAddress !== (order.installAddress || '') ||
+      shippingMethod !== (order.shippingMethod || '') ||
+      shippingTracking !== (order.shippingTracking || '') ||
+      salesOrderDate !== (order.salesOrderDate ? String(order.salesOrderDate).slice(0, 10) : '') ||
+      dueDate !== (order.dueDate ? String(order.dueDate).slice(0, 10) : '') ||
+      installDate !== (order.installDate ? String(order.installDate).slice(0, 10) : '') ||
+      shippingDate !== (order.shippingDate ? String(order.shippingDate).slice(0, 10) : '') ||
+      paymentTerms !== (order.paymentTerms || '') ||
+      downPaymentType !== (order.downPaymentType || 'DOLLARS') ||
+      downPaymentValue !== (order.downPaymentValue ? String(order.downPaymentValue) : '') ||
+      salesRepId !== (order.salesRepId || '') ||
+      projectManagerId !== (order.projectManagerId || '') ||
+      designerId !== (order.designerId || '')
+    );
+  }, [order, editingHeader, title, statusName, primaryCustomerContact, customerInvoiceContact, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, shippingMethod, shippingTracking, salesOrderDate, dueDate, installDate, shippingDate, paymentTerms, downPaymentType, downPaymentValue, salesRepId, projectManagerId, designerId]);
+
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
   const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+
+  useUnsavedGuard(headerDirty);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
   if (!order) return <main className="mx-auto max-w-6xl p-8">Loading sales order…</main>;
@@ -308,7 +342,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <div className="md:col-span-2"><AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} /></div>
-            <div className="md:col-span-2 flex gap-2"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
+            <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
           </form>
         )}
       </div>

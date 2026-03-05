@@ -5,6 +5,8 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { useUnsavedGuard } from '@/components/use-unsaved-guard';
+import { useToast } from '@/components/toast-provider';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
 type User = { id: string; name: string; type: string };
@@ -43,6 +45,7 @@ type Quote = {
 };
 
 export default function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { push } = useToast();
   const [id, setId] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -93,7 +96,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   async function saveHeader(e: React.FormEvent) {
     e.preventDefault();
     setSavingHeader(true);
-    await fetch(`/api/quotes/${id}`, {
+    const res = await fetch(`/api/quotes/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -110,6 +113,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         projectManagerId: projectManagerId || null,
       }),
     });
+    if (res.ok) push('Quote saved', 'success');
+    else push('Failed to save quote', 'error');
     await load(id);
     setSavingHeader(false);
     setEditingHeader(false);
@@ -222,6 +227,25 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const subtotal = useMemo(() => (quote?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0), 0), [quote?.lines]);
   const taxTotal = useMemo(() => (quote?.lines || []).reduce((sum, l) => sum + Number(l.qty) * Number(l.unitPrice || 0) * Number(l.taxRate ?? 0), 0), [quote?.lines]);
 
+  const headerDirty = useMemo(() => {
+    if (!quote || !editingHeader) return false;
+    return (
+      customerContactRole !== (quote.customerContactRole || '') ||
+      billingAddress !== (quote.billingAddress || '') ||
+      billingAttentionTo !== (quote.billingAttentionTo || '') ||
+      shippingAddress !== (quote.shippingAddress || '') ||
+      shippingAttentionTo !== (quote.shippingAttentionTo || '') ||
+      installAddress !== (quote.installAddress || '') ||
+      quoteDate !== (quote.quoteDate ? String(quote.quoteDate).slice(0, 10) : '') ||
+      dueDate !== (quote.dueDate ? String(quote.dueDate).slice(0, 10) : '') ||
+      expiryDate !== (quote.expiryDate ? String(quote.expiryDate).slice(0, 10) : '') ||
+      salesRepId !== (quote.salesRepId || '') ||
+      projectManagerId !== (quote.projectManagerId || '')
+    );
+  }, [quote, editingHeader, customerContactRole, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, quoteDate, dueDate, expiryDate, salesRepId, projectManagerId]);
+
+  useUnsavedGuard(headerDirty);
+
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
   if (!quote) return <main className="mx-auto max-w-6xl p-8">Loading quote…</main>;
 
@@ -269,7 +293,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <div className="md:col-span-2"><AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} /></div>
-            <div className="md:col-span-2 flex gap-2"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
+            <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
           </form>
         )}
       </div>

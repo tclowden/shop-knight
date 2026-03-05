@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { useUnsavedGuard } from '@/components/use-unsaved-guard';
+import { useToast } from '@/components/toast-provider';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 type Opportunity = {
   id: string;
@@ -44,6 +46,7 @@ type PoLine = {
 };
 
 export default function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { push } = useToast();
   const [id, setId] = useState<string>('');
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -83,6 +86,23 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
   const primarySo = useMemo(() => salesOrders[0], [salesOrders]);
   const primaryLine = useMemo(() => lines[0], [lines]);
+  const headerDirty = useMemo(() => {
+    if (!opportunity || !editing) return false;
+    return (
+      name !== (opportunity.name || '') ||
+      customerInput !== (opportunity.customer || '') ||
+      source !== (opportunity.source || '') ||
+      priority !== (opportunity.priority || '') ||
+      estimatedValue !== (opportunity.estimatedValue ? String(opportunity.estimatedValue) : '') ||
+      probability !== (opportunity.probability ? String(opportunity.probability) : '') ||
+      expectedCloseDate !== (opportunity.expectedCloseDate ? String(opportunity.expectedCloseDate).slice(0, 10) : '') ||
+      dueDate !== (opportunity.dueDate ? String(opportunity.dueDate).slice(0, 10) : '') ||
+      inHandDate !== (opportunity.inHandDate ? String(opportunity.inHandDate).slice(0, 10) : '') ||
+      salesRepId !== (opportunity.salesRepId || '') ||
+      projectManagerId !== (opportunity.projectManagerId || '') ||
+      description !== (opportunity.description || '')
+    );
+  }, [opportunity, editing, name, customerInput, source, priority, estimatedValue, probability, expectedCloseDate, dueDate, inHandDate, salesRepId, projectManagerId, description]);
   const sortedCustomers = useMemo(() => [...customers].sort((a, b) => a.name.localeCompare(b.name)), [customers]);
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
@@ -149,7 +169,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     setSaving(true);
     const matchedCustomer = sortedCustomers.find((c) => c.name.toLowerCase() === customerInput.trim().toLowerCase());
 
-    await fetch(`/api/opportunities/${id}`, {
+    const res = await fetch(`/api/opportunities/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -169,6 +189,8 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
       }),
     });
 
+    if (res.ok) push('Opportunity saved', 'success');
+    else push('Failed to save opportunity', 'error');
     await load(id);
     setEditing(false);
     setSaving(false);
@@ -230,6 +252,8 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     load(id);
   }
 
+  useUnsavedGuard(headerDirty);
+
   useEffect(() => {
     params.then((p) => {
       setId(p.id);
@@ -288,7 +312,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Rep</span><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Project Manager</span><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
               <label className="text-sm md:col-span-2"><span className="mb-1 block text-zinc-300">Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-              <div className="md:col-span-2 flex gap-2">
+              <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur">
                 <button disabled={saving} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{saving ? 'Saving…' : 'Save'}</button>
                 <button type="button" onClick={() => setEditing(false)} className="rounded border border-zinc-600 px-4 py-2">Cancel</button>
               </div>
