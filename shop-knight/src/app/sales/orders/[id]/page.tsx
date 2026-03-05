@@ -5,6 +5,8 @@ import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
+type User = { id: string; name: string; type: string };
+type SalesOrderStatus = { id: string; name: string };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
 type SalesOrder = {
   id: string;
@@ -27,6 +29,9 @@ type SalesOrder = {
   paymentTerms?: string | null;
   downPaymentType?: string | null;
   downPaymentValue?: string | number | null;
+  salesRepId?: string | null;
+  projectManagerId?: string | null;
+  designerId?: string | null;
   salesRep?: { name: string } | null;
   projectManager?: { name: string } | null;
   designer?: { name: string } | null;
@@ -38,17 +43,107 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [id, setId] = useState('');
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
   const [filterText, setFilterText] = useState('');
+  const [savingHeader, setSavingHeader] = useState(false);
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newQty, setNewQty] = useState('1');
   const [newUnitPrice, setNewUnitPrice] = useState('0');
 
+  const [title, setTitle] = useState('');
+  const [statusName, setStatusName] = useState('');
+  const [primaryCustomerContact, setPrimaryCustomerContact] = useState('');
+  const [customerInvoiceContact, setCustomerInvoiceContact] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [billingAttentionTo, setBillingAttentionTo] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingAttentionTo, setShippingAttentionTo] = useState('');
+  const [installAddress, setInstallAddress] = useState('');
+  const [shippingMethod, setShippingMethod] = useState('');
+  const [shippingTracking, setShippingTracking] = useState('');
+  const [salesOrderDate, setSalesOrderDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [installDate, setInstallDate] = useState('');
+  const [shippingDate, setShippingDate] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('');
+  const [downPaymentType, setDownPaymentType] = useState('DOLLARS');
+  const [downPaymentValue, setDownPaymentValue] = useState('');
+  const [salesRepId, setSalesRepId] = useState('');
+  const [projectManagerId, setProjectManagerId] = useState('');
+  const [designerId, setDesignerId] = useState('');
+
   async function load(orderId: string) {
-    const [soRes, pRes] = await Promise.all([fetch(`/api/sales-orders/${orderId}`), fetch('/api/admin/products')]);
-    if (soRes.ok) setOrder(await soRes.json());
+    const [soRes, pRes, usersRes, statusesRes] = await Promise.all([
+      fetch(`/api/sales-orders/${orderId}`),
+      fetch('/api/admin/products'),
+      fetch('/api/users'),
+      fetch('/api/admin/sales-order-statuses'),
+    ]);
+    if (soRes.ok) {
+      const so = await soRes.json();
+      setOrder(so);
+      setTitle(so.title || '');
+      setStatusName(so.status?.name || '');
+      setPrimaryCustomerContact(so.primaryCustomerContact || '');
+      setCustomerInvoiceContact(so.customerInvoiceContact || '');
+      setBillingAddress(so.billingAddress || '');
+      setBillingAttentionTo(so.billingAttentionTo || '');
+      setShippingAddress(so.shippingAddress || '');
+      setShippingAttentionTo(so.shippingAttentionTo || '');
+      setInstallAddress(so.installAddress || '');
+      setShippingMethod(so.shippingMethod || '');
+      setShippingTracking(so.shippingTracking || '');
+      setSalesOrderDate(so.salesOrderDate ? String(so.salesOrderDate).slice(0, 10) : '');
+      setDueDate(so.dueDate ? String(so.dueDate).slice(0, 10) : '');
+      setInstallDate(so.installDate ? String(so.installDate).slice(0, 10) : '');
+      setShippingDate(so.shippingDate ? String(so.shippingDate).slice(0, 10) : '');
+      setPaymentTerms(so.paymentTerms || '');
+      setDownPaymentType(so.downPaymentType || 'DOLLARS');
+      setDownPaymentValue(so.downPaymentValue ? String(so.downPaymentValue) : '');
+      setSalesRepId(so.salesRepId || '');
+      setProjectManagerId(so.projectManagerId || '');
+      setDesignerId(so.designerId || '');
+    }
     if (pRes.ok) setProducts(await pRes.json());
+    if (usersRes.ok) setUsers(await usersRes.json());
+    if (statusesRes.ok) setStatuses(await statusesRes.json());
+  }
+
+  async function saveHeader(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingHeader(true);
+    await fetch(`/api/sales-orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        statusName,
+        primaryCustomerContact,
+        customerInvoiceContact,
+        billingAddress,
+        billingAttentionTo,
+        shippingAddress,
+        shippingAttentionTo,
+        installAddress,
+        shippingMethod,
+        shippingTracking,
+        salesOrderDate: salesOrderDate || null,
+        dueDate: dueDate || null,
+        installDate: installDate || null,
+        shippingDate: shippingDate || null,
+        paymentTerms,
+        downPaymentType,
+        downPaymentValue,
+        salesRepId: salesRepId || null,
+        projectManagerId: projectManagerId || null,
+        designerId: designerId || null,
+      }),
+    });
+    await load(id);
+    setSavingHeader(false);
   }
 
   async function addLine(e: React.FormEvent) {
@@ -147,28 +242,49 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       <p className="text-sm text-zinc-400">{order.opportunity.name} • {order.opportunity.customer.name}</p>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
-        <p><span className="text-zinc-400">Title:</span> {order.title || '—'}</p>
-        <p><span className="text-zinc-400">Status:</span> {order.status?.name || '—'}</p>
-        <p><span className="text-zinc-400">Primary Customer Contact:</span> {order.primaryCustomerContact || '—'}</p>
-        <p><span className="text-zinc-400">Customer Invoice Contact:</span> {order.customerInvoiceContact || '—'}</p>
-        <p><span className="text-zinc-400">Sales Order Date:</span> {order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Due Date:</span> {order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Install Date:</span> {order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Shipping Date:</span> {order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Shipping Method:</span> {order.shippingMethod || '—'}</p>
-        <p><span className="text-zinc-400">Shipping Tracking:</span> {order.shippingTracking || '—'}</p>
-        <p><span className="text-zinc-400">Payment Terms:</span> {order.paymentTerms || '—'}</p>
-        <p><span className="text-zinc-400">Down Payment:</span> {order.downPaymentValue ? `${order.downPaymentValue} ${order.downPaymentType === 'PERCENT' ? '%' : '$'}` : '—'}</p>
-        <p><span className="text-zinc-400">Sales Rep:</span> {order.salesRep?.name || '—'}</p>
-        <p><span className="text-zinc-400">Project Manager:</span> {order.projectManager?.name || '—'}</p>
-        <p><span className="text-zinc-400">Designer:</span> {order.designer?.name || '—'}</p>
-        <p><span className="text-zinc-400">Billing Attention To:</span> {order.billingAttentionTo || '—'}</p>
-        <p><span className="text-zinc-400">Shipping Attention To:</span> {order.shippingAttentionTo || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {order.billingAddress || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {order.shippingAddress || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {order.installAddress || '—'}</p>
-      </div>
+      <form onSubmit={saveHeader} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Status</option>
+          {statuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+        </select>
+        <input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} placeholder="Primary Customer Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} placeholder="Customer Invoice Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} placeholder="Shipping Method" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} placeholder="Shipping Tracking" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <div className="grid grid-cols-2 gap-2">
+          <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+            <option value="DOLLARS">Down Payment ($)</option>
+            <option value="PERCENT">Down Payment (%)</option>
+          </select>
+          <input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" step="0.01" min="0" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        </div>
+        <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Sales Rep</option>
+          {users.filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Project Manager</option>
+          {users.filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Designer</option>
+          {users.filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} placeholder="Billing Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} placeholder="Shipping Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Billing Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} placeholder="Install Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <div className="md:col-span-2">
+          <button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button>
+        </div>
+      </form>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
         <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
