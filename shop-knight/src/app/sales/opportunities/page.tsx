@@ -23,11 +23,18 @@ type User = {
   type: string;
 };
 
+type Customer = {
+  id: string;
+  name: string;
+};
+
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [name, setName] = useState('');
-  const [customer, setCustomer] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [newCustomerName, setNewCustomerName] = useState('');
   const [source, setSource] = useState('Referral');
   const [priority, setPriority] = useState('Medium');
   const [estimatedValue, setEstimatedValue] = useState('0');
@@ -38,9 +45,16 @@ export default function OpportunitiesPage() {
   const [projectManagerId, setProjectManagerId] = useState('');
 
   async function load() {
-    const [oppsRes, usersRes] = await Promise.all([fetch('/api/opportunities'), fetch('/api/users')]);
+    const [oppsRes, usersRes, customersRes] = await Promise.all([
+      fetch('/api/opportunities'),
+      fetch('/api/users'),
+      fetch('/api/customers'),
+    ]);
     setItems(await oppsRes.json());
     setUsers(await usersRes.json());
+    const customerItems = await customersRes.json();
+    setCustomers(customerItems);
+    if (customerItems.length > 0 && !customerId) setCustomerId(customerItems[0].id);
   }
 
   async function createOpportunity(e: React.FormEvent) {
@@ -50,7 +64,8 @@ export default function OpportunitiesPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
-        customer,
+        customerId: customerId === '__new__' ? null : customerId,
+        customer: customerId === '__new__' ? newCustomerName : null,
         source,
         priority,
         estimatedValue,
@@ -62,7 +77,7 @@ export default function OpportunitiesPage() {
       }),
     });
     setName('');
-    setCustomer('');
+    setNewCustomerName('');
     setEstimatedValue('0');
     setProbability('0.50');
     setExpectedCloseDate('');
@@ -85,7 +100,16 @@ export default function OpportunitiesPage() {
 
       <form onSubmit={createOpportunity} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Opportunity name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Customer" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+        <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
+          <option value="">Select customer</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+          <option value="__new__">+ Quick create new customer</option>
+        </select>
+        {customerId === '__new__' ? (
+          <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="New customer name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+        ) : null}
         <select value={source} onChange={(e) => setSource(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
           <option>Referral</option>
           <option>Website</option>

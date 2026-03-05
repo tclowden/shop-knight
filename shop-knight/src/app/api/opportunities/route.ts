@@ -51,14 +51,22 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
-  if (!body?.name || !body?.customer) {
-    return NextResponse.json({ error: 'name and customer required' }, { status: 400 });
+  if (!body?.name || (!body?.customerId && !body?.customer)) {
+    return NextResponse.json({ error: 'name and customer/customerId required' }, { status: 400 });
   }
 
-  const customerName = String(body.customer).trim();
-  const customer =
-    (await prisma.customer.findFirst({ where: { name: customerName } })) ||
-    (await prisma.customer.create({ data: { name: customerName } }));
+  let customer;
+  if (body?.customerId) {
+    customer = await prisma.customer.findUnique({ where: { id: String(body.customerId) } });
+    if (!customer) {
+      return NextResponse.json({ error: 'customer not found' }, { status: 404 });
+    }
+  } else {
+    const customerName = String(body.customer).trim();
+    customer =
+      (await prisma.customer.findFirst({ where: { name: customerName } })) ||
+      (await prisma.customer.create({ data: { name: customerName } }));
+  }
 
   const opportunity = await prisma.opportunity.create({
     data: {
