@@ -11,6 +11,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     where: { id },
     include: {
       opportunity: { include: { customer: true } },
+      status: true,
+      salesRep: true,
+      projectManager: true,
+      designer: true,
       lines: { include: { product: true }, orderBy: { id: 'asc' } },
     },
   });

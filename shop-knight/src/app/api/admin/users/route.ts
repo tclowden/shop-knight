@@ -4,7 +4,7 @@ import { UserType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
-const ALLOWED_TYPES: UserType[] = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const ALLOWED_TYPES: UserType[] = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 export async function GET() {
   const auth = await requireRoles(['ADMIN']);

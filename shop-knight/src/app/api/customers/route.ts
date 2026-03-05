@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       name,
       email: body?.email ? String(body.email) : null,
       phone: body?.phone ? String(body.phone) : null,
+      paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : null,
     },
   });
   return NextResponse.json(customer, { status: 201 });

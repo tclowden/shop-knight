@@ -6,7 +6,33 @@ import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
-type SalesOrder = { id: string; orderNumber: string; opportunity: { name: string; customer: { name: string } }; lines: Line[] };
+type SalesOrder = {
+  id: string;
+  orderNumber: string;
+  title?: string | null;
+  status?: { name: string } | null;
+  primaryCustomerContact?: string | null;
+  customerInvoiceContact?: string | null;
+  billingAddress?: string | null;
+  billingAttentionTo?: string | null;
+  shippingAddress?: string | null;
+  shippingAttentionTo?: string | null;
+  installAddress?: string | null;
+  shippingMethod?: string | null;
+  shippingTracking?: string | null;
+  salesOrderDate?: string | null;
+  dueDate?: string | null;
+  installDate?: string | null;
+  shippingDate?: string | null;
+  paymentTerms?: string | null;
+  downPaymentType?: string | null;
+  downPaymentValue?: string | number | null;
+  salesRep?: { name: string } | null;
+  projectManager?: { name: string } | null;
+  designer?: { name: string } | null;
+  opportunity: { name: string; customer: { name: string } };
+  lines: Line[];
+};
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
@@ -120,6 +146,29 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       <h1 className="text-2xl font-semibold">Sales Order {order.orderNumber}</h1>
       <p className="text-sm text-zinc-400">{order.opportunity.name} • {order.opportunity.customer.name}</p>
       <Nav />
+
+      <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
+        <p><span className="text-zinc-400">Title:</span> {order.title || '—'}</p>
+        <p><span className="text-zinc-400">Status:</span> {order.status?.name || '—'}</p>
+        <p><span className="text-zinc-400">Primary Customer Contact:</span> {order.primaryCustomerContact || '—'}</p>
+        <p><span className="text-zinc-400">Customer Invoice Contact:</span> {order.customerInvoiceContact || '—'}</p>
+        <p><span className="text-zinc-400">Sales Order Date:</span> {order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Due Date:</span> {order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Install Date:</span> {order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Shipping Date:</span> {order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Shipping Method:</span> {order.shippingMethod || '—'}</p>
+        <p><span className="text-zinc-400">Shipping Tracking:</span> {order.shippingTracking || '—'}</p>
+        <p><span className="text-zinc-400">Payment Terms:</span> {order.paymentTerms || '—'}</p>
+        <p><span className="text-zinc-400">Down Payment:</span> {order.downPaymentValue ? `${order.downPaymentValue} ${order.downPaymentType === 'PERCENT' ? '%' : '$'}` : '—'}</p>
+        <p><span className="text-zinc-400">Sales Rep:</span> {order.salesRep?.name || '—'}</p>
+        <p><span className="text-zinc-400">Project Manager:</span> {order.projectManager?.name || '—'}</p>
+        <p><span className="text-zinc-400">Designer:</span> {order.designer?.name || '—'}</p>
+        <p><span className="text-zinc-400">Billing Attention To:</span> {order.billingAttentionTo || '—'}</p>
+        <p><span className="text-zinc-400">Shipping Attention To:</span> {order.shippingAttentionTo || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {order.billingAddress || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {order.shippingAddress || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {order.installAddress || '—'}</p>
+      </div>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
         <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>

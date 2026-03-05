@@ -11,6 +11,7 @@ enum UserType {
   SALES
   SALES_REP
   PROJECT_MANAGER
+  DESIGNER
   OPERATIONS
   PURCHASING
   FINANCE
@@ -74,6 +75,9 @@ model User {
   projectManagerOpportunities    Opportunity[]      @relation("OpportunityProjectManager")
   salesRepQuotes                 Quote[]            @relation("QuoteSalesRep")
   projectManagerQuotes           Quote[]            @relation("QuoteProjectManager")
+  salesRepSalesOrders            SalesOrder[]       @relation("SalesOrderSalesRep")
+  projectManagerSalesOrders      SalesOrder[]       @relation("SalesOrderProjectManager")
+  designerSalesOrders            SalesOrder[]       @relation("SalesOrderDesigner")
 }
 
 model Customer {
@@ -81,6 +85,7 @@ model Customer {
   name          String
   email         String?
   phone         String?
+  paymentTerms  String?
   opportunities Opportunity[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -252,16 +257,51 @@ model ProductAttribute {
 }
 
 model SalesOrder {
-  id            String           @id @default(cuid())
-  orderNumber   String           @unique
-  opportunityId String
-  sourceQuoteId String?
-  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id])
-  sourceQuote   Quote?           @relation(fields: [sourceQuoteId], references: [id])
-  lines         SalesOrderLine[]
-  tasks         Task[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                       String            @id @default(cuid())
+  orderNumber              String            @unique
+  opportunityId            String
+  sourceQuoteId            String?
+  title                    String?
+  statusId                 String?
+  primaryCustomerContact   String?
+  customerInvoiceContact   String?
+  billingAddress           String?
+  billingAttentionTo       String?
+  shippingAddress          String?
+  shippingAttentionTo      String?
+  installAddress           String?
+  shippingMethod           String?
+  shippingTracking         String?
+  salesOrderDate           DateTime?
+  dueDate                  DateTime?
+  installDate              DateTime?
+  shippingDate             DateTime?
+  paymentTerms             String?
+  downPaymentType          String?
+  downPaymentValue         Decimal?          @db.Decimal(12, 2)
+  salesRepId               String?
+  projectManagerId         String?
+  designerId               String?
+  opportunity              Opportunity        @relation(fields: [opportunityId], references: [id])
+  sourceQuote              Quote?             @relation(fields: [sourceQuoteId], references: [id])
+  status                   SalesOrderStatus?  @relation(fields: [statusId], references: [id])
+  salesRep                 User?              @relation("SalesOrderSalesRep", fields: [salesRepId], references: [id])
+  projectManager           User?              @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
+  designer                 User?              @relation("SalesOrderDesigner", fields: [designerId], references: [id])
+  lines                    SalesOrderLine[]
+  tasks                    Task[]
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+}
+
+model SalesOrderStatus {
+  id         String       @id @default(cuid())
+  name       String       @unique
+  sortOrder  Int          @default(0)
+  active     Boolean      @default(true)
+  salesOrders SalesOrder[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 }
 
 model SalesOrderLine {

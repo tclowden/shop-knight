@@ -7,6 +7,8 @@ import { Nav } from '@/components/nav';
 type SalesOrder = {
   id: string;
   orderNumber: string;
+  title?: string | null;
+  status?: string | null;
   opportunity: string;
   customer: string;
   sourceQuoteId: string | null;
@@ -43,6 +45,8 @@ export default function SalesOrdersPage() {
           <thead className="bg-zinc-900 text-zinc-300">
             <tr>
               <th className="p-3">Order #</th>
+              <th className="p-3">Title</th>
+              <th className="p-3">Status</th>
               <th className="p-3">Opportunity</th>
               <th className="p-3">Customer</th>
               <th className="p-3">Source Quote ID</th>
@@ -53,6 +57,8 @@ export default function SalesOrdersPage() {
             {items.map((so) => (
               <tr key={so.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
                 <td className="p-3"><Link href={`/sales/orders/${so.id}`} className="text-blue-400">{so.orderNumber}</Link></td>
+                <td className="p-3">{so.title || '—'}</td>
+                <td className="p-3">{so.status || '—'}</td>
                 <td className="p-3">{so.opportunity}</td>
                 <td className="p-3">{so.customer}</td>
                 <td className="p-3">{so.sourceQuoteId || '—'}</td>
@@ -61,7 +67,7 @@ export default function SalesOrdersPage() {
             ))}
             {items.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={5}>No sales orders yet.</td>
+                <td className="p-3 text-zinc-400" colSpan={7}>No sales orders yet.</td>
               </tr>
             ) : null}
           </tbody>
