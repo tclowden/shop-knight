@@ -21,6 +21,17 @@ type Quote = {
   id: string;
   quoteNumber: string;
   opportunity: { name: string; customer: { name: string } };
+  customerContactRole?: string | null;
+  billingAddress?: string | null;
+  billingAttentionTo?: string | null;
+  shippingAddress?: string | null;
+  shippingAttentionTo?: string | null;
+  installAddress?: string | null;
+  quoteDate?: string | null;
+  dueDate?: string | null;
+  expiryDate?: string | null;
+  salesRep?: { name: string } | null;
+  projectManager?: { name: string } | null;
   lines: Line[];
 };
 
@@ -157,6 +168,20 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <h1 className="text-2xl font-semibold">Quote {quote.quoteNumber}</h1>
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
       <Nav />
+
+      <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
+        <p><span className="text-zinc-400">Customer Contact Role:</span> {quote.customerContactRole || '—'}</p>
+        <p><span className="text-zinc-400">Sales Rep:</span> {quote.salesRep?.name || '—'}</p>
+        <p><span className="text-zinc-400">Project Manager:</span> {quote.projectManager?.name || '—'}</p>
+        <p><span className="text-zinc-400">Quote Date:</span> {quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Due Date:</span> {quote.dueDate ? new Date(quote.dueDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Expiration Date:</span> {quote.expiryDate ? new Date(quote.expiryDate).toLocaleDateString() : '—'}</p>
+        <p><span className="text-zinc-400">Billing Attention To:</span> {quote.billingAttentionTo || '—'}</p>
+        <p><span className="text-zinc-400">Shipping Attention To:</span> {quote.shippingAttentionTo || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {quote.billingAddress || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {quote.shippingAddress || '—'}</p>
+        <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {quote.installAddress || '—'}</p>
+      </div>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-6">
         <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>

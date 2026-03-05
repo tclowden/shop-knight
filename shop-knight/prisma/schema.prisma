@@ -72,6 +72,8 @@ model User {
   templateSteps                  TaskTemplateStep[] @relation("TemplateSpecificAssignee")
   salesRepOpportunities          Opportunity[]      @relation("OpportunitySalesRep")
   projectManagerOpportunities    Opportunity[]      @relation("OpportunityProjectManager")
+  salesRepQuotes                 Quote[]            @relation("QuoteSalesRep")
+  projectManagerQuotes           Quote[]            @relation("QuoteProjectManager")
 }
 
 model Customer {
@@ -132,7 +134,16 @@ model Quote {
   title                         String?
   description                   String?
   txnDate                       DateTime?
+  quoteDate                     DateTime?
   txnNumber                     String?
+  customerContactRole           String?
+  billingAddress                String?
+  billingAttentionTo            String?
+  shippingAddress               String?
+  shippingAttentionTo           String?
+  installAddress                String?
+  salesRepId                    String?
+  projectManagerId              String?
   totalPriceInDollars           Decimal?    @db.Decimal(12, 2)
   totalTaxInDollars             Decimal?    @db.Decimal(12, 2)
   totalPriceWithTaxInDollars    Decimal?    @db.Decimal(12, 2)
@@ -161,6 +172,8 @@ model Quote {
   primarySalesRepName           String?
   companyName                   String?
   opportunity                   Opportunity @relation(fields: [opportunityId], references: [id])
+  salesRep                      User?       @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
+  projectManager                User?       @relation("QuoteProjectManager", fields: [projectManagerId], references: [id])
   lines                         QuoteLine[]
   salesOrders                   SalesOrder[]
   tasks                         Task[]

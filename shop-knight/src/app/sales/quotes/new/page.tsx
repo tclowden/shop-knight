@@ -6,6 +6,7 @@ import { Nav } from '@/components/nav';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = { id: string; name: string; customer: string };
+type User = { id: string; name: string; type: string };
 
 type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
@@ -24,13 +25,24 @@ export default function NewQuotePage() {
   const router = useRouter();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   const [opportunityId, setOpportunityId] = useState('');
   const [txnNumber, setTxnNumber] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [txnDate, setTxnDate] = useState('');
+  const [quoteDate, setQuoteDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [customerContactRole, setCustomerContactRole] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [billingAttentionTo, setBillingAttentionTo] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingAttentionTo, setShippingAttentionTo] = useState('');
+  const [installAddress, setInstallAddress] = useState('');
+  const [salesRepId, setSalesRepId] = useState('');
+  const [projectManagerId, setProjectManagerId] = useState('');
   const [customerPoNumber, setCustomerPoNumber] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: '', name: '', description: '', quantity: '1', priceInDollars: '0.00', taxRate: '0.075', attributeValues: {} },
@@ -38,14 +50,17 @@ export default function NewQuotePage() {
   const [error, setError] = useState('');
 
   async function load() {
-    const [oppRes, productRes] = await Promise.all([
+    const [oppRes, productRes, usersRes] = await Promise.all([
       fetch('/api/opportunities'),
       fetch('/api/admin/products'),
+      fetch('/api/users'),
     ]);
     const oppData = await oppRes.json();
     const productData = await productRes.json();
+    const usersData = await usersRes.json();
     setOpportunities(oppData);
     setProducts(productData);
+    setUsers(usersData);
     if (oppData.length > 0) setOpportunityId(oppData[0].id);
   }
 
@@ -107,7 +122,17 @@ export default function NewQuotePage() {
       title,
       description,
       txnDate: txnDate || null,
+      quoteDate: quoteDate || null,
+      dueDate: dueDate || null,
       txnNumber,
+      customerContactRole: customerContactRole || null,
+      billingAddress: billingAddress || null,
+      billingAttentionTo: billingAttentionTo || null,
+      shippingAddress: shippingAddress || null,
+      shippingAttentionTo: shippingAttentionTo || null,
+      installAddress: installAddress || null,
+      salesRepId: salesRepId || null,
+      projectManagerId: projectManagerId || null,
       totalPriceInDollars: subtotal.toFixed(2),
       totalTaxInDollars: tax.toFixed(2),
       totalPriceWithTaxInDollars: (subtotal + tax).toFixed(2),
@@ -164,16 +189,66 @@ export default function NewQuotePage() {
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="My quote" />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-zinc-300">Customer PO Number</span>
-            <input value={customerPoNumber} onChange={(e) => setCustomerPoNumber(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="12345" />
+            <span className="mb-1 block text-zinc-300">Customer Contact Role</span>
+            <input value={customerContactRole} onChange={(e) => setCustomerContactRole(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="Owner, Buyer, etc." />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Billing Attention To</span>
+            <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Shipping Attention To</span>
+            <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Quote Date</span>
+            <input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Due Date</span>
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Expiration Date</span>
+            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-zinc-300">Txn Date</span>
             <input type="date" value={txnDate} onChange={(e) => setTxnDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-zinc-300">Expiry Date</span>
-            <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <span className="mb-1 block text-zinc-300">Sales Rep</span>
+            <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Unassigned</option>
+              {users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Project Manager</span>
+            <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Unassigned</option>
+              {users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm md:col-span-2">
+            <span className="mb-1 block text-zinc-300">Billing Address</span>
+            <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
+          </label>
+          <label className="text-sm md:col-span-2">
+            <span className="mb-1 block text-zinc-300">Shipping Address</span>
+            <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
+          </label>
+          <label className="text-sm md:col-span-2">
+            <span className="mb-1 block text-zinc-300">Install Address</span>
+            <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={2} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-zinc-300">Customer PO Number</span>
+            <input value={customerPoNumber} onChange={(e) => setCustomerPoNumber(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="12345" />
           </label>
         </div>
 
