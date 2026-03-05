@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { requirePermissions } from '@/lib/api-auth';
 
 export async function GET() {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
+  const auth = await requirePermissions(['tasks.templates.view']);
   if (!auth.ok) return auth.response;
 
   const templates = await prisma.taskTemplate.findMany({
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN']);
+  const auth = await requirePermissions(['tasks.templates.view']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

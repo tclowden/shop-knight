@@ -65,13 +65,12 @@ model User {
   name         String
   passwordHash String
   type         UserType
-  customRoleId String?
   active       Boolean      @default(true)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   tasks                          Task[]
   notes                          Note[]
-  customRole                     CustomRole?        @relation(fields: [customRoleId], references: [id])
+  customRoles                    UserCustomRole[]
   templateSteps                  TaskTemplateStep[] @relation("TemplateSpecificAssignee")
   salesRepOpportunities          Opportunity[]      @relation("OpportunitySalesRep")
   projectManagerOpportunities    Opportunity[]      @relation("OpportunityProjectManager")
@@ -86,9 +85,20 @@ model CustomRole {
   id        String   @id @default(cuid())
   name      String   @unique
   active    Boolean  @default(true)
-  users     User[]
+  permissions Json?
+  userAssignments UserCustomRole[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+
+model UserCustomRole {
+  userId String
+  roleId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
 }
 
 model Customer {

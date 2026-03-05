@@ -10,8 +10,7 @@ type User = {
   email: string;
   type: string;
   active: boolean;
-  customRoleId?: string | null;
-  customRole?: { name: string } | null;
+  customRoles?: Array<{ roleId: string; role: { id: string; name: string } }>;
 };
 
 type CustomRole = { id: string; name: string; active: boolean };
@@ -25,7 +24,7 @@ export default function UsersAdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [type, setType] = useState('SALES');
-  const [customRoleId, setCustomRoleId] = useState('');
+  const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
   const [error, setError] = useState('');
 
   async function load() {
@@ -37,6 +36,10 @@ export default function UsersAdminPage() {
     if (rolesRes.ok) setRoles(await rolesRes.json());
   }
 
+  function toggleRole(roleId: string) {
+    setCustomRoleIds((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
+  }
+
   async function createUser(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -44,7 +47,7 @@ export default function UsersAdminPage() {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, type, customRoleId: customRoleId || null }),
+      body: JSON.stringify({ name, email, password, type, customRoleIds }),
     });
 
     if (!res.ok) {
@@ -57,7 +60,7 @@ export default function UsersAdminPage() {
     setEmail('');
     setPassword('');
     setType('SALES');
-    setCustomRoleId('');
+    setCustomRoleIds([]);
     await load();
   }
 
@@ -69,23 +72,30 @@ export default function UsersAdminPage() {
   return (
     <main className="mx-auto max-w-5xl p-8">
       <h1 className="text-2xl font-semibold">User Admin</h1>
-      <p className="text-sm text-zinc-400">Manage users, user types, and status.</p>
+      <p className="text-sm text-zinc-400">Assign base type plus multiple custom roles for page access.</p>
       <Nav />
 
-      <form onSubmit={createUser} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-6">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          {userTypes.map((t) => (
-            <option key={t} value={t}>{t}</option>
+      <form onSubmit={createUser} className="mb-4 rounded border border-zinc-800 p-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
+          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+            {userTypes.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <button className="rounded bg-blue-600 px-3 py-2">Create User</button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+          {roles.filter((r) => r.active).map((r) => (
+            <label key={r.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <input type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
+              {r.name}
+            </label>
           ))}
-        </select>
-        <select value={customRoleId} onChange={(e) => setCustomRoleId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="">Custom Role (optional)</option>
-          {roles.filter((r) => r.active).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
-        <button className="rounded bg-blue-600 px-3 py-2">Create User</button>
+        </div>
       </form>
 
       {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
@@ -97,7 +107,7 @@ export default function UsersAdminPage() {
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Type</th>
-              <th className="p-3">Custom Role</th>
+              <th className="p-3">Custom Roles</th>
               <th className="p-3">Status</th>
             </tr>
           </thead>
@@ -107,7 +117,7 @@ export default function UsersAdminPage() {
                 <td className="p-3"><Link href={`/admin/users/${u.id}`} className="text-blue-400">{u.name}</Link></td>
                 <td className="p-3">{u.email}</td>
                 <td className="p-3">{u.type}</td>
-                <td className="p-3">{u.customRole?.name || '—'}</td>
+                <td className="p-3">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
                 <td className="p-3">{u.active ? 'Active' : 'Disabled'}</td>
               </tr>
             ))}

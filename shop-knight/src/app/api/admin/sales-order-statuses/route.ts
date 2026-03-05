@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { requirePermissions } from '@/lib/api-auth';
 
 const DEFAULTS = ['New', 'In Progress', 'Complete'];
 
@@ -16,7 +16,7 @@ async function ensureDefaults() {
 }
 
 export async function GET() {
-  const auth = await requireRoles(['ADMIN']);
+  const auth = await requirePermissions(['admin.salesOrderStatuses.manage']);
   if (!auth.ok) return auth.response;
 
   await ensureDefaults();
@@ -25,7 +25,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN']);
+  const auth = await requirePermissions(['admin.salesOrderStatuses.manage']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { requirePermissions } from '@/lib/api-auth';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN']);
+  const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
   const { id } = await params;

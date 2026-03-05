@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { requirePermissions } from '@/lib/api-auth';
 
 function toNumber(value: unknown) {
   const n = Number(value);
@@ -8,7 +8,7 @@ function toNumber(value: unknown) {
 }
 
 export async function GET() {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS']);
+  const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
   const products = await prisma.product.findMany({
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN']);
+  const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
