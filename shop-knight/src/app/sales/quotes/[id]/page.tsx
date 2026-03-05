@@ -310,17 +310,33 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-          <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
-          <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <label className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /> Taxable</label>
-          <button className="rounded bg-blue-600 px-3 py-2">+ Add Line</button>
+          <label className="text-xs text-zinc-300">Product
+            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+          </label>
+          <label className="text-xs text-zinc-300">Description
+            <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          </label>
+          <label className="text-xs text-zinc-300">Quantity
+            <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          </label>
+          <label className="text-xs text-zinc-300">Unit Price
+            <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          </label>
+          <label className="text-xs text-zinc-300">Taxable
+            <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span>
+          </label>
+          <div className="flex items-end"><button className="w-full rounded bg-blue-600 px-3 py-2">+ Add Line</button></div>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="Unit Cost" />
-          <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" placeholder="GPM %" />
-          <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" placeholder="Extended Price" />
+          <label className="text-xs text-zinc-300">Unit Cost
+            <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">GPM %
+            <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">Extended Price
+            <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
+          </label>
         </div>
       </form>
 
