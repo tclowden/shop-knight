@@ -10,22 +10,31 @@ type User = {
   email: string;
   type: string;
   active: boolean;
+  customRoleId?: string | null;
+  customRole?: { name: string } | null;
 };
+
+type CustomRole = { id: string; name: string; active: boolean };
 
 const userTypes = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 export default function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<CustomRole[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [type, setType] = useState('SALES');
+  const [customRoleId, setCustomRoleId] = useState('');
   const [error, setError] = useState('');
 
   async function load() {
-    const res = await fetch('/api/admin/users');
-    if (!res.ok) return;
-    setUsers(await res.json());
+    const [usersRes, rolesRes] = await Promise.all([
+      fetch('/api/admin/users'),
+      fetch('/api/admin/custom-roles'),
+    ]);
+    if (usersRes.ok) setUsers(await usersRes.json());
+    if (rolesRes.ok) setRoles(await rolesRes.json());
   }
 
   async function createUser(e: FormEvent) {
@@ -35,7 +44,7 @@ export default function UsersAdminPage() {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, type }),
+      body: JSON.stringify({ name, email, password, type, customRoleId: customRoleId || null }),
     });
 
     if (!res.ok) {
@@ -48,6 +57,7 @@ export default function UsersAdminPage() {
     setEmail('');
     setPassword('');
     setType('SALES');
+    setCustomRoleId('');
     await load();
   }
 
@@ -62,7 +72,7 @@ export default function UsersAdminPage() {
       <p className="text-sm text-zinc-400">Manage users, user types, and status.</p>
       <Nav />
 
-      <form onSubmit={createUser} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
+      <form onSubmit={createUser} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-6">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
         <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
@@ -70,6 +80,10 @@ export default function UsersAdminPage() {
           {userTypes.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
+        </select>
+        <select value={customRoleId} onChange={(e) => setCustomRoleId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Custom Role (optional)</option>
+          {roles.filter((r) => r.active).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
         <button className="rounded bg-blue-600 px-3 py-2">Create User</button>
       </form>
@@ -83,6 +97,7 @@ export default function UsersAdminPage() {
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Type</th>
+              <th className="p-3">Custom Role</th>
               <th className="p-3">Status</th>
             </tr>
           </thead>
@@ -92,12 +107,13 @@ export default function UsersAdminPage() {
                 <td className="p-3"><Link href={`/admin/users/${u.id}`} className="text-blue-400">{u.name}</Link></td>
                 <td className="p-3">{u.email}</td>
                 <td className="p-3">{u.type}</td>
+                <td className="p-3">{u.customRole?.name || '—'}</td>
                 <td className="p-3">{u.active ? 'Active' : 'Disabled'}</td>
               </tr>
             ))}
             {users.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={4}>No users found.</td>
+                <td className="p-3 text-zinc-400" colSpan={5}>No users found.</td>
               </tr>
             ) : null}
           </tbody>

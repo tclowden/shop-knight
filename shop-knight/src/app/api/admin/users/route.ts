@@ -12,7 +12,16 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
-    select: { id: true, name: true, email: true, type: true, active: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      type: true,
+      active: true,
+      createdAt: true,
+      customRoleId: true,
+      customRole: { select: { name: true } },
+    },
   });
 
   return NextResponse.json(users);
@@ -27,6 +36,7 @@ export async function POST(req: Request) {
   const email = String(body?.email || '').trim().toLowerCase();
   const password = String(body?.password || '');
   const type = String(body?.type || 'SALES') as UserType;
+  const customRoleId = body?.customRoleId ? String(body.customRoleId) : null;
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: 'name, email, and password are required' }, { status: 400 });
@@ -45,9 +55,19 @@ export async function POST(req: Request) {
         email,
         passwordHash,
         type,
+        customRoleId,
         active: true,
       },
-      select: { id: true, name: true, email: true, type: true, active: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        active: true,
+        createdAt: true,
+        customRoleId: true,
+        customRole: { select: { name: true } },
+      },
     });
 
     return NextResponse.json(user, { status: 201 });
