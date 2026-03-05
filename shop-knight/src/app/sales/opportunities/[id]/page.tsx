@@ -153,13 +153,19 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           </div>
           <div className="space-y-2">
             {quotes.map((q) => (
-              <div key={q.id} className="rounded border border-zinc-700 p-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <Link href={`/sales/quotes/${q.id}`} className="text-blue-400 hover:underline">{q.quoteNumber}</Link>
-                  <div className="flex items-center gap-2">
-                    <span>{q.status}</span>
-                    <button onClick={() => convertQuote(q.id)} className="rounded border border-zinc-600 px-2 py-1 text-xs">Convert → SO</button>
-                  </div>
+              <div key={q.id} className="rounded border border-zinc-700 p-2 text-sm hover:bg-zinc-900/40">
+                <div className="flex items-center justify-between gap-3">
+                  <Link href={`/sales/quotes/${q.id}`} className="flex-1">{q.quoteNumber} • {q.status}</Link>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      convertQuote(q.id);
+                    }}
+                    className="rounded border border-zinc-600 px-2 py-1 text-xs"
+                  >
+                    Convert → SO
+                  </button>
                 </div>
               </div>
             ))}
@@ -171,9 +177,9 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           <h2 className="mb-3 font-medium">Sales Orders</h2>
           <div className="space-y-2">
             {salesOrders.map((so) => (
-              <div key={so.id} className="rounded border border-zinc-700 p-2 text-sm">
-                <Link href={`/sales/orders/${so.id}`} className="text-blue-400 hover:underline">{so.orderNumber}</Link> (from {so.sourceQuoteId})
-              </div>
+              <Link key={so.id} href={`/sales/orders/${so.id}`} className="block rounded border border-zinc-700 p-2 text-sm hover:bg-zinc-900/40">
+                {so.orderNumber} (from {so.sourceQuoteId})
+              </Link>
             ))}
             {salesOrders.length === 0 && <p className="text-sm text-zinc-400">No sales orders yet.</p>}
           </div>
