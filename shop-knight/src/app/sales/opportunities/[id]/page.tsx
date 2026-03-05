@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
@@ -69,10 +70,6 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
     }
   }
 
-  async function addQuote() {
-    await fetch(`/api/opportunities/${id}/quotes`, { method: 'POST' });
-    load(id);
-  }
 
   async function convertQuote(quoteId: string) {
     await fetch(`/api/quotes/${quoteId}/convert`, { method: 'POST' });
@@ -152,14 +149,17 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
         <article className="rounded border border-zinc-800 p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-medium">Quotes</h2>
-            <button onClick={addQuote} className="rounded bg-blue-600 px-3 py-1 text-sm">+ New Quote</button>
+            <Link href={`/sales/quotes/new?opportunityId=${id}`} className="rounded bg-blue-600 px-3 py-1 text-sm">+ New Quote</Link>
           </div>
           <div className="space-y-2">
             {quotes.map((q) => (
               <div key={q.id} className="rounded border border-zinc-700 p-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span>{q.quoteNumber} • {q.status}</span>
-                  <button onClick={() => convertQuote(q.id)} className="rounded border border-zinc-600 px-2 py-1 text-xs">Convert → SO</button>
+                  <Link href={`/sales/quotes/${q.id}`} className="text-blue-400 hover:underline">{q.quoteNumber}</Link>
+                  <div className="flex items-center gap-2">
+                    <span>{q.status}</span>
+                    <button onClick={() => convertQuote(q.id)} className="rounded border border-zinc-600 px-2 py-1 text-xs">Convert → SO</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -172,7 +172,7 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
           <div className="space-y-2">
             {salesOrders.map((so) => (
               <div key={so.id} className="rounded border border-zinc-700 p-2 text-sm">
-                {so.orderNumber} (from {so.sourceQuoteId})
+                <Link href={`/sales/orders/${so.id}`} className="text-blue-400 hover:underline">{so.orderNumber}</Link> (from {so.sourceQuoteId})
               </div>
             ))}
             {salesOrders.length === 0 && <p className="text-sm text-zinc-400">No sales orders yet.</p>}

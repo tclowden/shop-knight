@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
@@ -23,6 +23,7 @@ type LineItem = {
 
 export default function NewQuotePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -66,7 +67,11 @@ export default function NewQuotePage() {
     setOpportunities(oppData);
     setProducts(productData);
     setUsers(usersData);
-    if (oppData.length > 0) setOpportunityId(oppData[0].id);
+
+    const requestedOpportunityId = searchParams.get('opportunityId');
+    const exists = requestedOpportunityId ? oppData.some((o: Opportunity) => o.id === requestedOpportunityId) : false;
+    if (requestedOpportunityId && exists) setOpportunityId(requestedOpportunityId);
+    else if (oppData.length > 0) setOpportunityId(oppData[0].id);
   }
 
   function recalcLinePrice(line: LineItem) {
