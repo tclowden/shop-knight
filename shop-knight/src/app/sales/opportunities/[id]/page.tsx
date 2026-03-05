@@ -5,6 +5,23 @@ import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
+type Opportunity = {
+  id: string;
+  name: string;
+  stage: string;
+  customer: string;
+  source?: string | null;
+  priority?: string | null;
+  estimatedValue?: string | number | null;
+  probability?: string | number | null;
+  expectedCloseDate?: string | null;
+  dueDate?: string | null;
+  inHandDate?: string | null;
+  salesRepName?: string | null;
+  projectManagerName?: string | null;
+  description?: string | null;
+};
+
 type Quote = { id: string; quoteNumber: string; status: string };
 type SalesOrder = { id: string; orderNumber: string; sourceQuoteId: string };
 type SalesOrderLine = { id: string; description: string; qty: number; unitPrice: number; productId?: string | null };
@@ -21,6 +38,7 @@ type PoLine = {
 
 export default function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState<string>('');
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [lines, setLines] = useState<SalesOrderLine[]>([]);
@@ -43,10 +61,14 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
   const primaryLine = useMemo(() => lines[0], [lines]);
 
   async function load(opportunityId: string) {
-    const productsRes = await fetch('/api/admin/products');
-    setProducts(await productsRes.json());
+    const [oppRes, productsRes, qRes] = await Promise.all([
+      fetch(`/api/opportunities/${opportunityId}`),
+      fetch('/api/admin/products'),
+      fetch(`/api/opportunities/${opportunityId}/quotes`),
+    ]);
 
-    const qRes = await fetch(`/api/opportunities/${opportunityId}/quotes`);
+    if (oppRes.ok) setOpportunity(await oppRes.json());
+    setProducts(await productsRes.json());
     setQuotes(await qRes.json());
 
     const soRes = await fetch(`/api/sales-orders?opportunityId=${opportunityId}`);
@@ -141,9 +163,26 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">Opportunity {id}</h1>
+      <h1 className="text-2xl font-semibold">{opportunity?.name || `Opportunity ${id}`}</h1>
       <p className="text-sm text-zinc-400">Working flow: quotes → sales orders → sales order lines → linked PO lines.</p>
       <Nav />
+
+      {opportunity ? (
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
+          <p><span className="text-zinc-400">Customer:</span> {opportunity.customer}</p>
+          <p><span className="text-zinc-400">Stage:</span> {opportunity.stage}</p>
+          <p><span className="text-zinc-400">Source:</span> {opportunity.source || '—'}</p>
+          <p><span className="text-zinc-400">Priority:</span> {opportunity.priority || '—'}</p>
+          <p><span className="text-zinc-400">Estimated Value:</span> {opportunity.estimatedValue ?? '—'}</p>
+          <p><span className="text-zinc-400">Probability:</span> {opportunity.probability ?? '—'}</p>
+          <p><span className="text-zinc-400">Expected Close Date:</span> {opportunity.expectedCloseDate ? new Date(opportunity.expectedCloseDate).toLocaleDateString() : '—'}</p>
+          <p><span className="text-zinc-400">Due Date:</span> {opportunity.dueDate ? new Date(opportunity.dueDate).toLocaleDateString() : '—'}</p>
+          <p><span className="text-zinc-400">In-Hand Date:</span> {opportunity.inHandDate ? new Date(opportunity.inHandDate).toLocaleDateString() : '—'}</p>
+          <p><span className="text-zinc-400">Sales Rep:</span> {opportunity.salesRepName || '—'}</p>
+          <p><span className="text-zinc-400">Project Manager:</span> {opportunity.projectManagerName || '—'}</p>
+          <p className="md:col-span-2"><span className="text-zinc-400">Description:</span> {opportunity.description || '—'}</p>
+        </div>
+      ) : null}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <article className="rounded border border-zinc-800 p-4">
