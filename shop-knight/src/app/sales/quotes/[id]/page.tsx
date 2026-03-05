@@ -5,6 +5,7 @@ import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
+type User = { id: string; name: string; type: string };
 type Line = {
   id: string;
   description: string;
@@ -30,6 +31,8 @@ type Quote = {
   quoteDate?: string | null;
   dueDate?: string | null;
   expiryDate?: string | null;
+  salesRepId?: string | null;
+  projectManagerId?: string | null;
   salesRep?: { name: string } | null;
   projectManager?: { name: string } | null;
   lines: Line[];
@@ -39,7 +42,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [id, setId] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [filterText, setFilterText] = useState('');
+  const [savingHeader, setSavingHeader] = useState(false);
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -47,10 +52,61 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [newUnitPrice, setNewUnitPrice] = useState('0');
   const [newTaxRate, setNewTaxRate] = useState('0.075');
 
+  const [customerContactRole, setCustomerContactRole] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [billingAttentionTo, setBillingAttentionTo] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingAttentionTo, setShippingAttentionTo] = useState('');
+  const [installAddress, setInstallAddress] = useState('');
+  const [quoteDate, setQuoteDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [salesRepId, setSalesRepId] = useState('');
+  const [projectManagerId, setProjectManagerId] = useState('');
+
   async function load(quoteId: string) {
-    const [qRes, pRes] = await Promise.all([fetch(`/api/quotes/${quoteId}`), fetch('/api/admin/products')]);
-    if (qRes.ok) setQuote(await qRes.json());
+    const [qRes, pRes, usersRes] = await Promise.all([fetch(`/api/quotes/${quoteId}`), fetch('/api/admin/products'), fetch('/api/users')]);
+    if (qRes.ok) {
+      const q = await qRes.json();
+      setQuote(q);
+      setCustomerContactRole(q.customerContactRole || '');
+      setBillingAddress(q.billingAddress || '');
+      setBillingAttentionTo(q.billingAttentionTo || '');
+      setShippingAddress(q.shippingAddress || '');
+      setShippingAttentionTo(q.shippingAttentionTo || '');
+      setInstallAddress(q.installAddress || '');
+      setQuoteDate(q.quoteDate ? String(q.quoteDate).slice(0, 10) : '');
+      setDueDate(q.dueDate ? String(q.dueDate).slice(0, 10) : '');
+      setExpiryDate(q.expiryDate ? String(q.expiryDate).slice(0, 10) : '');
+      setSalesRepId(q.salesRepId || '');
+      setProjectManagerId(q.projectManagerId || '');
+    }
     if (pRes.ok) setProducts(await pRes.json());
+    if (usersRes.ok) setUsers(await usersRes.json());
+  }
+
+  async function saveHeader(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingHeader(true);
+    await fetch(`/api/quotes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerContactRole,
+        billingAddress,
+        billingAttentionTo,
+        shippingAddress,
+        shippingAttentionTo,
+        installAddress,
+        quoteDate: quoteDate || null,
+        dueDate: dueDate || null,
+        expiryDate: expiryDate || null,
+        salesRepId: salesRepId || null,
+        projectManagerId: projectManagerId || null,
+      }),
+    });
+    await load(id);
+    setSavingHeader(false);
   }
 
   async function addLine(e: React.FormEvent) {
@@ -169,19 +225,28 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
-        <p><span className="text-zinc-400">Customer Contact Role:</span> {quote.customerContactRole || '—'}</p>
-        <p><span className="text-zinc-400">Sales Rep:</span> {quote.salesRep?.name || '—'}</p>
-        <p><span className="text-zinc-400">Project Manager:</span> {quote.projectManager?.name || '—'}</p>
-        <p><span className="text-zinc-400">Quote Date:</span> {quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Due Date:</span> {quote.dueDate ? new Date(quote.dueDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Expiration Date:</span> {quote.expiryDate ? new Date(quote.expiryDate).toLocaleDateString() : '—'}</p>
-        <p><span className="text-zinc-400">Billing Attention To:</span> {quote.billingAttentionTo || '—'}</p>
-        <p><span className="text-zinc-400">Shipping Attention To:</span> {quote.shippingAttentionTo || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {quote.billingAddress || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {quote.shippingAddress || '—'}</p>
-        <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {quote.installAddress || '—'}</p>
-      </div>
+      <form onSubmit={saveHeader} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 text-sm md:grid-cols-2">
+        <input value={customerContactRole} onChange={(e) => setCustomerContactRole(e.target.value)} placeholder="Customer Contact Role" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Sales Rep</option>
+          {users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <option value="">Project Manager</option>
+          {users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        <input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} placeholder="Billing Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} placeholder="Shipping Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        <textarea value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Billing Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <textarea value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Shipping Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <textarea value={installAddress} onChange={(e) => setInstallAddress(e.target.value)} placeholder="Install Address" rows={2} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
+        <div className="md:col-span-2">
+          <button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button>
+        </div>
+      </form>
 
       <form onSubmit={addLine} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-6">
         <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
