@@ -30,7 +30,8 @@ export function AddressAutocomplete({ label, value, onChange, placeholder, class
           setOptions([]);
           return;
         }
-        setOptions(await res.json());
+        const raw = (await res.json()) as string[];
+        setOptions(Array.from(new Set(raw.map((x) => x.trim()).filter(Boolean))));
       } finally {
         setLoading(false);
       }
@@ -50,8 +51,8 @@ export function AddressAutocomplete({ label, value, onChange, placeholder, class
         className={className || 'w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900'}
       />
       <datalist id={listId}>
-        {options.map((opt) => (
-          <option key={opt} value={opt} />
+        {options.map((opt, idx) => (
+          <option key={`${opt}-${idx}`} value={opt} />
         ))}
       </datalist>
       {loading ? <span className="mt-1 block text-xs text-zinc-500">Looking up addresses…</span> : null}
