@@ -28,6 +28,8 @@ export default function UsersAdminPage() {
   const [type, setType] = useState('SALES');
   const [companyId, setCompanyId] = useState('');
   const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
+  const [rowTypes, setRowTypes] = useState<Record<string, string>>({});
+  const [savingUserId, setSavingUserId] = useState('');
   const [error, setError] = useState('');
 
   async function load() {
@@ -36,18 +38,43 @@ export default function UsersAdminPage() {
       fetch('/api/admin/custom-roles'),
       fetch('/api/admin/companies'),
     ]);
-    if (usersRes.ok) setUsers(await usersRes.json());
+    if (usersRes.ok) {
+      const userData = await usersRes.json();
+      setUsers(userData);
+      const nextRowTypes: Record<string, string> = {};
+      for (const u of userData as User[]) nextRowTypes[u.id] = u.type;
+      setRowTypes(nextRowTypes);
+    }
     if (rolesRes.ok) setRoles(await rolesRes.json());
     if (companiesRes.ok) {
       const data = await companiesRes.json();
       const list = Array.isArray(data?.companies) ? data.companies : [];
-      setCompanies(list.map((c: any) => ({ id: c.id, name: c.name, slug: c.slug })));
+      setCompanies(list.map((c: { id: string; name: string; slug: string }) => ({ id: c.id, name: c.name, slug: c.slug })));
       setCompanyId((prev) => prev || list[0]?.id || '');
     }
   }
 
   function toggleRole(roleId: string) {
     setCustomRoleIds((prev) => (prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]));
+  }
+
+  async function saveUserType(userId: string) {
+    setError('');
+    setSavingUserId(userId);
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: rowTypes[userId] }),
+    });
+    setSavingUserId('');
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error || 'Failed to update user type');
+      return;
+    }
+
+    await load();
   }
 
   async function createUser(e: FormEvent) {
@@ -133,7 +160,27 @@ export default function UsersAdminPage() {
               <tr key={u.id} className="border-t border-zinc-800">
                 <td className="p-3"><Link href={`/admin/users/${u.id}`} className="text-blue-400">{u.name}</Link></td>
                 <td className="p-3">{u.email}</td>
-                <td className="p-3">{u.type}</td>
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={rowTypes[u.id] || u.type}
+                      onChange={(e) => setRowTypes((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                      className="rounded border border-zinc-700 bg-white p-1 text-xs text-zinc-900"
+                    >
+                      {userTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => saveUserType(u.id)}
+                      disabled={savingUserId === u.id || (rowTypes[u.id] || u.type) === u.type}
+                      className="rounded border border-zinc-600 px-2 py-1 text-xs hover:border-orange-300/40 hover:bg-orange-400/10 disabled:opacity-50"
+                    >
+                      {savingUserId === u.id ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </td>
                 <td className="p-3">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
                 <td className="p-3">{u.active ? 'Active' : 'Disabled'}</td>
               </tr>
