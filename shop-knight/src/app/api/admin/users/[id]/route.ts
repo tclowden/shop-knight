@@ -13,45 +13,120 @@ function normalizeRoleIds(input: unknown): string[] {
   return [...new Set(values)];
 }
 
+function normalizeCompanyIds(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const values = input
+    .map((value) => String(value).trim())
+    .filter((value): value is string => value.length > 0);
+  return [...new Set(values)];
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermissions(['admin.users.manage']);
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
   const body = await req.json();
+
+  const name = body?.name === undefined ? undefined : String(body.name || '').trim();
+  const email = body?.email === undefined ? undefined : String(body.email || '').trim().toLowerCase();
   const customRoleIds = body?.customRoleIds === undefined ? undefined : normalizeRoleIds(body.customRoleIds);
+  const companyIds = body?.companyIds === undefined ? undefined : normalizeCompanyIds(body.companyIds);
+  const activeCompanyId = body?.activeCompanyId === undefined ? undefined : String(body.activeCompanyId || '').trim();
   const type = body?.type === undefined ? undefined : (String(body.type) as UserTypeValue);
+
+  if (name !== undefined && !name) {
+    return NextResponse.json({ error: 'name required' }, { status: 400 });
+  }
+
+  if (email !== undefined && !email) {
+    return NextResponse.json({ error: 'email required' }, { status: 400 });
+  }
 
   if (type !== undefined && !ALLOWED_TYPES.includes(type)) {
     return NextResponse.json({ error: 'invalid user type' }, { status: 400 });
   }
 
-  const updated = await prisma.user.update({
-    where: { id },
-    data: {
-      type,
-      active: body?.active !== undefined ? Boolean(body.active) : undefined,
-      customRoles: customRoleIds
-        ? {
-            deleteMany: {},
-            create: customRoleIds.map((roleId) => ({ roleId })),
-          }
-        : undefined,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      type: true,
-      active: true,
-      customRoles: {
-        select: {
-          roleId: true,
-          role: { select: { id: true, name: true } },
-        },
-      },
-    },
-  });
+  if (companyIds !== undefined && companyIds.length === 0) {
+    return NextResponse.json({ error: 'at least one company is required' }, { status: 400 });
+  }
 
-  return NextResponse.json(updated);
+  if (companyIds !== undefined) {
+    const validCompanies = await prisma.company.findMany({
+      where: { id: { in: companyIds } },
+      select: { id: true },
+    });
+
+    if (validCompanies.length !== companyIds.length) {
+      return NextResponse.json({ error: 'one or more companies are invalid' }, { status: 400 });
+    }
+  }
+
+  if (activeCompanyId !== undefined) {
+    const ids = companyIds ?? (
+      await prisma.userCompany.findMany({ where: { userId: id }, select: { companyId: true } })
+    ).map((entry) => entry.companyId);
+
+    if (!ids.includes(activeCompanyId)) {
+      return NextResponse.json({ error: 'active company must be one of user memberships' }, { status: 400 });
+    }
+  }
+
+  try {
+    const updated = await prisma.$transaction(async (tx) => {
+      if (companyIds !== undefined) {
+        await tx.userCompany.deleteMany({ where: { userId: id } });
+        await tx.userCompany.createMany({
+          data: companyIds.map((companyId) => ({ userId: id, companyId })),
+        });
+      }
+
+      const effectiveCompanyIds = companyIds ?? (
+        await tx.userCompany.findMany({ where: { userId: id }, select: { companyId: true } })
+      ).map((entry) => entry.companyId);
+
+      const nextActiveCompanyId =
+        activeCompanyId !== undefined
+          ? activeCompanyId
+          : companyIds !== undefined
+            ? effectiveCompanyIds[0] ?? null
+            : undefined;
+
+      return tx.user.update({
+        where: { id },
+        data: {
+          name,
+          email,
+          type,
+          active: body?.active !== undefined ? Boolean(body.active) : undefined,
+          activeCompanyId: nextActiveCompanyId,
+          customRoles: customRoleIds
+            ? {
+                deleteMany: {},
+                create: customRoleIds.map((roleId) => ({ roleId })),
+              }
+            : undefined,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          type: true,
+          active: true,
+          activeCompanyId: true,
+          companyMemberships: { select: { companyId: true } },
+          customRoles: {
+            select: {
+              roleId: true,
+              role: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+    });
+
+    return NextResponse.json(updated);
+  } catch {
+    return NextResponse.json({ error: 'failed to update user' }, { status: 400 });
+  }
 }
