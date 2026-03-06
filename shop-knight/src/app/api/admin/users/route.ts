@@ -49,13 +49,19 @@ export async function POST(req: Request) {
   const password = String(body?.password || '');
   const type = String(body?.type || 'SALES') as UserTypeValue;
   const customRoleIds = normalizeRoleIds(body?.customRoleIds);
+  const companyId = String(body?.companyId || '').trim();
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: 'name, email, and password are required' }, { status: 400 });
+  if (!name || !email || !password || !companyId) {
+    return NextResponse.json({ error: 'name, email, password, and company are required' }, { status: 400 });
   }
 
   if (!ALLOWED_TYPES.includes(type)) {
     return NextResponse.json({ error: 'invalid user type' }, { status: 400 });
+  }
+
+  const company = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });
+  if (!company) {
+    return NextResponse.json({ error: 'invalid company' }, { status: 400 });
   }
 
   const passwordHash = await hash(password, 10);
@@ -68,6 +74,10 @@ export async function POST(req: Request) {
         passwordHash,
         type,
         active: true,
+        activeCompanyId: companyId,
+        companyMemberships: {
+          create: [{ companyId }],
+        },
         customRoles: {
           create: customRoleIds.map((roleId) => ({ roleId })),
         },
