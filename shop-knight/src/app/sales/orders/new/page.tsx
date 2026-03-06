@@ -77,19 +77,19 @@ export default function NewSalesOrderPage() {
       fetch('/api/customers'),
     ]);
 
-    const oppItems = await oppRes.json();
-    const quoteItems = await quoteRes.json();
-    const productItems = await productRes.json();
-    const usersItems = await usersRes.json();
-    const statusItems = await statusRes.json();
-    const customerItems = await customersRes.json();
+    const oppItems = oppRes.ok ? await oppRes.json() : [];
+    const quoteItems = quoteRes.ok ? await quoteRes.json() : [];
+    const productItems = productRes.ok ? await productRes.json() : [];
+    const usersItems = usersRes.ok ? await usersRes.json() : [];
+    const statusItems = statusRes.ok ? await statusRes.json() : [];
+    const customerItems = customersRes.ok ? await customersRes.json() : [];
 
-    setOpportunities(oppItems);
-    setQuotes(quoteItems);
-    setProducts(productItems);
-    setUsers(usersItems);
-    setStatuses(statusItems);
-    setCustomers(customerItems);
+    setOpportunities(Array.isArray(oppItems) ? oppItems : []);
+    setQuotes(Array.isArray(quoteItems) ? quoteItems : []);
+    setProducts(Array.isArray(productItems) ? productItems : []);
+    setUsers(Array.isArray(usersItems) ? usersItems : []);
+    setStatuses(Array.isArray(statusItems) ? statusItems : []);
+    setCustomers(Array.isArray(customerItems) ? customerItems : []);
     if (oppItems.length > 0) {
       setOpportunityId(oppItems[0].id);
       const c = customerItems.find((x: Customer) => x.id === oppItems[0].customerId);
