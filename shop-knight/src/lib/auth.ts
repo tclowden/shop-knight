@@ -72,7 +72,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         const typed = user as { role?: string; roles?: string[]; permissions?: string[]; companyId?: string; companies?: Array<{ id: string; name: string; slug: string }> };
         if (typed.role) token.role = typed.role;
@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
         token.companyId = typed.companyId ?? '';
         token.companies = typed.companies ?? [];
         token.uid = user.id;
-      } else if (token.uid) {
+      } else if (token.uid && trigger === 'update') {
         const context = await ensureUserCompanyContext(String(token.uid));
         if (context?.activeCompanyId) {
           token.companyId = context.activeCompanyId;
