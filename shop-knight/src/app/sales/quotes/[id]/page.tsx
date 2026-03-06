@@ -366,7 +366,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         </table>
       </div>
 
-      <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded border border-zinc-300 bg-white p-3 text-sm text-zinc-900 shadow">
+      <div className="fixed bottom-4 right-4 z-40 w-[min(24rem,calc(100vw-1rem))] rounded border border-zinc-300 bg-white p-3 text-sm text-zinc-900 shadow-lg">
         <p className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></p>
         <p className="mt-1 flex justify-between"><span>Tax</span><span>${taxTotal.toFixed(2)}</span></p>
         <p className="mt-2 flex justify-between text-base font-semibold"><span>Total</span><span>${(subtotal + taxTotal).toFixed(2)}</span></p>
