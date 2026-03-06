@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { getEffectivePermissions } from '@/lib/rbac';
+import { ensureUserCompanyContext } from '@/lib/company-context';
 
 type AuthUser = {
   id: string;
@@ -11,6 +12,8 @@ type AuthUser = {
   role: string;
   roles: string[];
   permissions: string[];
+  companyId: string;
+  companies: Array<{ id: string; name: string; slug: string }>;
 };
 
 export const authOptions: NextAuthOptions = {
@@ -40,8 +43,18 @@ export const authOptions: NextAuthOptions = {
         const ok = await compare(credentials.password, user.passwordHash);
         if (!ok) return null;
 
-        const customRoleNames = user.customRoles.map((entry) => entry.role.name);
-        const permissions = getEffectivePermissions(user.type, user.customRoles.map((entry) => entry.role.permissions));
+        const context = await ensureUserCompanyContext(user.id);
+        if (!context?.activeCompanyId) return null;
+
+        const customRoleNames = user.customRoles
+          .filter((entry) => !entry.role.companyId || entry.role.companyId === context.activeCompanyId)
+          .map((entry) => entry.role.name);
+        const permissions = getEffectivePermissions(
+          user.type,
+          user.customRoles
+            .filter((entry) => !entry.role.companyId || entry.role.companyId === context.activeCompanyId)
+            .map((entry) => entry.role.permissions)
+        );
 
         const authUser: AuthUser = {
           id: user.id,
@@ -50,6 +63,8 @@ export const authOptions: NextAuthOptions = {
           role: user.type,
           roles: [user.type, ...customRoleNames],
           permissions,
+          companyId: context.activeCompanyId,
+          companies: context.companies,
         };
 
         return authUser;
@@ -59,11 +74,19 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const typed = user as { role?: string; roles?: string[]; permissions?: string[] };
+        const typed = user as { role?: string; roles?: string[]; permissions?: string[]; companyId?: string; companies?: Array<{ id: string; name: string; slug: string }> };
         if (typed.role) token.role = typed.role;
         token.roles = typed.roles ?? [];
         token.permissions = typed.permissions ?? [];
+        token.companyId = typed.companyId ?? '';
+        token.companies = typed.companies ?? [];
         token.uid = user.id;
+      } else if (token.uid) {
+        const context = await ensureUserCompanyContext(String(token.uid));
+        if (context?.activeCompanyId) {
+          token.companyId = context.activeCompanyId;
+          token.companies = context.companies;
+        }
       }
       return token;
     },
@@ -73,6 +96,10 @@ export const authOptions: NextAuthOptions = {
         session.user.role = String(token.role || '');
         session.user.roles = Array.isArray(token.roles) ? token.roles.map(String) : [];
         session.user.permissions = Array.isArray(token.permissions) ? token.permissions.map(String) : [];
+        session.user.companyId = String(token.companyId || '');
+        session.user.companies = Array.isArray(token.companies)
+          ? token.companies.map((c) => ({ id: String((c as { id?: string }).id || ''), name: String((c as { name?: string }).name || ''), slug: String((c as { slug?: string }).slug || '') }))
+          : [];
       }
       return session;
     },

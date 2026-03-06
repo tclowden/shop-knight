@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 function toDate(value: unknown) {
   if (!value) return null;
@@ -18,11 +18,14 @@ export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { searchParams } = new URL(req.url);
   const opportunityId = searchParams.get('opportunityId') || undefined;
 
   const salesOrders = await prisma.salesOrder.findMany({
-    where: { opportunityId },
+    where: withCompany(companyId, opportunityId ? { opportunityId } : undefined),
     include: {
       opportunity: { include: { customer: true } },
       status: true,
@@ -62,6 +65,9 @@ export async function POST(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const body = await req.json();
   const orderNumber = String(body?.orderNumber || '').trim();
   const opportunityId = String(body?.opportunityId || '').trim();
@@ -72,27 +78,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'orderNumber and opportunityId are required' }, { status: 400 });
   }
 
-  const opportunity = await prisma.opportunity.findUnique({
-    where: { id: opportunityId },
+  const opportunity = await prisma.opportunity.findFirst({
+    where: { id: opportunityId, companyId },
     include: { customer: true },
   });
   if (!opportunity) return NextResponse.json({ error: 'opportunity not found' }, { status: 404 });
 
   if (sourceQuoteId) {
-    const quote = await prisma.quote.findUnique({ where: { id: sourceQuoteId } });
+    const quote = await prisma.quote.findFirst({ where: { id: sourceQuoteId, companyId } });
     if (!quote) return NextResponse.json({ error: 'source quote not found' }, { status: 404 });
   }
 
   const statusName = String(body?.status || 'New').trim();
   const status = await prisma.salesOrderStatus.upsert({
-    where: { name: statusName },
+    where: { companyId_name: { companyId, name: statusName } },
     update: { active: true },
-    create: { name: statusName, active: true },
+    create: { companyId, name: statusName, active: true },
   });
 
   try {
     const created = await prisma.salesOrder.create({
       data: {
+        companyId,
         orderNumber,
         opportunityId,
         sourceQuoteId,

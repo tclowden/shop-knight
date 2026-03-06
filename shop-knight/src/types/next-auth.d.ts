@@ -7,6 +7,8 @@ declare module 'next-auth' {
       role: string;
       roles: string[];
       permissions: string[];
+      companyId: string;
+      companies: Array<{ id: string; name: string; slug: string }>;
       name?: string | null;
       email?: string | null;
     };
@@ -19,5 +21,7 @@ declare module 'next-auth/jwt' {
     role?: string;
     roles?: string[];
     permissions?: string[];
+    companyId?: string;
+    companies?: Array<{ id: string; name: string; slug: string }>;
   }
 }

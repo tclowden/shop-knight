@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
 
 function toDate(value: unknown) {
   if (!value) return null;
@@ -18,9 +18,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
-  const so = await prisma.salesOrder.findUnique({
-    where: { id },
+  const so = await prisma.salesOrder.findFirst({
+    where: { id, companyId },
     include: {
       opportunity: { include: { customer: true } },
       status: true,
@@ -39,7 +42,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
+  const existing = await prisma.salesOrder.findFirst({ where: { id, companyId }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+
   const body = await req.json();
 
   let statusId: string | undefined;
@@ -47,9 +56,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const statusName = String(body.statusName || '').trim();
     if (statusName) {
       const status = await prisma.salesOrderStatus.upsert({
-        where: { name: statusName },
+        where: { companyId_name: { companyId, name: statusName } },
         update: { active: true },
-        create: { name: statusName, active: true },
+        create: { companyId, name: statusName, active: true },
       });
       statusId = status.id;
     } else {

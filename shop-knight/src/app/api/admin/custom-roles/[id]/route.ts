@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 import { sanitizePermissions } from '@/lib/rbac';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +29,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body?.permissions !== undefined) {
     data.permissions = sanitizePermissions(body.permissions);
   }
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const existing = await prisma.customRole.findFirst({ where: { id, companyId } });
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   try {
     const updated = await prisma.customRole.update({

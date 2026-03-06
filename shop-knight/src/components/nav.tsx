@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import { CompanySwitcher } from '@/components/company-switcher';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -30,6 +31,8 @@ export function Nav() {
           {link.label}
         </Link>
       ))}
+
+      <CompanySwitcher />
 
       <button
         type="button"

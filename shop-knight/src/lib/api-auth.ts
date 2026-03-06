@@ -41,3 +41,12 @@ export async function requirePermissions(permissions: string[]) {
 
   return { ok: true as const, session };
 }
+
+export function getSessionCompanyId(session: { user?: { companyId?: string } } | null | undefined) {
+  const companyId = session?.user?.companyId;
+  return companyId ? String(companyId) : null;
+}
+
+export function withCompany<T extends Record<string, unknown>>(companyId: string, where?: T): T & { companyId: string } {
+  return { ...(where || ({} as T)), companyId };
+}
