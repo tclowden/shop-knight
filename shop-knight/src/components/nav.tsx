@@ -7,6 +7,7 @@ import { CompanySwitcher } from '@/components/company-switcher';
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/companies', label: 'Companies' },
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
