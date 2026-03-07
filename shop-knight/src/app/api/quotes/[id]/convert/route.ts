@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
 
 function orderNumber() {
   return `SO-${Date.now().toString().slice(-6)}`;
@@ -10,6 +10,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const sessionCompanyId = getSessionCompanyId(auth.session);
   const { id } = await params;
 
   const quote = await prisma.quote.findUnique({ where: { id } });
@@ -20,7 +21,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 
   const so = await prisma.salesOrder.create({
     data: {
-      companyId: quote.companyId,
+      companyId: quote.companyId || sessionCompanyId || undefined,
       opportunityId: quote.opportunityId,
       sourceQuoteId: quote.id,
       orderNumber: orderNumber(),
