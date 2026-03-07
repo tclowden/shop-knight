@@ -6,7 +6,13 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
-type Opportunity = { id: string; name: string; customer: string };
+type Opportunity = {
+  id: string;
+  name: string;
+  customer: string;
+  salesRepId?: string | null;
+  projectManagerId?: string | null;
+};
 type User = { id: string; name: string; type: string };
 
 type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
@@ -193,6 +199,16 @@ export default function NewQuotePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  useEffect(() => {
+    if (!opportunityId || opportunities.length === 0) return;
+    const selected = opportunities.find((o) => o.id === opportunityId);
+    if (!selected) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSalesRepId(selected.salesRepId || '');
+    setProjectManagerId(selected.projectManagerId || '');
+  }, [opportunityId, opportunities]);
 
   return (
     <main className="mx-auto max-w-5xl p-8">
