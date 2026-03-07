@@ -32,7 +32,7 @@ export default function OpportunitiesPage() {
       .filter((opp) => {
         if (stageFilter !== 'ALL' && opp.stage !== stageFilter) return false;
         if (!text) return true;
-        return [opp.name, opp.customer, opp.stage, opp.salesRepName || '', opp.projectManagerName || '']
+        return [opp.name, opp.customer, opp.stage, opp.salesRepName || '', opp.projectManagerName || '', opp.priority || '']
           .join(' ')
           .toLowerCase()
           .includes(text);
@@ -77,25 +77,45 @@ export default function OpportunitiesPage() {
         </div>
       </section>
 
-      <div className="space-y-3">
-        {visibleItems.map((opp) => (
-          <Link key={opp.id} href={`/sales/opportunities/${opp.id}`} className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:bg-slate-50">
-            <div className="flex items-start justify-between gap-3">
-              <p className="font-semibold text-slate-800">{opp.name}</p>
-              <StatusChip value={opp.stage} />
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              {opp.customer}
-              {opp.priority ? ` • Priority: ${opp.priority}` : ''}
-              {opp.estimatedValue ? ` • $${opp.estimatedValue}` : ''}
-              {opp.dueDate ? ` • Due ${new Date(opp.dueDate).toLocaleDateString()}` : ''}
-              {opp.salesRepName ? ` • Sales Rep: ${opp.salesRepName}` : ''}
-              {opp.projectManagerName ? ` • PM: ${opp.projectManagerName}` : ''}
-            </p>
-          </Link>
-        ))}
-        {visibleItems.length === 0 ? <p className="text-sm text-slate-500">No opportunities found.</p> : null}
-      </div>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-[#eaf6fd] text-slate-600">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Opportunity</th>
+              <th className="px-4 py-3 font-semibold">Customer</th>
+              <th className="px-4 py-3 font-semibold">Stage</th>
+              <th className="px-4 py-3 font-semibold">Priority</th>
+              <th className="px-4 py-3 font-semibold">Value</th>
+              <th className="px-4 py-3 font-semibold">Due</th>
+              <th className="px-4 py-3 font-semibold">Sales Rep</th>
+              <th className="px-4 py-3 font-semibold">PM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleItems.map((opp) => (
+              <tr key={opp.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4">
+                  <Link href={`/sales/opportunities/${opp.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">
+                    {opp.name}
+                  </Link>
+                </td>
+                <td className="px-4 py-4">{opp.customer}</td>
+                <td className="px-4 py-4"><StatusChip value={opp.stage} /></td>
+                <td className="px-4 py-4">{opp.priority || '—'}</td>
+                <td className="px-4 py-4">{opp.estimatedValue ? `$${opp.estimatedValue}` : '—'}</td>
+                <td className="px-4 py-4 text-slate-500">{opp.dueDate ? new Date(opp.dueDate).toLocaleDateString() : '—'}</td>
+                <td className="px-4 py-4">{opp.salesRepName || '—'}</td>
+                <td className="px-4 py-4">{opp.projectManagerName || '—'}</td>
+              </tr>
+            ))}
+            {visibleItems.length === 0 ? (
+              <tr>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={8}>No opportunities found.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </section>
     </main>
   );
 }
