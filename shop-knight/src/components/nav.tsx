@@ -16,6 +16,7 @@ const links = [
   { href: '/sales/orders', label: 'Sales Orders' },
   { href: '/customers', label: 'Customers' },
   { href: '/vendors', label: 'Vendors' },
+  { href: '/tasks', label: 'Tasks' },
   { href: '/tasks/calendar', label: 'Task Calendar' },
   { href: '/tasks/templates', label: 'Task Templates' },
 ];
