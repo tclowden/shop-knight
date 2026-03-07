@@ -214,58 +214,80 @@ export default function NewSalesOrderPage() {
       <Nav />
 
       <form onSubmit={createOrder} className="space-y-3 rounded border border-zinc-800 p-4">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} placeholder="Order Number" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Sales Order Title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <select value={opportunityId} onChange={(e) => {
-            const nextId = e.target.value;
-            setOpportunityId(nextId);
-            setSourceQuoteId('');
-            applyOpportunityDefaults(nextId, opportunities, customers);
-          }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
-            {sortedOpportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
-          </select>
-          <select value={sourceQuoteId} onChange={(e) => {
-            const nextQuoteId = e.target.value;
-            setSourceQuoteId(nextQuoteId);
-            if (nextQuoteId) applyQuoteDefaults(nextQuoteId, quotes, opportunities, customers);
-          }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option value="">Source Quote (optional)</option>
-            {sortedQuotes.map((q) => <option key={q.id} value={q.id}>{q.quoteNumber} — {q.customer}</option>)}
-          </select>
-          <input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} placeholder="Primary Customer Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} placeholder="Customer Invoice Contact" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} placeholder="Billing Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} placeholder="Shipping Attention To" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} placeholder="Shipping Method" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} placeholder="Shipping Tracking" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <div className="grid grid-cols-2 gap-2">
-            <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value as 'DOLLARS' | 'PERCENT')} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-              <option value="DOLLARS">Down Payment ($)</option>
-              <option value="PERCENT">Down Payment (%)</option>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <FormField label="Order Number"><input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} className="field" required /></FormField>
+          <FormField label="Sales Order Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="field" /></FormField>
+
+          <FormField label="Opportunity">
+            <select value={opportunityId} onChange={(e) => {
+              const nextId = e.target.value;
+              setOpportunityId(nextId);
+              setSourceQuoteId('');
+              applyOpportunityDefaults(nextId, opportunities, customers);
+            }} className="field" required>
+              {sortedOpportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
             </select>
-            <input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" min="0" step="0.01" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          </div>
-          <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option value="">Sales Rep</option>
-            {sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option value="">Project Manager</option>
-            {sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option value="">Designer</option>
-            {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
+          </FormField>
+
+          <FormField label="Status">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="field">
+              {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+          </FormField>
+
+          <FormField label="Source Quote (optional)">
+            <select value={sourceQuoteId} onChange={(e) => {
+              const nextQuoteId = e.target.value;
+              setSourceQuoteId(nextQuoteId);
+              if (nextQuoteId) applyQuoteDefaults(nextQuoteId, quotes, opportunities, customers);
+            }} className="field">
+              <option value="">None</option>
+              {sortedQuotes.map((q) => <option key={q.id} value={q.id}>{q.quoteNumber} — {q.customer}</option>)}
+            </select>
+          </FormField>
+
+          <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
+          <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
+          <FormField label="Billing Attention To"><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="field" /></FormField>
+          <FormField label="Shipping Attention To"><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="field" /></FormField>
+          <FormField label="Shipping Method"><input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="field" /></FormField>
+          <FormField label="Shipping Tracking"><input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} className="field" /></FormField>
+
+          <FormField label="Sales Order Date"><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="field" /></FormField>
+          <FormField label="Due Date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field" /></FormField>
+          <FormField label="Install Date"><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="field" /></FormField>
+          <FormField label="Shipping Date"><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="field" /></FormField>
+
+          <FormField label="Payment Terms"><input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="field" /></FormField>
+          <FormField label="Down Payment">
+            <div className="grid grid-cols-2 gap-2">
+              <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value as 'DOLLARS' | 'PERCENT')} className="field">
+                <option value="DOLLARS">$</option>
+                <option value="PERCENT">%</option>
+              </select>
+              <input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" min="0" step="0.01" className="field" />
+            </div>
+          </FormField>
+
+          <FormField label="Sales Rep">
+            <select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="field">
+              <option value="">Unassigned</option>
+              {sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Project Manager">
+            <select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="field">
+              <option value="">Unassigned</option>
+              {sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Designer">
+            <select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="field">
+              <option value="">Unassigned</option>
+              {sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </FormField>
+
           <AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} />
           <AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} />
           <AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} />
@@ -310,5 +332,14 @@ export default function NewSalesOrderPage() {
         <button className="rounded bg-blue-600 px-4 py-2">Create Sales Order</button>
       </form>
     </main>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
   );
 }
