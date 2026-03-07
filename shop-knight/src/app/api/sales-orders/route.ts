@@ -84,9 +84,14 @@ export async function POST(req: Request) {
   });
   if (!opportunity) return NextResponse.json({ error: 'opportunity not found' }, { status: 404 });
 
+  let sourceQuote: { salesRepId: string | null; projectManagerId: string | null; title: string | null } | null = null;
   if (sourceQuoteId) {
-    const quote = await prisma.quote.findFirst({ where: { id: sourceQuoteId, companyId } });
+    const quote = await prisma.quote.findFirst({
+      where: { id: sourceQuoteId, companyId },
+      select: { salesRepId: true, projectManagerId: true, title: true },
+    });
     if (!quote) return NextResponse.json({ error: 'source quote not found' }, { status: 404 });
+    sourceQuote = quote;
   }
 
   const statusName = String(body?.status || 'New').trim();
@@ -103,7 +108,7 @@ export async function POST(req: Request) {
         orderNumber,
         opportunityId,
         sourceQuoteId,
-        title: body?.title ? String(body.title) : null,
+        title: body?.title ? String(body.title) : sourceQuote?.title ?? null,
         statusId: status.id,
         primaryCustomerContact: body?.primaryCustomerContact ? String(body.primaryCustomerContact) : null,
         customerInvoiceContact: body?.customerInvoiceContact ? String(body.customerInvoiceContact) : null,
@@ -121,8 +126,8 @@ export async function POST(req: Request) {
         paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : opportunity.customer.paymentTerms ?? null,
         downPaymentType: body?.downPaymentType ? String(body.downPaymentType) : null,
         downPaymentValue: toNumber(body?.downPaymentValue),
-        salesRepId: body?.salesRepId ? String(body.salesRepId) : null,
-        projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : null,
+        salesRepId: body?.salesRepId ? String(body.salesRepId) : sourceQuote?.salesRepId ?? null,
+        projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : sourceQuote?.projectManagerId ?? null,
         designerId: body?.designerId ? String(body.designerId) : null,
         lines: initialLine
           ? {

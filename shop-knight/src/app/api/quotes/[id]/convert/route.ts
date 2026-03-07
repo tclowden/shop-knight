@@ -23,6 +23,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       opportunityId: quote.opportunityId,
       sourceQuoteId: quote.id,
       orderNumber: orderNumber(),
+      title: quote.title,
+      salesRepId: quote.salesRepId,
+      projectManagerId: quote.projectManagerId,
     },
   });
 

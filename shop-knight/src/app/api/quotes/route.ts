@@ -74,8 +74,11 @@ export async function GET() {
       totalPriceInDollars: q.totalPriceInDollars,
       totalTaxInDollars: q.totalTaxInDollars,
       totalPriceWithTaxInDollars: q.totalPriceWithTaxInDollars,
+      opportunityId: q.opportunityId,
       opportunity: q.opportunity.name,
       customer: q.opportunity.customer.name,
+      salesRepId: q.salesRepId,
+      projectManagerId: q.projectManagerId,
       createdAt: q.createdAt,
       lineItems: q.lines,
     }))

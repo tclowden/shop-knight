@@ -6,8 +6,23 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
-type Opportunity = { id: string; name: string; customer: string; customerId: string };
-type Quote = { id: string; quoteNumber: string; opportunity: string; customer: string };
+type Opportunity = {
+  id: string;
+  name: string;
+  customer: string;
+  customerId: string;
+  salesRepId?: string | null;
+  projectManagerId?: string | null;
+};
+type Quote = {
+  id: string;
+  quoteNumber: string;
+  opportunityId: string;
+  opportunity: string;
+  customer: string;
+  salesRepId?: string | null;
+  projectManagerId?: string | null;
+};
 type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null };
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 type User = { id: string; name: string; type: string };
@@ -66,6 +81,27 @@ export default function NewSalesOrderPage() {
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
+  function applyOpportunityDefaults(nextOpportunityId: string, opportunitiesList: Opportunity[], customerList: Customer[]) {
+    const opp = opportunitiesList.find((o) => o.id === nextOpportunityId);
+    if (!opp) return;
+    const c = customerList.find((x) => x.id === opp.customerId);
+    setPaymentTerms(c?.paymentTerms || '');
+    setSalesRepId(opp.salesRepId || '');
+    setProjectManagerId(opp.projectManagerId || '');
+  }
+
+  function applyQuoteDefaults(nextQuoteId: string, quoteList: Quote[], opportunitiesList: Opportunity[], customerList: Customer[]) {
+    const quote = quoteList.find((q) => q.id === nextQuoteId);
+    if (!quote) return;
+
+    setOpportunityId(quote.opportunityId);
+    setSalesRepId(quote.salesRepId || '');
+    setProjectManagerId(quote.projectManagerId || '');
+
+    const opp = opportunitiesList.find((o) => o.id === quote.opportunityId);
+    const c = customerList.find((x) => x.id === opp?.customerId);
+    setPaymentTerms(c?.paymentTerms || '');
+  }
 
   async function load() {
     const [oppRes, quoteRes, productRes, usersRes, statusRes, customersRes] = await Promise.all([
@@ -92,8 +128,7 @@ export default function NewSalesOrderPage() {
     setCustomers(Array.isArray(customerItems) ? customerItems : []);
     if (oppItems.length > 0) {
       setOpportunityId(oppItems[0].id);
-      const c = customerItems.find((x: Customer) => x.id === oppItems[0].customerId);
-      setPaymentTerms(c?.paymentTerms || '');
+      applyOpportunityDefaults(oppItems[0].id, oppItems, customerItems);
     }
     if (statusItems.length > 0) setStatus(statusItems[0].name);
   }
@@ -168,8 +203,8 @@ export default function NewSalesOrderPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -185,16 +220,19 @@ export default function NewSalesOrderPage() {
           <select value={opportunityId} onChange={(e) => {
             const nextId = e.target.value;
             setOpportunityId(nextId);
-            const opp = opportunities.find((o) => o.id === nextId);
-            const c = customers.find((x) => x.id === opp?.customerId);
-            setPaymentTerms(c?.paymentTerms || '');
+            setSourceQuoteId('');
+            applyOpportunityDefaults(nextId, opportunities, customers);
           }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
             {sortedOpportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
           </select>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             {sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
-          <select value={sourceQuoteId} onChange={(e) => setSourceQuoteId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <select value={sourceQuoteId} onChange={(e) => {
+            const nextQuoteId = e.target.value;
+            setSourceQuoteId(nextQuoteId);
+            if (nextQuoteId) applyQuoteDefaults(nextQuoteId, quotes, opportunities, customers);
+          }} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
             <option value="">Source Quote (optional)</option>
             {sortedQuotes.map((q) => <option key={q.id} value={q.id}>{q.quoteNumber} — {q.customer}</option>)}
           </select>
