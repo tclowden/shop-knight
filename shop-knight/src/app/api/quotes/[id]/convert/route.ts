@@ -20,6 +20,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 
   const so = await prisma.salesOrder.create({
     data: {
+      companyId: quote.companyId,
       opportunityId: quote.opportunityId,
       sourceQuoteId: quote.id,
       orderNumber: orderNumber(),
