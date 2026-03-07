@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 
 const links = [
@@ -25,6 +25,9 @@ const adminLinks = [
 ];
 
 export function Nav() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
+
   return (
     <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm">
       {links.map((link) => (
@@ -37,22 +40,24 @@ export function Nav() {
         </Link>
       ))}
 
-      <details className="relative">
-        <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
-          Admin ▾
-        </summary>
-        <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-          {adminLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
-      </details>
+      {isAdmin ? (
+        <details className="relative">
+          <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
+            Admin ▾
+          </summary>
+          <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+            {adminLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </details>
+      ) : null}
 
       <CompanySwitcher />
 
