@@ -40,9 +40,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json();
 
+  let opportunityId: string | undefined;
+  if (body?.opportunityId !== undefined) {
+    if (!body.opportunityId) {
+      return NextResponse.json({ error: 'opportunityId cannot be empty' }, { status: 400 });
+    }
+    const nextOpportunity = await prisma.opportunity.findUnique({ where: { id: String(body.opportunityId) } });
+    if (!nextOpportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
+    opportunityId = nextOpportunity.id;
+  }
+
   const updated = await prisma.quote.update({
     where: { id },
     data: {
+      opportunityId,
       title: body?.title !== undefined ? String(body.title || '') : undefined,
       description: body?.description !== undefined ? String(body.description || '') : undefined,
       workflowState: body?.workflowState !== undefined ? String(body.workflowState || 'draft') : undefined,

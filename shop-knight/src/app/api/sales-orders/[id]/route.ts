@@ -51,6 +51,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = await req.json();
 
+  let opportunityId: string | undefined;
+  if (body?.opportunityId !== undefined) {
+    if (!body.opportunityId) {
+      return NextResponse.json({ error: 'opportunityId cannot be empty' }, { status: 400 });
+    }
+    const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
+    if (!nextOpportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
+    opportunityId = nextOpportunity.id;
+  }
+
   let statusId: string | undefined;
   if (body?.statusName !== undefined) {
     const statusName = String(body.statusName || '').trim();
@@ -69,6 +79,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const updated = await prisma.salesOrder.update({
     where: { id },
     data: {
+      opportunityId,
       title: body?.title !== undefined ? String(body.title || '') : undefined,
       statusId,
       primaryCustomerContact: body?.primaryCustomerContact !== undefined ? String(body.primaryCustomerContact || '') : undefined,

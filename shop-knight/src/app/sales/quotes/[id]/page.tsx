@@ -10,6 +10,7 @@ import { useToast } from '@/components/toast-provider';
 
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
 type User = { id: string; name: string; type: string };
+type OpportunityOption = { id: string; name: string; customer: string };
 type Line = {
   id: string;
   description: string;
@@ -25,6 +26,7 @@ type Line = {
 
 type Quote = {
   id: string;
+  opportunityId?: string;
   quoteNumber: string;
   status?: string | null;
   workflowState?: string | null;
@@ -51,6 +53,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [quote, setQuote] = useState<Quote | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
@@ -74,9 +77,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [expiryDate, setExpiryDate] = useState('');
   const [salesRepId, setSalesRepId] = useState('');
   const [projectManagerId, setProjectManagerId] = useState('');
+  const [opportunityId, setOpportunityId] = useState('');
 
   async function load(quoteId: string) {
-    const [qRes, pRes, usersRes] = await Promise.all([fetch(`/api/quotes/${quoteId}`), fetch('/api/admin/products'), fetch('/api/users')]);
+    const [qRes, pRes, usersRes, oppRes] = await Promise.all([fetch(`/api/quotes/${quoteId}`), fetch('/api/admin/products'), fetch('/api/users'), fetch('/api/opportunities')]);
     if (qRes.ok) {
       const q = await qRes.json();
       setQuote(q);
@@ -91,9 +95,11 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       setExpiryDate(q.expiryDate ? String(q.expiryDate).slice(0, 10) : '');
       setSalesRepId(q.salesRepId || '');
       setProjectManagerId(q.projectManagerId || '');
+      setOpportunityId(q.opportunityId || '');
     }
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
+    if (oppRes.ok) setOpportunities(await oppRes.json());
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -114,6 +120,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         expiryDate: expiryDate || null,
         salesRepId: salesRepId || null,
         projectManagerId: projectManagerId || null,
+        opportunityId: opportunityId || null,
       }),
     });
     if (res.ok) push('Quote saved', 'success');
@@ -250,9 +257,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       dueDate !== (quote.dueDate ? String(quote.dueDate).slice(0, 10) : '') ||
       expiryDate !== (quote.expiryDate ? String(quote.expiryDate).slice(0, 10) : '') ||
       salesRepId !== (quote.salesRepId || '') ||
-      projectManagerId !== (quote.projectManagerId || '')
+      projectManagerId !== (quote.projectManagerId || '') ||
+      opportunityId !== (quote.opportunityId || '')
     );
-  }, [quote, editingHeader, customerContactRole, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, quoteDate, dueDate, expiryDate, salesRepId, projectManagerId]);
+  }, [quote, editingHeader, customerContactRole, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, quoteDate, dueDate, expiryDate, salesRepId, projectManagerId, opportunityId]);
 
   useUnsavedGuard(headerDirty);
 
@@ -277,6 +285,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <>
             <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <p><span className="text-zinc-400">Opportunity:</span> {quote.opportunity.name}</p>
               <p><span className="text-zinc-400">Customer Contact Role:</span> {quote.customerContactRole || '—'}</p>
               <p><span className="text-zinc-400">Sales Rep:</span> {quote.salesRep?.name || '—'}</p>
               <p><span className="text-zinc-400">Project Manager:</span> {quote.projectManager?.name || '—'}</p>
@@ -292,6 +301,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           </>
         ) : (
           <form onSubmit={saveHeader} className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <label className="text-sm"><span className="mb-1 block text-zinc-300">Opportunity</span><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select opportunity</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></label>
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Customer Contact Role</span><input value={customerContactRole} onChange={(e) => setCustomerContactRole(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Rep</span><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
             <label className="text-sm"><span className="mb-1 block text-zinc-300">Project Manager</span><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>

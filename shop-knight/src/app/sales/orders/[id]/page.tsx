@@ -11,8 +11,10 @@ import { useToast } from '@/components/toast-provider';
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
+type OpportunityOption = { id: string; name: string; customer: string };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
 type SalesOrder = {
+  opportunityId?: string;
   id: string;
   orderNumber: string;
   title?: string | null;
@@ -52,6 +54,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
@@ -85,13 +88,15 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [salesRepId, setSalesRepId] = useState('');
   const [projectManagerId, setProjectManagerId] = useState('');
   const [designerId, setDesignerId] = useState('');
+  const [opportunityId, setOpportunityId] = useState('');
 
   async function load(orderId: string) {
-    const [soRes, pRes, usersRes, statusesRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, oppRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
       fetch('/api/admin/sales-order-statuses'),
+      fetch('/api/opportunities'),
     ]);
     if (soRes.ok) {
       const so = await soRes.json();
@@ -117,10 +122,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       setSalesRepId(so.salesRepId || '');
       setProjectManagerId(so.projectManagerId || '');
       setDesignerId(so.designerId || '');
+      setOpportunityId(so.opportunityId || '');
     }
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
     if (statusesRes.ok) setStatuses(await statusesRes.json());
+    if (oppRes.ok) setOpportunities(await oppRes.json());
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -151,6 +158,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         salesRepId: salesRepId || null,
         projectManagerId: projectManagerId || null,
         designerId: designerId || null,
+        opportunityId: opportunityId || null,
       }),
     });
     if (res.ok) push('Sales order saved', 'success');
@@ -286,9 +294,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       downPaymentValue !== (order.downPaymentValue ? String(order.downPaymentValue) : '') ||
       salesRepId !== (order.salesRepId || '') ||
       projectManagerId !== (order.projectManagerId || '') ||
-      designerId !== (order.designerId || '')
+      designerId !== (order.designerId || '') ||
+      opportunityId !== (order.opportunityId || '')
     );
-  }, [order, editingHeader, title, statusName, primaryCustomerContact, customerInvoiceContact, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, shippingMethod, shippingTracking, salesOrderDate, dueDate, installDate, shippingDate, paymentTerms, downPaymentType, downPaymentValue, salesRepId, projectManagerId, designerId]);
+  }, [order, editingHeader, title, statusName, primaryCustomerContact, customerInvoiceContact, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, shippingMethod, shippingTracking, salesOrderDate, dueDate, installDate, shippingDate, paymentTerms, downPaymentType, downPaymentValue, salesRepId, projectManagerId, designerId, opportunityId]);
 
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
   const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
@@ -338,6 +347,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <div className="mb-4 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">Edit order info</button></div>
             <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
               <ReadField label="Title" value={order.title || '—'} />
+              <ReadField label="Opportunity" value={order.opportunity.name} />
               <ReadField label="Status" value={order.status?.name || '—'} />
               <ReadField label="Primary Customer Contact" value={order.primaryCustomerContact || '—'} />
               <ReadField label="Customer Invoice Contact" value={order.customerInvoiceContact || '—'} />
@@ -362,6 +372,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         ) : (
           <form onSubmit={saveHeader} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <FormField label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="field" /></FormField>
+            <FormField label="Opportunity"><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="field"><option value="">Select opportunity</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></FormField>
             <FormField label="Status"><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="field"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></FormField>
             <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
             <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
