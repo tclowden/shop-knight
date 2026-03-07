@@ -98,38 +98,27 @@ export default function CompaniesAdminPage() {
   }, [companies]);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Company Admin</h1>
-      <p className="text-sm text-zinc-400">Create companies and manage user membership.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Company Admin</h1>
+      <p className="text-sm text-slate-500">Create companies and manage user membership.</p>
       <Nav />
 
-      <form onSubmit={createCompany} className="mb-4 rounded border border-zinc-800 p-3">
+      <form onSubmit={createCompany} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Company name"
-            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-            required
-          />
-          <input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="slug (optional)"
-            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-          />
-          <button className="rounded bg-blue-600 px-3 py-2 md:col-span-1">Create Company</button>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Company name" className="field" required />
+          <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="slug (optional)" className="field" />
+          <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-1">Create Company</button>
         </div>
       </form>
 
-      {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
       <div className="space-y-4">
         {companies.map((company) => (
-          <section key={company.id} className="rounded border border-zinc-800 p-3">
+          <section key={company.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3">
-              <h2 className="text-lg font-medium">{company.name}</h2>
-              <p className="text-xs text-zinc-400">slug: {company.slug}</p>
+              <h2 className="text-lg font-semibold">{company.name}</h2>
+              <p className="text-xs text-slate-500">slug: {company.slug}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -139,17 +128,12 @@ export default function CompaniesAdminPage() {
                 const activeMarker = company.members.find((m) => m.id === user.id)?.isActiveCompany;
 
                 return (
-                  <label key={user.id} className="flex items-start gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-                    <input
-                      type="checkbox"
-                      checked={isMember}
-                      disabled={isBusy}
-                      onChange={(e) => toggleMembership(company.id, user.id, e.target.checked)}
-                    />
+                  <label key={user.id} className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-800">
+                    <input type="checkbox" checked={isMember} disabled={isBusy} onChange={(e) => toggleMembership(company.id, user.id, e.target.checked)} />
                     <span>
                       <span className="block text-sm font-medium">{user.name}</span>
-                      <span className="block text-xs text-zinc-600">{user.email}</span>
-                      {activeMarker ? <span className="block text-xs text-blue-700">Active company</span> : null}
+                      <span className="block text-xs text-slate-500">{user.email}</span>
+                      {activeMarker ? <span className="block text-xs text-sky-700">Active company</span> : null}
                     </span>
                   </label>
                 );
@@ -159,7 +143,7 @@ export default function CompaniesAdminPage() {
         ))}
 
         {companies.length === 0 ? (
-          <div className="rounded border border-zinc-800 p-3 text-sm text-zinc-400">No companies yet.</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">No companies yet.</div>
         ) : null}
       </div>
     </main>

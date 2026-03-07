@@ -69,27 +69,27 @@ export default function TaskTemplatesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Task Templates</h1>
-      <p className="text-sm text-zinc-400">Build reusable flows with relative due dates and role-based assignment (PM / Project Coordinator).</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Task Templates</h1>
+      <p className="text-sm text-slate-500">Build reusable flows with relative due dates and role-based assignment.</p>
       <Nav />
 
-      <form onSubmit={createTemplate} className="mb-6 rounded border border-zinc-800 p-4 space-y-3">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+      <form onSubmit={createTemplate} className="mb-6 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" className="field" required />
 
         <div className="space-y-2">
           {steps.map((s, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 rounded border border-zinc-700 p-2 md:grid-cols-4">
-              <input value={s.title} onChange={(e) => updateStep(i, { title: e.target.value })} placeholder={`Step ${i + 1} title`} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-              <input value={s.dueOffsetDays} onChange={(e) => updateStep(i, { dueOffsetDays: e.target.value })} type="number" placeholder="Due offset days" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-              <select value={s.assigneeMode} onChange={(e) => updateStep(i, { assigneeMode: e.target.value as Step['assigneeMode'] })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+            <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 md:grid-cols-4">
+              <input value={s.title} onChange={(e) => updateStep(i, { title: e.target.value })} placeholder={`Step ${i + 1} title`} className="field" required />
+              <input value={s.dueOffsetDays} onChange={(e) => updateStep(i, { dueOffsetDays: e.target.value })} type="number" placeholder="Due offset days" className="field" />
+              <select value={s.assigneeMode} onChange={(e) => updateStep(i, { assigneeMode: e.target.value as Step['assigneeMode'] })} className="field">
                 <option value="UNASSIGNED">Unassigned</option>
                 <option value="PM">PM</option>
                 <option value="PROJECT_COORDINATOR">Project Coordinator</option>
                 <option value="SPECIFIC_USER">Specific User</option>
               </select>
               {s.assigneeMode === 'SPECIFIC_USER' ? (
-                <select value={s.specificAssigneeId} onChange={(e) => updateStep(i, { specificAssigneeId: e.target.value })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+                <select value={s.specificAssigneeId} onChange={(e) => updateStep(i, { specificAssigneeId: e.target.value })} className="field">
                   <option value="">Select user</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -99,23 +99,23 @@ export default function TaskTemplatesPage() {
         </div>
 
         <div className="flex gap-2">
-          <button type="button" onClick={addStep} className="rounded border border-zinc-700 px-3 py-2">+ Add Step</button>
-          <button className="rounded bg-blue-600 px-3 py-2">Create Template</button>
+          <button type="button" onClick={addStep} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">+ Add Step</button>
+          <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Template</button>
         </div>
       </form>
 
       <section className="space-y-3">
         {templates.map((t) => (
-          <article key={t.id} className="rounded border border-zinc-800 p-3">
-            <h2 className="font-medium">{t.name}</h2>
-            <ul className="mt-2 list-disc pl-5 text-sm text-zinc-300">
+          <article key={t.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="font-semibold text-slate-800">{t.name}</h2>
+            <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
               {t.steps.map((s) => (
                 <li key={s.id}>{s.title} • due +{s.dueOffsetDays}d • {s.assigneeMode}{s.specificAssignee?.name ? ` (${s.specificAssignee.name})` : ''}</li>
               ))}
             </ul>
           </article>
         ))}
-        {templates.length === 0 ? <p className="text-zinc-400">No templates yet.</p> : null}
+        {templates.length === 0 ? <p className="text-slate-500">No templates yet.</p> : null}
       </section>
     </main>
   );

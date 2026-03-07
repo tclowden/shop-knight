@@ -41,32 +41,32 @@ export default function SalesOrderStatusesPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-2xl font-semibold">Sales Order Statuses</h1>
-      <p className="text-sm text-zinc-400">Manage available statuses for Sales Orders.</p>
+    <main className="mx-auto max-w-5xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Sales Order Statuses</h1>
+      <p className="text-sm text-slate-500">Manage available statuses for Sales Orders.</p>
       <Nav />
 
-      <form onSubmit={createStatus} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Status name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <button className="rounded bg-blue-600 px-3 py-2 md:col-span-1">Create Status</button>
+      <form onSubmit={createStatus} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Status name" className="field" required />
+        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-1">Create Status</button>
       </form>
 
-      {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Name</th><th className="p-3">Sort</th><th className="p-3">Active</th></tr></thead>
+          <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Sort</th><th className="px-4 py-3 font-semibold">Active</th></tr></thead>
           <tbody>
             {items.map((s) => (
-              <tr key={s.id} className="border-t border-zinc-800">
-                <td className="p-3">{s.name}</td>
-                <td className="p-3">{s.sortOrder}</td>
-                <td className="p-3">{s.active ? 'Yes' : 'No'}</td>
+              <tr key={s.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4">{s.name}</td>
+                <td className="px-4 py-4">{s.sortOrder}</td>
+                <td className="px-4 py-4">{s.active ? 'Yes' : 'No'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }

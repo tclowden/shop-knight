@@ -107,33 +107,27 @@ export default function UsersAdminPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">User Admin</h1>
-      <p className="text-sm text-zinc-400">Assign base type plus multiple custom roles for page access.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">User Admin</h1>
+      <p className="text-sm text-slate-500">Assign base type plus multiple custom roles for page access.</p>
       <Nav />
 
-      <form onSubmit={createUser} className="mb-4 rounded border border-zinc-800 p-3">
+      <form onSubmit={createUser} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 placeholder:text-zinc-500" required />
-          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            {userTypes.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="field" required />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="field" required />
+          <select value={type} onChange={(e) => setType(e.target.value)} className="field">{userTypes.map((t) => (<option key={t} value={t}>{t}</option>))}</select>
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="field" required>
             <option value="" disabled>Select company</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
           </select>
-          <button className="rounded bg-blue-600 px-3 py-2" disabled={!companyId || companies.length === 0}>Create User</button>
+          <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600" disabled={!companyId || companies.length === 0}>Create User</button>
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
           {roles.filter((r) => r.active).map((r) => (
-            <label key={r.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+            <label key={r.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-800">
               <input type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
               {r.name}
             </label>
@@ -141,58 +135,45 @@ export default function UsersAdminPage() {
         </div>
       </form>
 
-      {companies.length === 0 ? <p className="mb-3 text-sm text-amber-300">Create a company first in Admin → Companies.</p> : null}
-      {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
+      {companies.length === 0 ? <p className="mb-3 text-sm text-amber-600">Create a company first in Admin → Companies.</p> : null}
+      {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300">
+          <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Type</th>
-              <th className="p-3">Custom Roles</th>
-              <th className="p-3">Status</th>
+              <th className="px-4 py-3 font-semibold">Name</th>
+              <th className="px-4 py-3 font-semibold">Email</th>
+              <th className="px-4 py-3 font-semibold">Type</th>
+              <th className="px-4 py-3 font-semibold">Custom Roles</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t border-zinc-800">
-                <td className="p-3"><Link href={`/admin/users/${u.id}`} className="text-blue-400">{u.name}</Link></td>
-                <td className="p-3">{u.email}</td>
-                <td className="p-3">
+              <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4"><Link href={`/admin/users/${u.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{u.name}</Link></td>
+                <td className="px-4 py-4">{u.email}</td>
+                <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
-                    <select
-                      value={rowTypes[u.id] || u.type}
-                      onChange={(e) => setRowTypes((prev) => ({ ...prev, [u.id]: e.target.value }))}
-                      className="rounded border border-zinc-700 bg-white p-1 text-xs text-zinc-900"
-                    >
-                      {userTypes.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
+                    <select value={rowTypes[u.id] || u.type} onChange={(e) => setRowTypes((prev) => ({ ...prev, [u.id]: e.target.value }))} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900">
+                      {userTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => saveUserType(u.id)}
-                      disabled={savingUserId === u.id || (rowTypes[u.id] || u.type) === u.type}
-                      className="rounded border border-zinc-600 px-2 py-1 text-xs hover:border-orange-300/40 hover:bg-orange-400/10 disabled:opacity-50"
-                    >
+                    <button type="button" onClick={() => saveUserType(u.id)} disabled={savingUserId === u.id || (rowTypes[u.id] || u.type) === u.type} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50 disabled:opacity-50">
                       {savingUserId === u.id ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 </td>
-                <td className="p-3">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
-                <td className="p-3">{u.active ? 'Active' : 'Disabled'}</td>
+                <td className="px-4 py-4">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
+                <td className="px-4 py-4">{u.active ? 'Active' : 'Disabled'}</td>
               </tr>
             ))}
             {users.length === 0 ? (
-              <tr>
-                <td className="p-3 text-zinc-400" colSpan={5}>No users found.</td>
-              </tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={5}>No users found.</td></tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }

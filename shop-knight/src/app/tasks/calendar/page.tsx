@@ -121,64 +121,39 @@ export default function TaskCalendarPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl p-8">
-      <h1 className="text-2xl font-semibold">Open Tasks Calendar</h1>
-      <p className="text-sm text-zinc-400">Calendar view of all open tasks with due dates.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Open Tasks Calendar</h1>
+      <p className="text-sm text-slate-500">Calendar view of all open tasks with due dates.</p>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
-        <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Search tasks..." className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="ALL">All Types</option>
-          {entityTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="ALL">All Assignees</option>
-          <option value="UNASSIGNED">Unassigned</option>
-          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="ALL">All Statuses</option>
-          <option value="TODO">TODO</option>
-          <option value="IN_PROGRESS">IN_PROGRESS</option>
-          <option value="BLOCKED">BLOCKED</option>
-          <option value="DONE">DONE</option>
-        </select>
-        <button onClick={() => { setFilterText(''); setFilterType('ALL'); setFilterAssignee('ALL'); setFilterStatus('ALL'); }} className="rounded border border-zinc-700 px-3 py-2">Clear Filters</button>
+      <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-5">
+        <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Search tasks..." className="field" />
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="field"><option value="ALL">All Types</option>{entityTypes.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+        <select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="field"><option value="ALL">All Assignees</option><option value="UNASSIGNED">Unassigned</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="field"><option value="ALL">All Statuses</option><option value="TODO">TODO</option><option value="IN_PROGRESS">IN_PROGRESS</option><option value="BLOCKED">BLOCKED</option><option value="DONE">DONE</option></select>
+        <button onClick={() => { setFilterText(''); setFilterType('ALL'); setFilterAssignee('ALL'); setFilterStatus('ALL'); }} className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">Clear Filters</button>
       </div>
 
       {selectedTask ? (
-        <section className="mb-4 rounded border border-zinc-800 p-3">
-          <p className="font-medium">Quick Edit: {selectedTask.title}</p>
-          <p className="mb-2 text-xs text-zinc-400">{selectedTask.entityType} • {selectedTask.entityLabel || selectedTask.entityId}</p>
+        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="font-semibold">Quick Edit: {selectedTask.title}</p>
+          <p className="mb-2 text-xs text-slate-500">{selectedTask.entityType} • {selectedTask.entityLabel || selectedTask.entityId}</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-            <select value={selectedTask.status} onChange={(e) => saveSelectedTask({ status: e.target.value })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-              <option value="TODO">TODO</option>
-              <option value="IN_PROGRESS">IN_PROGRESS</option>
-              <option value="BLOCKED">BLOCKED</option>
-              <option value="DONE">DONE</option>
-            </select>
-            <input type="date" value={selectedTask.dueAt ? ymd(new Date(selectedTask.dueAt)) : ''} onChange={(e) => saveSelectedTask({ dueAt: e.target.value || null })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <select value={selectedTask.assignee?.id || ''} onChange={(e) => saveSelectedTask({ assigneeId: e.target.value || null })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-              <option value="">Unassigned</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-            <a href={`${taskEntityHref(selectedTask)}#task-${selectedTask.id}`} className="rounded border border-zinc-700 px-3 py-2 text-center">Open record</a>
+            <select value={selectedTask.status} onChange={(e) => saveSelectedTask({ status: e.target.value })} className="field"><option value="TODO">TODO</option><option value="IN_PROGRESS">IN_PROGRESS</option><option value="BLOCKED">BLOCKED</option><option value="DONE">DONE</option></select>
+            <input type="date" value={selectedTask.dueAt ? ymd(new Date(selectedTask.dueAt)) : ''} onChange={(e) => saveSelectedTask({ dueAt: e.target.value || null })} className="field" />
+            <select value={selectedTask.assignee?.id || ''} onChange={(e) => saveSelectedTask({ assigneeId: e.target.value || null })} className="field"><option value="">Unassigned</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+            <a href={`${taskEntityHref(selectedTask)}#task-${selectedTask.id}`} className="inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">Open record</a>
           </div>
         </section>
       ) : null}
 
       <div className="mb-3 flex items-center gap-2">
-        <button onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))} className="rounded border border-zinc-700 px-3 py-1">← Prev</button>
-        <p className="min-w-48 text-center font-medium">{monthLabel}</p>
-        <button onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))} className="rounded border border-zinc-700 px-3 py-1">Next →</button>
+        <button onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm">← Prev</button>
+        <p className="min-w-48 text-center font-semibold">{monthLabel}</p>
+        <button onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1))} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm">Next →</button>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 text-xs text-zinc-400">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-          <div key={d} className="p-2 text-center">{d}</div>
-        ))}
-      </div>
+      <div className="grid grid-cols-7 gap-2 text-xs text-slate-500">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (<div key={d} className="p-2 text-center">{d}</div>))}</div>
 
       <div className="grid grid-cols-7 gap-2">
         {calendarDays.map((d) => {
@@ -186,35 +161,35 @@ export default function TaskCalendarPage() {
           const dayTasks = taskByDay.get(key) || [];
           const inMonth = d.getMonth() === monthCursor.getMonth();
           return (
-            <div key={key} className={`min-h-28 rounded border p-2 ${inMonth ? 'border-zinc-700' : 'border-zinc-900 opacity-50'}`}>
+            <div key={key} className={`min-h-28 rounded-lg border p-2 ${inMonth ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-70'}`}>
               <p className="mb-1 text-xs font-medium">{d.getDate()}</p>
               <div className="space-y-1">
                 {dayTasks.slice(0, 4).map((t) => {
                   const hover = `Task: ${t.title}\nAssignee: ${t.assignee?.name || 'Unassigned'}\nAssigned to: ${t.entityType} • ${t.entityLabel || t.entityId}`;
                   return (
-                    <button key={t.id} title={hover} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className={`w-full rounded px-2 py-1 text-left text-xs ${selectedTaskId === t.id ? 'bg-blue-700' : 'bg-zinc-800'}`}>
+                    <button key={t.id} title={hover} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className={`w-full rounded px-2 py-1 text-left text-xs ${selectedTaskId === t.id ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                       <p className="truncate">{t.entityType}: {t.entityLabel || t.entityId}</p>
-                      <p className="truncate text-[10px] text-zinc-300">{t.title}</p>
+                      <p className="truncate text-[10px] opacity-80">{t.title}</p>
                     </button>
                   );
                 })}
-                {dayTasks.length > 4 ? <p className="text-[10px] text-zinc-400">+{dayTasks.length - 4} more</p> : null}
+                {dayTasks.length > 4 ? <p className="text-[10px] text-slate-500">+{dayTasks.length - 4} more</p> : null}
               </div>
             </div>
           );
         })}
       </div>
 
-      <section className="mt-6 rounded border border-zinc-800 p-4">
-        <h2 className="mb-2 font-medium">Open Tasks (list)</h2>
+      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 font-semibold">Open Tasks (list)</h2>
         <div className="space-y-2 text-sm">
           {filteredTasks.map((t) => (
-            <button key={t.id} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className="w-full rounded border border-zinc-700 p-2 text-left">
+            <button key={t.id} onClick={() => { setSelectedTaskId(t.id); openTaskOnRecord(t); }} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left hover:bg-slate-100">
               <p className="font-medium">{t.title}</p>
-              <p className="text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : 'No due date'} • {t.entityType} • {t.entityLabel || t.entityId} • {t.assignee?.name || 'Unassigned'}</p>
+              <p className="text-xs text-slate-500">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : 'No due date'} • {t.entityType} • {t.entityLabel || t.entityId} • {t.assignee?.name || 'Unassigned'}</p>
             </button>
           ))}
-          {filteredTasks.length === 0 ? <p className="text-zinc-400">No open tasks found.</p> : null}
+          {filteredTasks.length === 0 ? <p className="text-slate-500">No open tasks found.</p> : null}
         </div>
       </section>
     </main>

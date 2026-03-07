@@ -37,20 +37,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-8">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
-      <p className="mt-1 text-sm text-zinc-400">Use your user credentials.</p>
-      <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded border border-zinc-800 p-4">
+    <main className="mx-auto mt-16 max-w-md bg-white p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Sign in</h1>
+      <p className="mt-1 text-sm text-slate-500">Use your user credentials.</p>
+      <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
         <div>
-          <label className="mb-1 block text-sm">Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded border border-zinc-700 bg-zinc-900 p-2" placeholder="you@company.com" required />
+          <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} className="field" placeholder="you@company.com" required />
         </div>
         <div>
-          <label className="mb-1 block text-sm">Password</label>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="w-full rounded border border-zinc-700 bg-zinc-900 p-2" required />
+          <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="field" required />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <button type="submit" disabled={loading} className="w-full rounded bg-blue-600 p-2 font-medium disabled:opacity-60">
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <button type="submit" disabled={loading} className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>

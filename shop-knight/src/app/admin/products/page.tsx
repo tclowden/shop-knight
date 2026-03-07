@@ -67,64 +67,60 @@ export default function ProductsAdminPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Product Admin</h1>
-      <p className="text-sm text-zinc-400">Create products that appear as dropdown options in Quotes and Sales Orders.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Product Admin</h1>
+      <p className="text-sm text-slate-500">Create products that appear as options in Quotes and Sales Orders.</p>
       <Nav />
 
-      <form onSubmit={createProduct} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-8">
-        <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={uom} onChange={(e) => setUom(e.target.value)} placeholder="UOM (EA, sqft, ft)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={salePrice} onChange={(e) => setSalePrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Sale price" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={costPrice} onChange={(e) => setCostPrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Cost" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <label className="flex items-center gap-2 rounded border border-zinc-700 p-2 text-sm">
-          <input checked={taxable} onChange={(e) => setTaxable(e.target.checked)} type="checkbox" /> Taxable
-        </label>
-        <button className="rounded bg-blue-600 px-3 py-2 md:col-span-8">Create Product</button>
+      <form onSubmit={createProduct} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-8">
+        <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" className="field" required />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" className="field" required />
+        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="field" />
+        <input value={uom} onChange={(e) => setUom(e.target.value)} placeholder="UOM (EA, sqft, ft)" className="field" />
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="field" />
+        <input value={salePrice} onChange={(e) => setSalePrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Sale price" className="field" required />
+        <input value={costPrice} onChange={(e) => setCostPrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Cost" className="field" />
+        <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"><input checked={taxable} onChange={(e) => setTaxable(e.target.checked)} type="checkbox" /> Taxable</label>
+        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-8">Create Product</button>
       </form>
 
-      {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300">
+          <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
-              <th className="p-3">SKU</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Category</th>
-              <th className="p-3">UOM</th>
-              <th className="p-3">Description</th>
-              <th className="p-3">Sale Price</th>
-              <th className="p-3">Cost</th>
-              <th className="p-3">Taxable</th>
-              <th className="p-3">Rules</th>
+              <th className="px-4 py-3 font-semibold">SKU</th>
+              <th className="px-4 py-3 font-semibold">Name</th>
+              <th className="px-4 py-3 font-semibold">Category</th>
+              <th className="px-4 py-3 font-semibold">UOM</th>
+              <th className="px-4 py-3 font-semibold">Description</th>
+              <th className="px-4 py-3 font-semibold">Sale Price</th>
+              <th className="px-4 py-3 font-semibold">Cost</th>
+              <th className="px-4 py-3 font-semibold">Taxable</th>
+              <th className="px-4 py-3 font-semibold">Rules</th>
             </tr>
           </thead>
           <tbody>
             {products.map((p) => (
-              <tr key={p.id} className="border-t border-zinc-800">
-                <td className="p-3">{p.sku}</td>
-                <td className="p-3">{p.name}</td>
-                <td className="p-3">{p.category || '—'}</td>
-                <td className="p-3">{p.uom || 'EA'}</td>
-                <td className="p-3">{p.description || '—'}</td>
-                <td className="p-3">{p.salePrice}</td>
-                <td className="p-3">{p.costPrice ?? '—'}</td>
-                <td className="p-3">{p.taxable ? 'Yes' : 'No'}</td>
-                <td className="p-3"><Link href={`/admin/products/${p.id}`} className="text-blue-400">Manage</Link></td>
+              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4">{p.sku}</td>
+                <td className="px-4 py-4">{p.name}</td>
+                <td className="px-4 py-4">{p.category || '—'}</td>
+                <td className="px-4 py-4">{p.uom || 'EA'}</td>
+                <td className="px-4 py-4">{p.description || '—'}</td>
+                <td className="px-4 py-4">{p.salePrice}</td>
+                <td className="px-4 py-4">{p.costPrice ?? '—'}</td>
+                <td className="px-4 py-4">{p.taxable ? 'Yes' : 'No'}</td>
+                <td className="px-4 py-4"><Link href={`/admin/products/${p.id}`} className="text-sky-700">Manage</Link></td>
               </tr>
             ))}
             {products.length === 0 ? (
-              <tr>
-                <td className="p-3 text-zinc-400" colSpan={9}>No products yet.</td>
-              </tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={9}>No products yet.</td></tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }
