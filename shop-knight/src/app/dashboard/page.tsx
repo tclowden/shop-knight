@@ -20,32 +20,32 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="text-sm text-zinc-400">Mission control for sales, operations, and purchasing.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+      <p className="text-sm text-slate-500">Mission control for sales, operations, and purchasing.</p>
       <Nav />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Link href="/admin/users" className="rounded border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-800">User Admin</Link>
-        <Link href="/admin/products" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium">Product Admin</Link>
+        <Link href="/admin/users" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">User Admin</Link>
+        <Link href="/admin/products" className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600">Product Admin</Link>
       </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {cards.map((card) => {
           const content = (
             <>
-              <p className="text-sm text-zinc-400">{card.label}</p>
+              <p className="text-sm text-slate-500">{card.label}</p>
               <p className="mt-2 text-3xl font-semibold">{card.value}</p>
-              {card.href ? <p className="mt-2 text-xs text-blue-400">View list →</p> : null}
+              {card.href ? <p className="mt-2 text-xs font-medium text-sky-600">View list →</p> : null}
             </>
           );
 
           return card.href ? (
-            <Link key={card.label} href={card.href} className="rounded border border-zinc-800 p-4 transition hover:bg-zinc-900">
+            <Link key={card.label} href={card.href} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:bg-slate-50">
               {content}
             </Link>
           ) : (
-            <article key={card.label} className="rounded border border-zinc-800 p-4">
+            <article key={card.label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               {content}
             </article>
           );

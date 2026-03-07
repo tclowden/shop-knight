@@ -50,41 +50,41 @@ export default function OpportunitiesPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Sales Opportunities</h1>
-      <p className="text-sm text-zinc-400">All opportunities in the system.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <h1 className="text-3xl font-semibold tracking-tight">Sales Opportunities</h1>
+      <p className="text-sm text-slate-500">All opportunities in the system.</p>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-4">
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">{items.length}</p></div>
-        <div className="rounded border border-zinc-800 p-3 md:col-span-3"><p className="text-xs text-zinc-400">Visible</p><p className="text-xl font-semibold">{visibleItems.length}</p></div>
-      </div>
-
-      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full flex-col gap-2 md:max-w-2xl md:flex-row">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search opportunities..."
-            className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-          />
-          <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            {stages.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All Stages' : s}</option>)}
-          </select>
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full flex-col gap-2 md:max-w-2xl md:flex-row">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search opportunities..."
+              className="field"
+            />
+            <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="field min-w-48">
+              {stages.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All Stages' : s}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}</div>
+            <Link href="/sales/opportunities/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">
+              + New Opportunity
+            </Link>
+          </div>
         </div>
-        <Link href="/sales/opportunities/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-center">
-          + New Opportunity
-        </Link>
-      </div>
+      </section>
 
       <div className="space-y-3">
         {visibleItems.map((opp) => (
-          <Link key={opp.id} href={`/sales/opportunities/${opp.id}`} className="block rounded border border-zinc-800 p-4 hover:bg-zinc-900">
+          <Link key={opp.id} href={`/sales/opportunities/${opp.id}`} className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:bg-slate-50">
             <div className="flex items-start justify-between gap-3">
-              <p className="font-medium">{opp.name}</p>
+              <p className="font-semibold text-slate-800">{opp.name}</p>
               <StatusChip value={opp.stage} />
             </div>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="mt-1 text-sm text-slate-500">
               {opp.customer}
               {opp.priority ? ` • Priority: ${opp.priority}` : ''}
               {opp.estimatedValue ? ` • $${opp.estimatedValue}` : ''}
@@ -94,7 +94,7 @@ export default function OpportunitiesPage() {
             </p>
           </Link>
         ))}
-        {visibleItems.length === 0 ? <p className="text-sm text-zinc-400">No opportunities found.</p> : null}
+        {visibleItems.length === 0 ? <p className="text-sm text-slate-500">No opportunities found.</p> : null}
       </div>
     </main>
   );

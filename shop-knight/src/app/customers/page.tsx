@@ -34,34 +34,34 @@ export default function CustomersPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">Customers</h1>
-      <p className="text-sm text-zinc-400">Customer module with notes + tasks on detail pages.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <h1 className="text-3xl font-semibold tracking-tight">Customers</h1>
+      <p className="text-sm text-slate-500">Customer module with notes + tasks on detail pages.</p>
       <Nav />
 
-      <form onSubmit={createCustomer} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-5">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <button className="rounded bg-blue-600 px-3 py-2">Create Customer</button>
+      <form onSubmit={createCustomer} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-5">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
+        <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="field" />
+        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Customer</button>
       </form>
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Payment Terms</th></tr></thead>
+          <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Email</th><th className="px-4 py-3 font-semibold">Phone</th><th className="px-4 py-3 font-semibold">Payment Terms</th></tr></thead>
           <tbody>
             {items.map((c) => (
-              <tr key={c.id} className="border-t border-zinc-800">
-                <td className="p-3"><Link href={`/customers/${c.id}`} className="text-blue-400">{c.name}</Link></td>
-                <td className="p-3">{c.email || '—'}</td>
-                <td className="p-3">{c.phone || '—'}</td>
-                <td className="p-3">{c.paymentTerms || '—'}</td>
+              <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4"><Link href={`/customers/${c.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{c.name}</Link></td>
+                <td className="px-4 py-4">{c.email || '—'}</td>
+                <td className="px-4 py-4">{c.phone || '—'}</td>
+                <td className="px-4 py-4">{c.paymentTerms || '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }

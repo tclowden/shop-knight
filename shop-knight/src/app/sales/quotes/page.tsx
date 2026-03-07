@@ -51,66 +51,66 @@ export default function QuotesPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Quotes</h1>
-      <p className="text-sm text-zinc-400">All quotes in the system.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <h1 className="text-3xl font-semibold tracking-tight">Quotes</h1>
+      <p className="text-sm text-slate-500">All quotes in the system.</p>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-4">
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">{items.length}</p></div>
-        <div className="rounded border border-zinc-800 p-3 md:col-span-3"><p className="text-xs text-zinc-400">Visible</p><p className="text-xl font-semibold">{visibleItems.length}</p></div>
-      </div>
-
-      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full flex-col gap-2 md:max-w-2xl md:flex-row">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search quotes..."
-            className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-          />
-          <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            {states.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All States' : s}</option>)}
-          </select>
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full flex-col gap-2 md:max-w-2xl md:flex-row">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search quotes..."
+              className="field"
+            />
+            <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="field min-w-48">
+              {states.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All States' : s}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}</div>
+            <Link href="/sales/quotes/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">
+              + New Quote
+            </Link>
+          </div>
         </div>
-        <Link href="/sales/quotes/new" className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-center">
-          + New Quote
-        </Link>
-      </div>
+      </section>
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300">
+          <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
-              <th className="p-3">Quote #</th>
-              <th className="p-3">Title</th>
-              <th className="p-3">State</th>
-              <th className="p-3">Opportunity</th>
-              <th className="p-3">Customer</th>
-              <th className="p-3">Total</th>
-              <th className="p-3">Created</th>
+              <th className="px-4 py-3 font-semibold">Quote #</th>
+              <th className="px-4 py-3 font-semibold">Title</th>
+              <th className="px-4 py-3 font-semibold">State</th>
+              <th className="px-4 py-3 font-semibold">Opportunity</th>
+              <th className="px-4 py-3 font-semibold">Customer</th>
+              <th className="px-4 py-3 font-semibold">Total</th>
+              <th className="px-4 py-3 font-semibold">Created</th>
             </tr>
           </thead>
           <tbody>
             {visibleItems.map((qRow) => (
-              <tr key={qRow.id} className="border-t border-zinc-800 hover:bg-zinc-900/40">
-                <td className="p-3"><Link href={`/sales/quotes/${qRow.id}`} className="text-blue-400">{qRow.quoteNumber}</Link></td>
-                <td className="p-3">{qRow.title || '—'}</td>
-                <td className="p-3"><StatusChip value={qRow.workflowState || qRow.status} /></td>
-                <td className="p-3">{qRow.opportunity}</td>
-                <td className="p-3">{qRow.customer}</td>
-                <td className="p-3">{qRow.totalPriceWithTaxInDollars ?? '—'}</td>
-                <td className="p-3">{new Date(qRow.createdAt).toLocaleDateString()}</td>
+              <tr key={qRow.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4"><Link href={`/sales/quotes/${qRow.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{qRow.quoteNumber}</Link></td>
+                <td className="px-4 py-4">{qRow.title || '—'}</td>
+                <td className="px-4 py-4"><StatusChip value={qRow.workflowState || qRow.status} /></td>
+                <td className="px-4 py-4">{qRow.opportunity}</td>
+                <td className="px-4 py-4">{qRow.customer}</td>
+                <td className="px-4 py-4">{qRow.totalPriceWithTaxInDollars ?? '—'}</td>
+                <td className="px-4 py-4 text-slate-500">{new Date(qRow.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
             {visibleItems.length === 0 ? (
               <tr>
-                <td className="p-3 text-zinc-400" colSpan={7}>No quotes found.</td>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>No quotes found.</td>
               </tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }

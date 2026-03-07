@@ -33,32 +33,32 @@ export default function VendorsPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">Vendors</h1>
-      <p className="text-sm text-zinc-400">Vendor module with notes + tasks on detail pages.</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <h1 className="text-3xl font-semibold tracking-tight">Vendors</h1>
+      <p className="text-sm text-slate-500">Vendor module with notes + tasks on detail pages.</p>
       <Nav />
 
-      <form onSubmit={createVendor} className="mb-4 grid grid-cols-1 gap-2 rounded border border-zinc-800 p-3 md:grid-cols-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <button className="rounded bg-blue-600 px-3 py-2">Create Vendor</button>
+      <form onSubmit={createVendor} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
+        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Vendor</button>
       </form>
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th></tr></thead>
+          <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Email</th><th className="px-4 py-3 font-semibold">Phone</th></tr></thead>
           <tbody>
             {items.map((v) => (
-              <tr key={v.id} className="border-t border-zinc-800">
-                <td className="p-3"><Link href={`/vendors/${v.id}`} className="text-blue-400">{v.name}</Link></td>
-                <td className="p-3">{v.email || '—'}</td>
-                <td className="p-3">{v.phone || '—'}</td>
+              <tr key={v.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4"><Link href={`/vendors/${v.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{v.name}</Link></td>
+                <td className="px-4 py-4">{v.email || '—'}</td>
+                <td className="px-4 py-4">{v.phone || '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </main>
   );
 }

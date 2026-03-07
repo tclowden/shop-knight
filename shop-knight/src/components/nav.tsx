@@ -22,12 +22,12 @@ const links = [
 
 export function Nav() {
   return (
-    <nav className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-4 text-sm">
+    <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm">
       {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
-          className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-zinc-100 hover:border-orange-300/40 hover:bg-orange-400/10"
+          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
         >
           {link.label}
         </Link>
@@ -38,7 +38,7 @@ export function Nav() {
       <button
         type="button"
         onClick={() => signOut({ callbackUrl: '/login' })}
-        className="rounded-full border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-zinc-100 hover:border-red-300/60 hover:bg-red-500/20"
+        className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-rose-700 hover:bg-rose-100"
       >
         Logout
       </button>
