@@ -45,6 +45,8 @@ type PoLine = {
   purchaseOrder: { poNumber: string };
 };
 
+const sourceOptions = ['Referral', 'Website', 'Repeat Customer', 'Outbound', 'Google', 'Facebook', 'Instagram', 'Trade Show'];
+
 export default function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { push } = useToast();
   const [id, setId] = useState<string>('');
@@ -302,7 +304,8 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Opportunity Name</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Customer</span><input list="customer-options" value={customerInput} onChange={(e) => setCustomerInput(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
               <datalist id="customer-options">{sortedCustomers.map((c) => <option key={c.id} value={c.name} />)}</datalist>
-              <label className="text-sm"><span className="mb-1 block text-zinc-300">Source</span><input value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+              <datalist id="source-options">{sourceOptions.map((option) => <option key={option} value={option} />)}</datalist>
+              <label className="text-sm"><span className="mb-1 block text-zinc-300">Source</span><input list="source-options" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Start typing source..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Priority</span><input value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Estimated Value</span><input value={estimatedValue} onChange={(e) => setEstimatedValue(e.target.value)} type="number" step="0.01" className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
               <label className="text-sm"><span className="mb-1 block text-zinc-300">Probability</span><input value={probability} onChange={(e) => setProbability(e.target.value)} type="number" min="0" max="1" step="0.01" className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>

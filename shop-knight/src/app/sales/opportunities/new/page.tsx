@@ -7,6 +7,8 @@ import { Nav } from '@/components/nav';
 type User = { id: string; name: string; type: string };
 type Customer = { id: string; name: string };
 
+const sourceOptions = ['Referral', 'Website', 'Repeat Customer', 'Outbound', 'Google', 'Facebook', 'Instagram', 'Trade Show'];
+
 export default function NewOpportunityPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -86,10 +88,9 @@ export default function NewOpportunityPage() {
 
         <label className="text-sm">
           <span className="mb-1 block text-zinc-300">Source</span>
-          <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <option>Referral</option><option>Website</option><option>Repeat Customer</option><option>Outbound</option>
-          </select>
+          <input list="source-options" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Start typing source..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         </label>
+        <datalist id="source-options">{sourceOptions.map((option) => <option key={option} value={option} />)}</datalist>
 
         <label className="text-sm">
           <span className="mb-1 block text-zinc-300">Priority</span>
