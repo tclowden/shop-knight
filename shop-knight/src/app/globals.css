@@ -64,3 +64,9 @@ a.rounded.bg-blue-600:hover {
   filter: brightness(1.05);
   transform: translateY(-1px);
 }
+
+@layer components {
+  .field {
+    @apply h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-sky-400;
+  }
+}

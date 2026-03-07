@@ -43,6 +43,8 @@ type SalesOrder = {
   lines: Line[];
 };
 
+const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medium';
+
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { push } = useToast();
   const [id, setId] = useState('');
@@ -171,7 +173,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), attributeValues: { _taxable: newTaxable ? 'true' : 'false', _unitCost: newUnitCost, _gpmPercent: newGpmPercent } }),
     });
-    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35');
+    setNewProductId('');
+    setNewDescription('');
+    setNewQty('1');
+    setNewUnitPrice('0');
+    setNewTaxable(true);
+    setNewUnitCost('0.00');
+    setNewGpmPercent('35');
     await load(id);
   }
 
@@ -230,7 +238,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const visibleLines = useMemo(() => {
     const out: Array<{ line: Line; depth: number }> = [];
     const sortedRoots = [...roots].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    for (const r of sortedRoots) { out.push({ line: r, depth: 0 }); if (!r.collapsed) (childrenMap.get(r.id) || []).forEach((c) => out.push({ line: c, depth: 1 })); }
+    for (const r of sortedRoots) {
+      out.push({ line: r, depth: 0 });
+      if (!r.collapsed) (childrenMap.get(r.id) || []).forEach((c) => out.push({ line: c, depth: 1 }));
+    }
     return out.filter(({ line }) => line.description.toLowerCase().includes(filterText.trim().toLowerCase()));
   }, [roots, childrenMap, filterText]);
 
@@ -288,151 +299,244 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   useUnsavedGuard(headerDirty);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
-  if (!order) return <main className="mx-auto max-w-6xl p-8">Loading sales order…</main>;
+  if (!order) return <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-700">Loading sales order…</main>;
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
-      <h1 className="text-2xl font-semibold">Sales Order {order.orderNumber}</h1>
-      <p className="text-sm text-zinc-400">{order.opportunity.name} • {order.opportunity.customer.name}</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Sales Order {order.orderNumber}</h1>
+          <p className="mt-1 text-sm text-slate-500">{order.opportunity.name} • {order.opportunity.customer.name}</p>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+          <StatusChip value={order.status?.name || 'Unknown'} />
+        </div>
+      </header>
       <Nav />
 
-      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Status</p><div className="mt-1"><StatusChip value={order.status?.name || 'Unknown'} /></div></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Lines</p><p className="text-xl font-semibold">{order.lines.length}</p></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Down Payment</p><p className="text-xl font-semibold">{order.downPaymentValue ? String(order.downPaymentValue) : '—'}</p></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">${total.toFixed(0)}</p></div>
-      </div>
+      <section className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        <SummaryCell label="Customer" value={order.opportunity.customer.name} />
+        <SummaryCell label="Status" value={order.status?.name || 'Unknown'} />
+        <SummaryCell label="Assigned Team" value={[order.salesRep?.name, order.projectManager?.name, order.designer?.name].filter(Boolean).join(', ') || 'Unassigned'} />
+        <SummaryCell label="Dates" value={`${order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} • Due ${order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}`} />
+      </section>
 
-      <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+      <section className="mb-4 border-b border-slate-200">
+        <div className="flex flex-wrap gap-4 text-slate-500">
+          <button className={`${tabBase} border-sky-500 text-sky-600`}>Items ({order.lines.length})</button>
+          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Purchasing (0)</button>
+          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Tasks</button>
+          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Assets</button>
+          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Notes</button>
+          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Emails</button>
+        </div>
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         {!editingHeader ? (
           <>
-            <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <p><span className="text-zinc-400">Title:</span> {order.title || '—'}</p>
-              <p><span className="text-zinc-400">Status:</span> {order.status?.name || '—'}</p>
-              <p><span className="text-zinc-400">Primary Customer Contact:</span> {order.primaryCustomerContact || '—'}</p>
-              <p><span className="text-zinc-400">Customer Invoice Contact:</span> {order.customerInvoiceContact || '—'}</p>
-              <p><span className="text-zinc-400">Sales Order Date:</span> {order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Due Date:</span> {order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Install Date:</span> {order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Shipping Date:</span> {order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Shipping Method:</span> {order.shippingMethod || '—'}</p>
-              <p><span className="text-zinc-400">Shipping Tracking:</span> {order.shippingTracking || '—'}</p>
-              <p><span className="text-zinc-400">Payment Terms:</span> {order.paymentTerms || '—'}</p>
-              <p><span className="text-zinc-400">Down Payment:</span> {order.downPaymentValue ? `${order.downPaymentValue} ${order.downPaymentType === 'PERCENT' ? '%' : '$'}` : '—'}</p>
-              <p><span className="text-zinc-400">Sales Rep:</span> {order.salesRep?.name || '—'}</p>
-              <p><span className="text-zinc-400">Project Manager:</span> {order.projectManager?.name || '—'}</p>
-              <p><span className="text-zinc-400">Designer:</span> {order.designer?.name || '—'}</p>
-              <p><span className="text-zinc-400">Billing Attention To:</span> {order.billingAttentionTo || '—'}</p>
-              <p><span className="text-zinc-400">Shipping Attention To:</span> {order.shippingAttentionTo || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {order.billingAddress || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {order.shippingAddress || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {order.installAddress || '—'}</p>
+            <div className="mb-4 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">Edit order info</button></div>
+            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+              <ReadField label="Title" value={order.title || '—'} />
+              <ReadField label="Status" value={order.status?.name || '—'} />
+              <ReadField label="Primary Customer Contact" value={order.primaryCustomerContact || '—'} />
+              <ReadField label="Customer Invoice Contact" value={order.customerInvoiceContact || '—'} />
+              <ReadField label="Sales Order Date" value={order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} />
+              <ReadField label="Due Date" value={order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'} />
+              <ReadField label="Install Date" value={order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'} />
+              <ReadField label="Shipping Date" value={order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'} />
+              <ReadField label="Shipping Method" value={order.shippingMethod || '—'} />
+              <ReadField label="Shipping Tracking" value={order.shippingTracking || '—'} />
+              <ReadField label="Payment Terms" value={order.paymentTerms || '—'} />
+              <ReadField label="Down Payment" value={order.downPaymentValue ? `${order.downPaymentValue} ${order.downPaymentType === 'PERCENT' ? '%' : '$'}` : '—'} />
+              <ReadField label="Sales Rep" value={order.salesRep?.name || '—'} />
+              <ReadField label="Project Manager" value={order.projectManager?.name || '—'} />
+              <ReadField label="Designer" value={order.designer?.name || '—'} />
+              <ReadField label="Billing Attention To" value={order.billingAttentionTo || '—'} />
+              <ReadField label="Shipping Attention To" value={order.shippingAttentionTo || '—'} />
+              <div className="md:col-span-2"><ReadField label="Billing Address" value={order.billingAddress || '—'} /></div>
+              <div className="md:col-span-2"><ReadField label="Shipping Address" value={order.shippingAddress || '—'} /></div>
+              <div className="md:col-span-2"><ReadField label="Install Address" value={order.installAddress || '—'} /></div>
             </div>
           </>
         ) : (
-          <form onSubmit={saveHeader} className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Status</span><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Primary Customer Contact</span><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Customer Invoice Contact</span><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Order Date</span><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Due Date</span><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Install Date</span><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Date</span><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Method</span><input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Tracking</span><input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Payment Terms</span><input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Down Payment</span><div className="grid grid-cols-2 gap-2"><select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="DOLLARS">$</option><option value="PERCENT">%</option></select><input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" step="0.01" min="0" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Rep</span><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Project Manager</span><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Designer</span><select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Billing Attention To</span><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Attention To</span><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+          <form onSubmit={saveHeader} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <FormField label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="field" /></FormField>
+            <FormField label="Status"><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="field"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></FormField>
+            <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
+            <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
+            <FormField label="Sales Order Date"><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="field" /></FormField>
+            <FormField label="Due Date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field" /></FormField>
+            <FormField label="Install Date"><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="field" /></FormField>
+            <FormField label="Shipping Date"><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="field" /></FormField>
+            <FormField label="Shipping Method"><input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="field" /></FormField>
+            <FormField label="Shipping Tracking"><input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} className="field" /></FormField>
+            <FormField label="Payment Terms"><input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="field" /></FormField>
+            <FormField label="Down Payment">
+              <div className="grid grid-cols-2 gap-2">
+                <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value)} className="field"><option value="DOLLARS">$</option><option value="PERCENT">%</option></select>
+                <input value={downPaymentValue} onChange={(e) => setDownPaymentValue(e.target.value)} type="number" step="0.01" min="0" className="field" />
+              </div>
+            </FormField>
+            <FormField label="Sales Rep"><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="field"><option value="">Unassigned</option>{sortedSalesReps.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
+            <FormField label="Project Manager"><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="field"><option value="">Unassigned</option>{sortedProjectManagers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
+            <FormField label="Designer"><select value={designerId} onChange={(e) => setDesignerId(e.target.value)} className="field"><option value="">Unassigned</option>{sortedDesigners.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
+            <FormField label="Billing Attention To"><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="field" /></FormField>
+            <FormField label="Shipping Attention To"><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="field" /></FormField>
             <div className="md:col-span-2"><AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} /></div>
-            <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
+            <div className="md:col-span-2 flex gap-2 pt-2">
+              <button disabled={savingHeader} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button>
+              <button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium hover:bg-slate-50">Cancel</button>
+            </div>
           </form>
         )}
-      </div>
+      </section>
 
-      <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-          <label className="text-xs text-zinc-300">Product
-            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
-          </label>
-          <label className="text-xs text-zinc-300">Description
-            <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">Quantity
-            <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">Unit Price
-            <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">Taxable
-            <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span>
-          </label>
-          <div className="flex items-end"><button className="w-full rounded bg-blue-600 px-3 py-2">+ Add Line</button></div>
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-base font-semibold">Add Line Item</h2>
+        <form onSubmit={addLine} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+            <FormFieldSmall label="Product">
+              <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="field">
+                <option value="">Custom / no product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
+              </select>
+            </FormFieldSmall>
+            <FormFieldSmall label="Description"><input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="field" required /></FormFieldSmall>
+            <FormFieldSmall label="Quantity"><input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="field" required /></FormFieldSmall>
+            <FormFieldSmall label="Unit Price"><input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="field" required /></FormFieldSmall>
+            <FormFieldSmall label="Taxable"><span className="field flex items-center"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span></FormFieldSmall>
+            <div className="flex items-end"><button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line</button></div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <FormFieldSmall label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
+            <FormFieldSmall label="GPM %"><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
+            <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
+          </div>
+        </form>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-4">
+          <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
         </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <label className="text-xs text-zinc-300">Unit Cost
-            <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          </label>
-          <label className="text-xs text-zinc-300">GPM %
-            <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          </label>
-          <label className="text-xs text-zinc-300">Extended Price
-            <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
-          </label>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-left text-sm">
+            <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Drag</th><th className="px-4 py-3 font-semibold">Description</th><th className="px-4 py-3 font-semibold">Qty</th><th className="px-4 py-3 font-semibold">Unit Price</th><th className="px-4 py-3 font-semibold">Line Total</th><th className="px-4 py-3 font-semibold">Actions</th></tr></thead>
+            <tbody>
+              {visibleLines.map(({ line, depth }) => (
+                <SalesOrderLineRow
+                  key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`}
+                  line={line}
+                  depth={depth}
+                  roots={roots}
+                  displayTotal={lineDisplayTotals.get(line.id) || 0}
+                  hasChildren={(childrenMap.get(line.id) || []).length > 0}
+                  onSave={saveLine}
+                  onDelete={deleteLine}
+                  onMove={moveLine}
+                  onDragMove={dragMoveLine}
+                  onToggleCollapse={toggleCollapse}
+                  onMakeChild={makeChild}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
-      </form>
+      </section>
 
-      <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
-
-      <div className="overflow-hidden rounded border border-zinc-800">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Line Total</th><th className="p-3">Actions</th></tr></thead>
-          <tbody>{visibleLines.map(({ line, depth }) => <SalesOrderLineRow key={`${line.id}-${line.description}-${line.qty}-${line.unitPrice}-${line.parentLineId ?? ''}-${line.collapsed ? '1' : '0'}`} line={line} depth={depth} roots={roots} displayTotal={lineDisplayTotals.get(line.id) || 0} hasChildren={(childrenMap.get(line.id) || []).length > 0} onSave={saveLine} onDelete={deleteLine} onMove={moveLine} onDragMove={dragMoveLine} onToggleCollapse={toggleCollapse} onMakeChild={makeChild} />)}</tbody>
-        </table>
+      <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 text-sm shadow">
+        <p className="flex justify-between text-lg font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p>
       </div>
-
-      <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded border border-zinc-800 bg-zinc-950/90 p-3 text-sm backdrop-blur"><p className="flex justify-between text-base font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p></div>
 
       <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} />
     </main>
   );
 }
 
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function ReadField({ label, value }: { label: string; value: string }) {
+  return (
+    <p>
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="mt-1 block text-sm text-slate-800">{value}</span>
+    </p>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function FormFieldSmall({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-xs">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
+
   useEffect(() => {
     if (!dirty) return;
     const t = setTimeout(() => onSave(draft), 700);
     return () => clearTimeout(t);
   }, [draft, dirty, onSave]);
+
   return (
-    <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
-      <td className="p-3 align-top">
+    <tr className="border-t border-slate-100" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="px-4 py-4 align-top">
         <span
           draggable
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', line.id);
           }}
-          className="inline-flex cursor-grab select-none rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300"
+          className="inline-flex cursor-grab select-none rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-500"
           title="Drag to reorder"
         >
           ⋮⋮
         </span>
       </td>
-      <td className="p-3"><div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">{depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}<input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div></td>
-      <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
-      <td className="p-3 space-x-1"><button onClick={() => onSave(draft)} className="rounded border border-zinc-600 px-2 py-1">Save now</button><button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button><button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button><button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button><select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900"><option value="">Top level</option>{roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}</select></td>
+      <td className="px-4 py-4">
+        <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
+          {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-slate-400">↳</span>}
+          <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="field w-full" />
+        </div>
+      </td>
+      <td className="px-4 py-4"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="field w-24" /></td>
+      <td className="px-4 py-4"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="field w-32" /></td>
+      <td className="px-4 py-4 font-medium text-slate-700">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
+      <td className="px-4 py-4">
+        <div className="flex flex-wrap items-center gap-1">
+          <button onClick={() => onSave(draft)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50">Save</button>
+          <button onClick={() => onDelete(line.id)} className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 hover:bg-rose-100">Delete</button>
+          <button onClick={() => onMove(line.id, -1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↑</button>
+          <button onClick={() => onMove(line.id, 1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↓</button>
+          <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="field h-8 w-40 text-xs">
+            <option value="">Top level</option>
+            {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
+          </select>
+        </div>
+      </td>
     </tr>
   );
 }
