@@ -12,6 +12,15 @@ import { useToast } from '@/components/toast-provider';
 type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
 type User = { id: string; name: string; type: string };
 type OpportunityOption = { id: string; name: string; customer: string };
+type Proof = {
+  id: string;
+  version: number;
+  fileName: string;
+  mimeType: string;
+  status: 'PENDING' | 'APPROVED' | 'REVISIONS_REQUESTED';
+  approvalNotes?: string | null;
+  createdAt: string;
+};
 type Line = {
   id: string;
   description: string;
@@ -61,6 +70,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [converting, setConverting] = useState(false);
   const [convertedSalesOrderId, setConvertedSalesOrderId] = useState('');
 
+  const [selectedProofLineId, setSelectedProofLineId] = useState('');
+  const [proofs, setProofs] = useState<Proof[]>([]);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofEmail, setProofEmail] = useState('');
+  const [sendingProofId, setSendingProofId] = useState('');
+
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newQty, setNewQty] = useState('1');
@@ -103,6 +118,75 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+  }
+
+  async function loadProofs(lineId: string) {
+    if (!lineId) {
+      setProofs([]);
+      return;
+    }
+    const res = await fetch(`/api/proofs?lineType=QUOTE_LINE&lineId=${lineId}`);
+    if (!res.ok) return;
+    setProofs(await res.json());
+  }
+
+  async function uploadProof() {
+    if (!selectedProofLineId || !proofFile) return;
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        const payload = result.includes(',') ? result.split(',')[1] : result;
+        resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(proofFile);
+    });
+
+    const res = await fetch('/api/proofs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lineType: 'QUOTE_LINE',
+        lineId: selectedProofLineId,
+        fileName: proofFile.name,
+        mimeType: proofFile.type || 'application/octet-stream',
+        base64Data,
+      }),
+    });
+
+    if (!res.ok) {
+      push('Failed to upload proof', 'error');
+      return;
+    }
+
+    setProofFile(null);
+    push('Proof uploaded', 'success');
+    await loadProofs(selectedProofLineId);
+  }
+
+  async function sendProofApproval(proofId: string) {
+    if (!proofEmail.trim()) {
+      push('Enter recipient email first', 'error');
+      return;
+    }
+
+    setSendingProofId(proofId);
+    const res = await fetch(`/api/proofs/${proofId}/send-approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientEmail: proofEmail.trim() }),
+    });
+    setSendingProofId('');
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || 'Failed to send proof approval', 'error');
+      return;
+    }
+
+    push('Proof approval email sent', 'success');
+    await loadProofs(selectedProofLineId);
   }
 
   async function convertToSalesOrder() {
@@ -283,6 +367,21 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   useUnsavedGuard(headerDirty);
 
+  useEffect(() => {
+    if (!quote?.lines?.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedProofLineId('');
+      setProofs([]);
+      return;
+    }
+    setSelectedProofLineId((prev) => prev || quote.lines[0].id);
+  }, [quote?.lines]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadProofs(selectedProofLineId);
+  }, [selectedProofLineId]);
+
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
   if (!quote) return <main className="mx-auto max-w-6xl p-8">Loading quote…</main>;
 
@@ -383,6 +482,44 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           </label>
         </div>
       </form>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-base font-semibold">Proofs & Customer Approval</h2>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-slate-600">Line Item</span>
+            <select value={selectedProofLineId} onChange={(e) => setSelectedProofLineId(e.target.value)} className="field">
+              <option value="">Select line</option>
+              {quote.lines.map((line) => <option key={line.id} value={line.id}>{line.description}</option>)}
+            </select>
+          </label>
+          <label className="text-sm md:col-span-2">
+            <span className="mb-1 block text-slate-600">Upload Proof File</span>
+            <div className="flex gap-2">
+              <input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="field" />
+              <button type="button" onClick={uploadProof} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Upload</button>
+            </div>
+          </label>
+          <label className="text-sm md:col-span-2">
+            <span className="mb-1 block text-slate-600">Customer Email</span>
+            <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field" />
+          </label>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {proofs.map((proof) => (
+            <div key={proof.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div>
+                <p className="font-medium">v{proof.version} • {proof.fileName}</p>
+                <p className="text-xs text-slate-500">Status: {proof.status}{proof.approvalNotes ? ` • Notes: ${proof.approvalNotes}` : ''}</p>
+                <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-xs text-sky-700">Open proof</a>
+              </div>
+              <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium hover:bg-slate-100 disabled:opacity-50">{sendingProofId === proof.id ? 'Sending…' : 'Send for Approval'}</button>
+            </div>
+          ))}
+          {selectedProofLineId && proofs.length === 0 ? <p className="text-sm text-slate-500">No proofs uploaded for this line yet.</p> : null}
+        </div>
+      </section>
 
       <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
 

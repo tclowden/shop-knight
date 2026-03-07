@@ -6,7 +6,7 @@ import { canAccessPath } from '@/lib/rbac';
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isPublicPath = pathname === '/login';
+  const isPublicPath = pathname === '/login' || pathname.startsWith('/proofs/approve') || pathname.startsWith('/api/proofs/public/');
   const isAuthApi = pathname.startsWith('/api/auth');
 
   if (isPublicPath || isAuthApi) {

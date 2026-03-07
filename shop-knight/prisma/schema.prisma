@@ -59,6 +59,12 @@ enum EntityType {
   USER
 }
 
+enum ProofStatus {
+  PENDING
+  APPROVED
+  REVISIONS_REQUESTED
+}
+
 model Company {
   id        String   @id @default(cuid())
   name      String
@@ -280,6 +286,7 @@ model QuoteLine {
   priceOverride           Boolean  @default(false)
   quote                   Quote    @relation(fields: [quoteId], references: [id])
   product                 Product? @relation(fields: [productId], references: [id])
+  proofs                  Proof[]
 }
 
 model Product {
@@ -397,6 +404,7 @@ model SalesOrderLine {
   salesOrder   SalesOrder          @relation(fields: [salesOrderId], references: [id])
   product      Product?            @relation(fields: [productId], references: [id])
   poLines      PurchaseOrderLine[]
+  proofs       Proof[]
 }
 
 model PurchaseOrder {
@@ -478,6 +486,37 @@ model Note {
   createdById String?
   createdBy  User?      @relation(fields: [createdById], references: [id])
   createdAt  DateTime   @default(now())
+}
+
+model Proof {
+  id                String           @id @default(cuid())
+  quoteLineId       String?
+  salesOrderLineId  String?
+  version           Int              @default(1)
+  fileName          String
+  mimeType          String
+  fileData          Bytes
+  status            ProofStatus      @default(PENDING)
+  approvalNotes     String?
+  approvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  quoteLine         QuoteLine?       @relation(fields: [quoteLineId], references: [id])
+  salesOrderLine    SalesOrderLine?  @relation(fields: [salesOrderLineId], references: [id])
+  requests          ProofApprovalRequest[]
+}
+
+model ProofApprovalRequest {
+  id             String      @id @default(cuid())
+  proofId        String
+  recipientEmail String
+  token          String      @unique
+  expiresAt      DateTime
+  respondedAt    DateTime?
+  decision       ProofStatus?
+  responseNotes  String?
+  createdAt      DateTime    @default(now())
+  proof          Proof       @relation(fields: [proofId], references: [id], onDelete: Cascade)
 }
 
 model TaskTemplate {
