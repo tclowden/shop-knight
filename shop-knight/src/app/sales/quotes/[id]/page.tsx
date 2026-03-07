@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
@@ -57,6 +58,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [convertedSalesOrderId, setConvertedSalesOrderId] = useState('');
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -100,6 +103,22 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+  }
+
+  async function convertToSalesOrder() {
+    setConverting(true);
+    const res = await fetch(`/api/quotes/${id}/convert`, { method: 'POST' });
+    if (!res.ok) {
+      push('Failed to convert quote to sales order', 'error');
+      setConverting(false);
+      return;
+    }
+
+    const so = await res.json();
+    setConvertedSalesOrderId(so?.id || '');
+    push('Quote converted to sales order', 'success');
+    await load(id);
+    setConverting(false);
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -272,6 +291,21 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <h1 className="text-2xl font-semibold">Quote {quote.quoteNumber}</h1>
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
       <Nav />
+
+      <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <button
+          onClick={convertToSalesOrder}
+          disabled={converting}
+          className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+        >
+          {converting ? 'Converting…' : 'Convert to Sales Order'}
+        </button>
+        {convertedSalesOrderId ? (
+          <Link href={`/sales/orders/${convertedSalesOrderId}`} className="text-sm font-medium text-sky-700">
+            Open Sales Order →
+          </Link>
+        ) : null}
+      </section>
 
       <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">State</p><div className="mt-1"><StatusChip value={quote.workflowState || quote.status} /></div></div>
