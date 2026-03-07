@@ -25,11 +25,6 @@ export default async function DashboardPage() {
       <p className="text-sm text-slate-500">Mission control for sales, operations, and purchasing.</p>
       <Nav />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Link href="/admin/users" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">User Admin</Link>
-        <Link href="/admin/products" className="rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600">Product Admin</Link>
-      </div>
-
       <section className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {cards.map((card) => {
           const content = (
