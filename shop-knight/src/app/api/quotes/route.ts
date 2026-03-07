@@ -77,8 +77,6 @@ export async function GET() {
       opportunityId: q.opportunityId,
       opportunity: q.opportunity.name,
       customer: q.opportunity.customer.name,
-      salesRepId: q.salesRepId,
-      projectManagerId: q.projectManagerId,
       createdAt: q.createdAt,
       lineItems: q.lines,
     }))

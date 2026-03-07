@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
@@ -16,24 +17,28 @@ export async function PATCH(req: Request) {
   const taskIds = Array.isArray(body?.taskIds) ? body.taskIds.map(String).filter(Boolean) : [];
   if (taskIds.length === 0) return NextResponse.json({ error: 'taskIds required' }, { status: 400 });
 
-  const data: {
-    status?: string;
-    assigneeId?: string | null;
-    dueAt?: Date | null;
-  } = {};
+  const data: Prisma.TaskUpdateInput = {};
 
-  if (body?.status !== undefined) data.status = String(body.status);
-  if (body?.assigneeId !== undefined) data.assigneeId = body.assigneeId ? String(body.assigneeId) : null;
+  if (body?.status !== undefined) data.status = String(body.status) as never;
+  if (body?.assigneeId !== undefined) {
+    data.assignee = body.assigneeId
+      ? { connect: { id: String(body.assigneeId) } }
+      : { disconnect: true };
+  }
   if (body?.dueAt !== undefined) data.dueAt = toDate(body.dueAt);
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No update fields provided' }, { status: 400 });
   }
 
-  await prisma.task.updateMany({
-    where: { id: { in: taskIds } },
-    data,
-  });
+  await Promise.all(
+    taskIds.map((id: string) =>
+      prisma.task.update({
+        where: { id },
+        data,
+      })
+    )
+  );
 
   const updated = await prisma.task.findMany({
     where: { id: { in: taskIds } },
