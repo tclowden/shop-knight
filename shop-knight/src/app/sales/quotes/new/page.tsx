@@ -79,7 +79,7 @@ export default function NewQuotePage() {
     const requestedOpportunityId = new URLSearchParams(window.location.search).get('opportunityId');
     const exists = requestedOpportunityId ? oppData.some((o: Opportunity) => o.id === requestedOpportunityId) : false;
     if (requestedOpportunityId && exists) setOpportunityId(requestedOpportunityId);
-    else if (oppData.length > 0) setOpportunityId(oppData[0].id);
+    else setOpportunityId('');
   }
 
   function recalcLinePrice(line: LineItem) {
@@ -220,7 +220,8 @@ export default function NewQuotePage() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="text-sm">
             <span className="mb-1 block text-zinc-300">Opportunity</span>
-            <select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
+            <select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">None (Unassigned)</option>
               {sortedOpportunities.map((o) => (
                 <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>
               ))}

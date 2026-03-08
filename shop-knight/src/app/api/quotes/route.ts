@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
 
 function toDate(value: unknown) {
   if (!value) return null;
@@ -19,6 +19,28 @@ function extractTrailingNumber(value: string) {
   if (!match) return null;
   const parsed = Number(match[1]);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function ensureUnassignedOpportunity(companyId: string) {
+  const customerName = 'Unassigned Customer';
+  const opportunityName = 'Unassigned Opportunity';
+
+  let customer = await prisma.customer.findFirst({ where: { companyId, name: customerName } });
+  if (!customer) {
+    customer = await prisma.customer.create({ data: { companyId, name: customerName } });
+  }
+
+  const existing = await prisma.opportunity.findFirst({
+    where: { companyId, name: opportunityName, customerId: customer.id },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.opportunity.create({
+    data: { companyId, name: opportunityName, customerId: customer.id, stage: 'LEAD' },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 async function generateNextQuoteNumber() {
@@ -51,7 +73,7 @@ export async function GET() {
   });
 
   return NextResponse.json(
-    quotes.map((q: any) => ({
+    quotes.map((q) => ({
       id: q.id,
       quoteNumber: q.quoteNumber,
       title: q.title,
@@ -88,16 +110,19 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
-  const opportunityId = String(body?.opportunityId || '').trim();
+  const requestedOpportunityId = String(body?.opportunityId || '').trim();
   const providedQuoteNumber = String(body?.txnNumber || body?.quoteNumber || '').trim();
 
+  let opportunityId = requestedOpportunityId;
   if (!opportunityId) {
-    return NextResponse.json({ error: 'opportunityId is required' }, { status: 400 });
+    opportunityId = await ensureUnassignedOpportunity(companyId);
+  } else {
+    const opportunity = await prisma.opportunity.findFirst({ where: { id: opportunityId, companyId } });
+    if (!opportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
   }
-
-  const opportunity = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
-  if (!opportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
 
   const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
 
@@ -106,6 +131,7 @@ export async function POST(req: Request) {
 
     const created = await prisma.quote.create({
       data: {
+        companyId,
         opportunityId,
         quoteNumber,
         txnNumber: quoteNumber,
@@ -174,10 +200,12 @@ export async function POST(req: Request) {
       include: { lines: true },
     });
 
-    await prisma.opportunity.update({
-      where: { id: opportunityId },
-      data: { stage: 'QUOTED' },
-    });
+    if (requestedOpportunityId) {
+      await prisma.opportunity.update({
+        where: { id: opportunityId },
+        data: { stage: 'QUOTED' },
+      });
+    }
 
     return NextResponse.json(created, { status: 201 });
   } catch {

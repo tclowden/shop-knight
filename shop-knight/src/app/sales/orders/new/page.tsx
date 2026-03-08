@@ -126,10 +126,7 @@ export default function NewSalesOrderPage() {
     setUsers(Array.isArray(usersItems) ? usersItems : []);
     setStatuses(Array.isArray(statusItems) ? statusItems : []);
     setCustomers(Array.isArray(customerItems) ? customerItems : []);
-    if (oppItems.length > 0) {
-      setOpportunityId(oppItems[0].id);
-      applyOpportunityDefaults(oppItems[0].id, oppItems, customerItems);
-    }
+    setOpportunityId('');
     if (statusItems.length > 0) setStatus(statusItems[0].name);
   }
 
@@ -203,8 +200,8 @@ export default function NewSalesOrderPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -224,7 +221,8 @@ export default function NewSalesOrderPage() {
               setOpportunityId(nextId);
               setSourceQuoteId('');
               applyOpportunityDefaults(nextId, opportunities, customers);
-            }} className="field" required>
+            }} className="field">
+              <option value="">None (Unassigned)</option>
               {sortedOpportunities.map((opp) => <option key={opp.id} value={opp.id}>{opp.name} — {opp.customer}</option>)}
             </select>
           </FormField>

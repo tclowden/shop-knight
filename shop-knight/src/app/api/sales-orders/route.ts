@@ -18,6 +18,28 @@ function generatedOrderNumber() {
   return `SO-${Date.now().toString().slice(-6)}`;
 }
 
+async function ensureUnassignedOpportunity(companyId: string) {
+  const customerName = 'Unassigned Customer';
+  const opportunityName = 'Unassigned Opportunity';
+
+  let customer = await prisma.customer.findFirst({ where: { companyId, name: customerName } });
+  if (!customer) {
+    customer = await prisma.customer.create({ data: { companyId, name: customerName } });
+  }
+
+  const existing = await prisma.opportunity.findFirst({
+    where: { companyId, name: opportunityName, customerId: customer.id },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.opportunity.create({
+    data: { companyId, name: opportunityName, customerId: customer.id, stage: 'LEAD' },
+    select: { id: true },
+  });
+  return created.id;
+}
+
 export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
@@ -74,12 +96,13 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const requestedOrderNumber = String(body?.orderNumber || '').trim();
-  const opportunityId = String(body?.opportunityId || '').trim();
+  const requestedOpportunityId = String(body?.opportunityId || '').trim();
   const sourceQuoteId = body?.sourceQuoteId ? String(body.sourceQuoteId).trim() : null;
   const initialLine = body?.initialLine && typeof body.initialLine === 'object' ? body.initialLine : null;
 
+  let opportunityId = requestedOpportunityId;
   if (!opportunityId) {
-    return NextResponse.json({ error: 'opportunityId is required' }, { status: 400 });
+    opportunityId = await ensureUnassignedOpportunity(companyId);
   }
 
   const opportunity = await prisma.opportunity.findFirst({
