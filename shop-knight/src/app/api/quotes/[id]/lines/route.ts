@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
+  const quote = await prisma.quote.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+
   const lines = await prisma.quoteLine.findMany({ where: { quoteId: id }, include: { product: true }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] });
   return NextResponse.json(lines);
 }
@@ -15,7 +21,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
+  const quote = await prisma.quote.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+
   const body = await req.json();
 
   if (!body?.description || !body?.qty || body?.unitPrice === undefined) {

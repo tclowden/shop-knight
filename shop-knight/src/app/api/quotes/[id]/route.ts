@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 function toDate(value: unknown) {
   if (!value) return null;
@@ -18,9 +18,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
-  const quote = await prisma.quote.findUnique({
-    where: { id },
+  const quote = await prisma.quote.findFirst({
+    where: withCompany(companyId, { id }),
     include: {
       opportunity: { include: { customer: true } },
       salesRep: true,
@@ -37,6 +40,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
   const body = await req.json();
 
@@ -45,10 +51,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!body.opportunityId) {
       return NextResponse.json({ error: 'opportunityId cannot be empty' }, { status: 400 });
     }
-    const nextOpportunity = await prisma.opportunity.findUnique({ where: { id: String(body.opportunityId) } });
+    const nextOpportunity = await prisma.opportunity.findFirst({ where: withCompany(companyId, { id: String(body.opportunityId) }) });
     if (!nextOpportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
     opportunityId = nextOpportunity.id;
   }
+
+  const existing = await prisma.quote.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 
   const updated = await prisma.quote.update({
     where: { id },
