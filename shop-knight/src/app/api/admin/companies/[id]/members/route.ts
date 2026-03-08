@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { requireRoles } from '@/lib/api-auth';
 
 async function ensureUserHasActiveCompany(userId: string) {
   const memberships = await prisma.userCompany.findMany({
@@ -14,7 +14,7 @@ async function ensureUserHasActiveCompany(userId: string) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermissions(['admin.companies.manage']);
+  const auth = await requireRoles(['SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const { id: companyId } = await params;
@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermissions(['admin.companies.manage']);
+  const auth = await requireRoles(['SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const { id: companyId } = await params;

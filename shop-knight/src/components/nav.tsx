@@ -17,16 +17,18 @@ const links = [
 
 const adminLinks = [
   { href: '/admin/users', label: 'Users' },
-  { href: '/admin/companies', label: 'Companies' },
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
   { href: '/tasks/templates', label: 'Task Templates' },
 ];
 
+const superAdminLinks = [{ href: '/admin/companies', label: 'Companies' }];
+
 export function Nav() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
+  const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
 
   return (
     <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm">
@@ -55,6 +57,20 @@ export function Nav() {
                 {link.label}
               </Link>
             ))}
+            {isSuperAdmin ? (
+              <>
+                <div className="my-1 border-t border-slate-200" />
+                {superAdminLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </>
+            ) : null}
           </div>
         </details>
       ) : null}

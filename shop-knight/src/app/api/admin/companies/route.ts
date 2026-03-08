@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { requireRoles } from '@/lib/api-auth';
 
 function toSlug(input: string) {
   return input
@@ -12,7 +12,7 @@ function toSlug(input: string) {
 }
 
 export async function GET() {
-  const auth = await requirePermissions(['admin.companies.manage']);
+  const auth = await requireRoles(['SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const [companies, users] = await Promise.all([
@@ -51,7 +51,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requirePermissions(['admin.companies.manage']);
+  const auth = await requireRoles(['SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

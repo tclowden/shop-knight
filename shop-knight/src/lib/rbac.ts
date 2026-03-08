@@ -19,7 +19,8 @@ export type AppPermission = (typeof APP_PERMISSIONS)[number];
 const ALL_PERMISSIONS = [...APP_PERMISSIONS];
 
 export const BASE_ROLE_DEFAULTS: Record<string, AppPermission[]> = {
-  ADMIN: ALL_PERMISSIONS,
+  SUPER_ADMIN: ALL_PERMISSIONS,
+  ADMIN: ALL_PERMISSIONS.filter((permission) => permission !== 'admin.companies.manage'),
   SALES: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'tasks.calendar.view'],
   SALES_REP: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'tasks.calendar.view'],
   PROJECT_MANAGER: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'tasks.calendar.view', 'tasks.templates.view'],

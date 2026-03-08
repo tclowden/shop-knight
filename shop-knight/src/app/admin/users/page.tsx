@@ -16,7 +16,7 @@ type User = {
 type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
 
-const userTypes = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 export default function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);

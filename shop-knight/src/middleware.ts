@@ -15,6 +15,18 @@ export async function middleware(req: NextRequest) {
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
+  if (token && (pathname === '/admin/companies' || pathname.startsWith('/admin/companies/') || pathname.startsWith('/api/admin/companies'))) {
+    const role = String(token.role || '');
+    const roles = Array.isArray(token.roles) ? token.roles.map(String) : [];
+    const isSuperAdmin = role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
+    if (!isSuperAdmin) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+  }
+
   if (!token) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
