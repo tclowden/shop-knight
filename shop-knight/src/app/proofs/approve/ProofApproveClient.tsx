@@ -52,6 +52,9 @@ export function ProofApproveClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  const isImage = !!data?.proof?.mimeType?.startsWith('image/');
+  const isPdf = data?.proof?.mimeType === 'application/pdf';
+
   return (
     <main className="mx-auto mt-10 max-w-2xl rounded-xl border border-slate-200 bg-white p-6 text-slate-800 shadow-sm">
       <h1 className="text-2xl font-semibold">Proof Approval</h1>
@@ -61,7 +64,17 @@ export function ProofApproveClient() {
         <>
           <p className="mt-2 text-sm text-slate-600">File: <span className="font-medium">{data.proof.fileName}</span></p>
           <p className="text-xs text-slate-500">Current status: {data.proof.status}</p>
-          <a href={data.proof.fileUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Open Proof</a>
+
+          {isImage ? (
+            <a href={data.proof.fileUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-lg border border-slate-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.proof.fileUrl} alt={data.proof.fileName} className="max-h-[460px] w-full bg-slate-50 object-contain" />
+            </a>
+          ) : isPdf ? (
+            <iframe title={data.proof.fileName} src={data.proof.fileUrl} className="mt-3 h-[460px] w-full rounded-lg border border-slate-200" />
+          ) : (
+            <a href={data.proof.fileUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Open Proof</a>
+          )}
 
           {done ? (
             <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">Response saved. Thank you.</p>
