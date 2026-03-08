@@ -1,14 +1,30 @@
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
 import { Nav } from '@/components/nav';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const companyId = session?.user?.companyId;
+  const userId = session?.user?.id;
+
+  if (!companyId) {
+    return (
+      <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-rose-600">No active company selected.</p>
+        <Nav />
+      </main>
+    );
+  }
+
   const [openOpportunities, quotesPending, salesOrders, jobsInProgress, myTasks] = await Promise.all([
-    prisma.opportunity.count({ where: { stage: { not: 'WON' } } }),
-    prisma.quote.count({ where: { status: { in: ['DRAFT', 'SENT'] } } }),
-    prisma.salesOrder.count(),
-    prisma.job.count(),
-    prisma.task.count({ where: { status: { in: ['TODO', 'IN_PROGRESS', 'BLOCKED'] } } }),
+    prisma.opportunity.count({ where: { companyId, stage: { not: 'WON' } } }),
+    prisma.quote.count({ where: { companyId, status: { in: ['DRAFT', 'SENT'] } } }),
+    prisma.salesOrder.count({ where: { companyId } }),
+    prisma.job.count({ where: { opportunity: { companyId } } }),
+    prisma.task.count({ where: { assigneeId: userId || undefined, status: { in: ['TODO', 'IN_PROGRESS', 'BLOCKED'] } } }),
   ]);
 
   const cards = [
