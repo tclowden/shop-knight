@@ -3,8 +3,14 @@ import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { requirePermissions } from '@/lib/api-auth';
 
-const ALLOWED_TYPES = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
+const ALLOWED_TYPES = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
 type UserTypeValue = (typeof ALLOWED_TYPES)[number];
+
+function isSuperAdminSession(session: { user?: { role?: string; roles?: string[] } } | null | undefined) {
+  const role = String(session?.user?.role || '');
+  const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  return role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
+}
 
 function normalizeRoleIds(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
@@ -44,6 +50,7 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
+  const canAssignSuperAdmin = isSuperAdminSession(auth.session);
   const name = String(body?.name || '').trim();
   const email = String(body?.email || '').trim().toLowerCase();
   const password = String(body?.password || '');
@@ -57,6 +64,9 @@ export async function POST(req: Request) {
 
   if (!ALLOWED_TYPES.includes(type)) {
     return NextResponse.json({ error: 'invalid user type' }, { status: 400 });
+  }
+  if (type === 'SUPER_ADMIN' && !canAssignSuperAdmin) {
+    return NextResponse.json({ error: 'Only Super Admin can assign Super Admin role' }, { status: 403 });
   }
 
   const company = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });

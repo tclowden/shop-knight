@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermissions } from '@/lib/api-auth';
 
-const ALLOWED_TYPES = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
+const ALLOWED_TYPES = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
 type UserTypeValue = (typeof ALLOWED_TYPES)[number];
+
+function isSuperAdminSession(session: { user?: { role?: string; roles?: string[] } } | null | undefined) {
+  const role = String(session?.user?.role || '');
+  const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  return role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
+}
 
 function normalizeRoleIds(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
@@ -27,6 +33,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params;
   const body = await req.json();
+  const canAssignSuperAdmin = isSuperAdminSession(auth.session);
 
   const name = body?.name === undefined ? undefined : String(body.name || '').trim();
   const email = body?.email === undefined ? undefined : String(body.email || '').trim().toLowerCase();
@@ -45,6 +52,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (type !== undefined && !ALLOWED_TYPES.includes(type)) {
     return NextResponse.json({ error: 'invalid user type' }, { status: 400 });
+  }
+  if (type === 'SUPER_ADMIN' && !canAssignSuperAdmin) {
+    return NextResponse.json({ error: 'Only Super Admin can assign Super Admin role' }, { status: 403 });
   }
 
   if (companyIds !== undefined && companyIds.length === 0) {

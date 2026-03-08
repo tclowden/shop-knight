@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 
 type User = {
@@ -19,6 +20,7 @@ type Company = { id: string; name: string; slug: string };
 const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 export default function UsersAdminPage() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -31,6 +33,11 @@ export default function UsersAdminPage() {
   const [rowTypes, setRowTypes] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState('');
   const [error, setError] = useState('');
+
+  const role = String(session?.user?.role || '');
+  const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  const isSuperAdmin = role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
+  const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
   async function load() {
     const [usersRes, rolesRes, companiesRes] = await Promise.all([
@@ -102,7 +109,6 @@ export default function UsersAdminPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -117,7 +123,7 @@ export default function UsersAdminPage() {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="field" required />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="field" required />
-          <select value={type} onChange={(e) => setType(e.target.value)} className="field">{userTypes.map((t) => (<option key={t} value={t}>{t}</option>))}</select>
+          <select value={type} onChange={(e) => setType(e.target.value)} className="field">{availableUserTypes.map((t) => (<option key={t} value={t}>{t}</option>))}</select>
           <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="field" required>
             <option value="" disabled>Select company</option>
             {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
@@ -155,14 +161,18 @@ export default function UsersAdminPage() {
                 <td className="px-4 py-4"><Link href={`/admin/users/${u.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{u.name}</Link></td>
                 <td className="px-4 py-4">{u.email}</td>
                 <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <select value={rowTypes[u.id] || u.type} onChange={(e) => setRowTypes((prev) => ({ ...prev, [u.id]: e.target.value }))} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900">
-                      {userTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
-                    </select>
-                    <button type="button" onClick={() => saveUserType(u.id)} disabled={savingUserId === u.id || (rowTypes[u.id] || u.type) === u.type} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50 disabled:opacity-50">
-                      {savingUserId === u.id ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
+                  {u.type === 'SUPER_ADMIN' && !isSuperAdmin ? (
+                    <span className="text-xs font-semibold text-slate-700">SUPER_ADMIN</span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <select value={rowTypes[u.id] || u.type} onChange={(e) => setRowTypes((prev) => ({ ...prev, [u.id]: e.target.value }))} className="h-8 rounded border border-slate-300 bg-white px-2 text-xs text-slate-900">
+                        {availableUserTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
+                      </select>
+                      <button type="button" onClick={() => saveUserType(u.id)} disabled={savingUserId === u.id || (rowTypes[u.id] || u.type) === u.type} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50 disabled:opacity-50">
+                        {savingUserId === u.id ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-4">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
                 <td className="px-4 py-4">{u.active ? 'Active' : 'Disabled'}</td>
