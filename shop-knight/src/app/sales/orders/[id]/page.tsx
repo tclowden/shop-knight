@@ -68,11 +68,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
 
-  const [selectedProofLineId, setSelectedProofLineId] = useState('');
-  const [proofs, setProofs] = useState<Proof[]>([]);
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofEmail, setProofEmail] = useState('');
-  const [sendingProofId, setSendingProofId] = useState('');
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -181,75 +176,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     await load(id);
     setSavingHeader(false);
     setEditingHeader(false);
-  }
-
-  async function loadProofs(lineId: string) {
-    if (!lineId) {
-      setProofs([]);
-      return;
-    }
-    const res = await fetch(`/api/proofs?lineType=SALES_ORDER_LINE&lineId=${lineId}`);
-    if (!res.ok) return;
-    setProofs(await res.json());
-  }
-
-  async function uploadProof() {
-    if (!selectedProofLineId || !proofFile) return;
-    const base64Data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = String(reader.result || '');
-        const payload = result.includes(',') ? result.split(',')[1] : result;
-        resolve(payload);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(proofFile);
-    });
-
-    const res = await fetch('/api/proofs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lineType: 'SALES_ORDER_LINE',
-        lineId: selectedProofLineId,
-        fileName: proofFile.name,
-        mimeType: proofFile.type || 'application/octet-stream',
-        base64Data,
-      }),
-    });
-
-    if (!res.ok) {
-      push('Failed to upload proof', 'error');
-      return;
-    }
-
-    setProofFile(null);
-    push('Proof uploaded', 'success');
-    await loadProofs(selectedProofLineId);
-  }
-
-  async function sendProofApproval(proofId: string) {
-    if (!proofEmail.trim()) {
-      push('Enter recipient email first', 'error');
-      return;
-    }
-
-    setSendingProofId(proofId);
-    const res = await fetch(`/api/proofs/${proofId}/send-approval`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipientEmail: proofEmail.trim() }),
-    });
-    setSendingProofId('');
-
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({}));
-      push(payload?.error || 'Failed to send proof approval', 'error');
-      return;
-    }
-
-    push('Proof approval email sent', 'success');
-    await loadProofs(selectedProofLineId);
   }
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
@@ -391,21 +317,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   useUnsavedGuard(headerDirty);
 
-  useEffect(() => {
-    if (!order?.lines?.length) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedProofLineId('');
-      setProofs([]);
-      return;
-    }
-    setSelectedProofLineId((prev) => prev || order.lines[0].id);
-  }, [order?.lines]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadProofs(selectedProofLineId);
-  }, [selectedProofLineId]);
-
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
   if (!order) return <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-700">Loading sales order…</main>;
 
@@ -505,44 +416,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-base font-semibold">Proofs & Customer Approval</h2>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <label className="text-sm">
-            <span className="mb-1 block text-slate-600">Line Item</span>
-            <select value={selectedProofLineId} onChange={(e) => setSelectedProofLineId(e.target.value)} className="field">
-              <option value="">Select line</option>
-              {order.lines.map((line) => <option key={line.id} value={line.id}>{line.description}</option>)}
-            </select>
-          </label>
-          <label className="text-sm md:col-span-2">
-            <span className="mb-1 block text-slate-600">Upload Proof File</span>
-            <div className="flex gap-2">
-              <input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="field" />
-              <button type="button" onClick={uploadProof} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Upload</button>
-            </div>
-          </label>
-          <label className="text-sm md:col-span-2">
-            <span className="mb-1 block text-slate-600">Customer Email</span>
-            <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field" />
-          </label>
-        </div>
-
-        <div className="mt-3 space-y-2">
-          {proofs.map((proof) => (
-            <div key={proof.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-              <div>
-                <p className="font-medium">v{proof.version} • {proof.fileName}</p>
-                <p className="text-xs text-slate-500">Status: {proof.status}{proof.approvalNotes ? ` • Notes: ${proof.approvalNotes}` : ''}</p>
-                <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-xs text-sky-700">Open proof</a>
-              </div>
-              <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium hover:bg-slate-100 disabled:opacity-50">{sendingProofId === proof.id ? 'Sending…' : 'Send for Approval'}</button>
-            </div>
-          ))}
-          {selectedProofLineId && proofs.length === 0 ? <p className="text-sm text-slate-500">No proofs uploaded for this line yet.</p> : null}
-        </div>
-      </section>
-
-      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-base font-semibold">Add Line Item</h2>
         <form onSubmit={addLine} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
@@ -587,6 +460,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   onDragMove={dragMoveLine}
                   onToggleCollapse={toggleCollapse}
                   onMakeChild={makeChild}
+                  toast={push}
                 />
               ))}
             </tbody>
@@ -639,9 +513,14 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
+  const [showProofs, setShowProofs] = useState(false);
+  const [proofs, setProofs] = useState<Proof[]>([]);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofEmail, setProofEmail] = useState('');
+  const [sendingProofId, setSendingProofId] = useState('');
 
   useEffect(() => {
     if (!dirty) return;
@@ -649,7 +528,54 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     return () => clearTimeout(t);
   }, [draft, dirty, onSave]);
 
+  async function loadProofs() {
+    const res = await fetch(`/api/proofs?lineType=SALES_ORDER_LINE&lineId=${line.id}`);
+    if (!res.ok) return;
+    setProofs(await res.json());
+  }
+
+  async function uploadProof() {
+    if (!proofFile) return;
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        resolve(result.includes(',') ? result.split(',')[1] : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(proofFile);
+    });
+
+    const res = await fetch('/api/proofs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lineType: 'SALES_ORDER_LINE', lineId: line.id, fileName: proofFile.name, mimeType: proofFile.type || 'application/octet-stream', base64Data }),
+    });
+    if (!res.ok) { toast('Failed to upload proof', 'error'); return; }
+    setProofFile(null);
+    toast('Proof uploaded', 'success');
+    await loadProofs();
+  }
+
+  async function sendProofApproval(proofId: string) {
+    if (!proofEmail.trim()) { toast('Enter recipient email first', 'error'); return; }
+    setSendingProofId(proofId);
+    const res = await fetch(`/api/proofs/${proofId}/send-approval`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipientEmail: proofEmail.trim() }),
+    });
+    setSendingProofId('');
+    if (!res.ok) { toast('Failed to send proof approval', 'error'); return; }
+    toast('Proof approval email sent', 'success');
+    await loadProofs();
+  }
+
+  useEffect(() => {
+    if (!showProofs) return;
+    loadProofs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showProofs]);
+
   return (
+    <>
     <tr className="border-t border-slate-100" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
       <td className="px-4 py-4 align-top">
         <span
@@ -679,6 +605,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
           <button onClick={() => onDelete(line.id)} className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 hover:bg-rose-100">Delete</button>
           <button onClick={() => onMove(line.id, -1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↑</button>
           <button onClick={() => onMove(line.id, 1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↓</button>
+          <button onClick={() => setShowProofs((v) => !v)} className="rounded-md border border-sky-300 bg-sky-50 px-2 py-1 text-xs text-sky-700">{showProofs ? 'Hide Proofs' : 'Proofs'}</button>
           <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="field h-8 w-40 text-xs">
             <option value="">Top level</option>
             {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
@@ -686,5 +613,38 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
         </div>
       </td>
     </tr>
+    {showProofs ? (
+      <tr className="border-t border-slate-100 bg-slate-50/60">
+        <td className="px-4 py-3" colSpan={6}>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            <label className="text-xs text-slate-600 md:col-span-2">Upload proof
+              <div className="mt-1 flex gap-2">
+                <input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="field" />
+                <button type="button" onClick={uploadProof} className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white">Upload</button>
+              </div>
+            </label>
+            <label className="text-xs text-slate-600">Approval email
+              <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field mt-1" />
+            </label>
+          </div>
+          <div className="mt-2 space-y-2">
+            {proofs.map((proof) => (
+              <div key={proof.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white p-2 text-xs">
+                <div>
+                  <p className="font-medium">v{proof.version} • {proof.fileName}</p>
+                  <p className="text-slate-500">{proof.status}{proof.approvalNotes ? ` • ${proof.approvalNotes}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-sky-700">Open</a>
+                  <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="rounded-md border border-slate-300 bg-white px-2 py-1">{sendingProofId === proof.id ? 'Sending…' : 'Send'}</button>
+                </div>
+              </div>
+            ))}
+            {proofs.length === 0 ? <p className="text-xs text-slate-500">No proofs uploaded yet for this line.</p> : null}
+          </div>
+        </td>
+      </tr>
+    ) : null}
+  </>
   );
 }
