@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 function toDate(value: unknown) {
   if (!value) return null;
@@ -18,9 +18,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
-  const opportunity = await prisma.opportunity.findUnique({
-    where: { id },
+  const opportunity = await prisma.opportunity.findFirst({
+    where: withCompany(companyId, { id }),
     include: { customer: true, salesRep: true, projectManager: true },
   });
 
@@ -51,21 +54,29 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const auth = await requireRoles(['ADMIN', 'SALES']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
   const body = await req.json();
 
   let customerId: string | undefined;
   if (body?.customerId || body?.customer) {
     if (body?.customerId) {
-      customerId = String(body.customerId);
+      const existingCustomer = await prisma.customer.findFirst({ where: withCompany(companyId, { id: String(body.customerId) }) });
+      if (!existingCustomer) return NextResponse.json({ error: 'customer not found' }, { status: 404 });
+      customerId = existingCustomer.id;
     } else {
       const customerName = String(body.customer || '').trim();
       if (customerName) {
-        const c = (await prisma.customer.findFirst({ where: { name: customerName } })) || (await prisma.customer.create({ data: { name: customerName } }));
+        const c = (await prisma.customer.findFirst({ where: withCompany(companyId, { name: customerName }) })) || (await prisma.customer.create({ data: { companyId, name: customerName } }));
         customerId = c.id;
       }
     }
   }
+
+  const existing = await prisma.opportunity.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
 
   const updated = await prisma.opportunity.update({
     where: { id },
