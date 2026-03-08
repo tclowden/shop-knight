@@ -215,7 +215,7 @@ export default function NewSalesOrderPage() {
 
       <form onSubmit={createOrder} className="space-y-3 rounded border border-zinc-800 p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <FormField label="Order Number"><input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} className="field" required /></FormField>
+          <FormField label="Order Number (leave blank to auto-generate)"><input value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} className="field" placeholder="Auto" /></FormField>
           <FormField label="Sales Order Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="field" /></FormField>
 
           <FormField label="Opportunity">

@@ -14,6 +14,10 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
+function generatedOrderNumber() {
+  return `SO-${Date.now().toString().slice(-6)}`;
+}
+
 export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
@@ -37,7 +41,7 @@ export async function GET(req: Request) {
   });
 
   return NextResponse.json(
-    salesOrders.map((so: any) => ({
+    salesOrders.map((so) => ({
       id: so.id,
       orderNumber: so.orderNumber,
       title: so.title,
@@ -69,13 +73,13 @@ export async function POST(req: Request) {
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const body = await req.json();
-  const orderNumber = String(body?.orderNumber || '').trim();
+  const requestedOrderNumber = String(body?.orderNumber || '').trim();
   const opportunityId = String(body?.opportunityId || '').trim();
   const sourceQuoteId = body?.sourceQuoteId ? String(body.sourceQuoteId).trim() : null;
   const initialLine = body?.initialLine && typeof body.initialLine === 'object' ? body.initialLine : null;
 
-  if (!orderNumber || !opportunityId) {
-    return NextResponse.json({ error: 'orderNumber and opportunityId are required' }, { status: 400 });
+  if (!opportunityId) {
+    return NextResponse.json({ error: 'opportunityId is required' }, { status: 400 });
   }
 
   const opportunity = await prisma.opportunity.findFirst({
@@ -101,50 +105,62 @@ export async function POST(req: Request) {
     create: { companyId, name: statusName, active: true },
   });
 
-  try {
-    const created = await prisma.salesOrder.create({
-      data: {
-        companyId,
-        orderNumber,
-        opportunityId,
-        sourceQuoteId,
-        title: body?.title ? String(body.title) : sourceQuote?.title ?? null,
-        statusId: status.id,
-        primaryCustomerContact: body?.primaryCustomerContact ? String(body.primaryCustomerContact) : null,
-        customerInvoiceContact: body?.customerInvoiceContact ? String(body.customerInvoiceContact) : null,
-        billingAddress: body?.billingAddress ? String(body.billingAddress) : null,
-        billingAttentionTo: body?.billingAttentionTo ? String(body.billingAttentionTo) : null,
-        shippingAddress: body?.shippingAddress ? String(body.shippingAddress) : null,
-        shippingAttentionTo: body?.shippingAttentionTo ? String(body.shippingAttentionTo) : null,
-        installAddress: body?.installAddress ? String(body.installAddress) : null,
-        shippingMethod: body?.shippingMethod ? String(body.shippingMethod) : null,
-        shippingTracking: body?.shippingTracking ? String(body.shippingTracking) : null,
-        salesOrderDate: toDate(body?.salesOrderDate),
-        dueDate: toDate(body?.dueDate),
-        installDate: toDate(body?.installDate),
-        shippingDate: toDate(body?.shippingDate),
-        paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : opportunity.customer.paymentTerms ?? null,
-        downPaymentType: body?.downPaymentType ? String(body.downPaymentType) : null,
-        downPaymentValue: toNumber(body?.downPaymentValue),
-        salesRepId: body?.salesRepId ? String(body.salesRepId) : sourceQuote?.salesRepId ?? null,
-        projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : sourceQuote?.projectManagerId ?? null,
-        designerId: body?.designerId ? String(body.designerId) : null,
-        lines: initialLine
-          ? {
-              create: {
-                description: String(initialLine.description || 'Line item'),
-                qty: Number(initialLine.qty || 1),
-                unitPrice: Number(initialLine.unitPrice || 0),
-                productId: initialLine.productId ? String(initialLine.productId) : null,
-                attributeValues: initialLine.attributeValues && typeof initialLine.attributeValues === 'object' ? initialLine.attributeValues : null,
-              },
-            }
-          : undefined,
-      },
-    });
+  const baseData = {
+    companyId,
+    opportunityId,
+    sourceQuoteId,
+    title: body?.title ? String(body.title) : sourceQuote?.title ?? null,
+    statusId: status.id,
+    primaryCustomerContact: body?.primaryCustomerContact ? String(body.primaryCustomerContact) : null,
+    customerInvoiceContact: body?.customerInvoiceContact ? String(body.customerInvoiceContact) : null,
+    billingAddress: body?.billingAddress ? String(body.billingAddress) : null,
+    billingAttentionTo: body?.billingAttentionTo ? String(body.billingAttentionTo) : null,
+    shippingAddress: body?.shippingAddress ? String(body.shippingAddress) : null,
+    shippingAttentionTo: body?.shippingAttentionTo ? String(body.shippingAttentionTo) : null,
+    installAddress: body?.installAddress ? String(body.installAddress) : null,
+    shippingMethod: body?.shippingMethod ? String(body.shippingMethod) : null,
+    shippingTracking: body?.shippingTracking ? String(body.shippingTracking) : null,
+    salesOrderDate: toDate(body?.salesOrderDate),
+    dueDate: toDate(body?.dueDate),
+    installDate: toDate(body?.installDate),
+    shippingDate: toDate(body?.shippingDate),
+    paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : opportunity.customer.paymentTerms ?? null,
+    downPaymentType: body?.downPaymentType ? String(body.downPaymentType) : null,
+    downPaymentValue: toNumber(body?.downPaymentValue),
+    salesRepId: body?.salesRepId ? String(body.salesRepId) : sourceQuote?.salesRepId ?? null,
+    projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : sourceQuote?.projectManagerId ?? null,
+    designerId: body?.designerId ? String(body.designerId) : null,
+    lines: initialLine
+      ? {
+          create: {
+            description: String(initialLine.description || 'Line item'),
+            qty: Number(initialLine.qty || 1),
+            unitPrice: Number(initialLine.unitPrice || 0),
+            productId: initialLine.productId ? String(initialLine.productId) : null,
+            attributeValues: initialLine.attributeValues && typeof initialLine.attributeValues === 'object' ? initialLine.attributeValues : null,
+          },
+        }
+      : undefined,
+  };
 
-    return NextResponse.json(created, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'order number already exists' }, { status: 409 });
+  if (requestedOrderNumber) {
+    try {
+      const created = await prisma.salesOrder.create({ data: { ...baseData, orderNumber: requestedOrderNumber } });
+      return NextResponse.json(created, { status: 201 });
+    } catch {
+      return NextResponse.json({ error: 'order number already exists' }, { status: 409 });
+    }
   }
+
+  for (let i = 0; i < 5; i++) {
+    const autoNumber = generatedOrderNumber();
+    try {
+      const created = await prisma.salesOrder.create({ data: { ...baseData, orderNumber: autoNumber } });
+      return NextResponse.json(created, { status: 201 });
+    } catch {
+      // retry on rare collision
+    }
+  }
+
+  return NextResponse.json({ error: 'Could not generate order number. Please try again.' }, { status: 500 });
 }
