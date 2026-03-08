@@ -35,8 +35,8 @@ export default function UsersAdminPage() {
   const [error, setError] = useState('');
 
   const role = String(session?.user?.role || '');
-  const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
-  const isSuperAdmin = role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
+  const sessionRoles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  const isSuperAdmin = role === 'SUPER_ADMIN' || sessionRoles.includes('SUPER_ADMIN');
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
   async function load() {
@@ -109,6 +109,7 @@ export default function UsersAdminPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
