@@ -122,8 +122,8 @@ export default function TaskCalendarPage() {
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
-      <h1 className="text-3xl font-semibold tracking-tight">Open Tasks Calendar</h1>
-      <p className="text-sm text-slate-500">Calendar view of all open tasks with due dates.</p>
+      <h1 className="text-3xl font-semibold tracking-tight">My Open Tasks Calendar</h1>
+      <p className="text-sm text-slate-500">Calendar view of your assigned open tasks with due dates.</p>
       <Nav />
 
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-5">

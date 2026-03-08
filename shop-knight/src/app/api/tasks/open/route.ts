@@ -38,14 +38,17 @@ export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
+  const userId = String((auth.session?.user as { id?: string } | undefined)?.id || '');
+  if (!userId) return NextResponse.json([]);
+
   const tasks = await prisma.task.findMany({
-    where: { status: { not: 'DONE' } },
+    where: { assigneeId: userId, status: { not: 'DONE' } },
     include: { assignee: { select: { id: true, name: true } } },
     orderBy: [{ dueAt: 'asc' }, { createdAt: 'desc' }],
   });
 
   const withEntity = await Promise.all(
-    tasks.map(async (t: any) => ({
+    tasks.map(async (t) => ({
       ...t,
       entityLabel: await getEntityLabel(t.entityType, t.entityId),
     }))
