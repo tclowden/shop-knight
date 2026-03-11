@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
@@ -24,6 +24,24 @@ type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
 
 const userTypes = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+
+function ReadField({ label, value }: { label: string; value: string }) {
+  return (
+    <p>
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="mt-1 block text-sm text-slate-800">{value}</span>
+    </p>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
@@ -160,87 +178,95 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   if (!user) return <main className="mx-auto max-w-5xl p-8">Loading user...</main>;
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">User: {user.name}</h1>
-      <p className="text-sm text-zinc-400">{user.email} • {user.type}</p>
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
       <Nav />
-
-      <form onSubmit={saveUser} className="mb-4 rounded border border-zinc-800 p-3">
-        <div className="mb-3 flex items-center gap-2">
-          {!editing ? (
-            <button type="button" onClick={() => { setSaved(''); setError(''); setEditing(true); }} className="rounded bg-blue-600 px-3 py-2 text-white">Edit User</button>
-          ) : (
-            <>
-              <button className="rounded bg-blue-600 px-3 py-2 text-white">Save User</button>
-              <button type="button" onClick={() => { setEditing(false); setError(''); setSaved(''); load(id); }} className="rounded border border-zinc-600 px-3 py-2">Cancel</button>
-            </>
-          )}
+      <header className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">User: {user.name}</h1>
+          <p className="text-sm text-slate-500">{user.email} • {user.type}</p>
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <input disabled={!editing} value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" required />
-          <input disabled={!editing} value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" required />
-          <select disabled={!editing} value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100">
-            {userTypes.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <input disabled={!editing} type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-            Active
-          </label>
-          <input disabled={!editing} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-          <input disabled={!editing} value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} placeholder="Known Traveler Number (KTN)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-        </div>
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        {!editing ? (
+          <>
+            <div className="mb-4 flex justify-end">
+              <button type="button" onClick={() => { setSaved(''); setError(''); setEditing(true); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">Edit User</button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+              <ReadField label="Name" value={name || '—'} />
+              <ReadField label="Email" value={email || '—'} />
+              <ReadField label="Type" value={type || '—'} />
+              <ReadField label="Status" value={active ? 'Active' : 'Disabled'} />
+              <ReadField label="Phone" value={phone || '—'} />
+              <ReadField label="Known Traveler Number" value={knownTravelerNumber || '—'} />
+              <ReadField label="Marriott #" value={rewardMarriottNumber || '—'} />
+              <ReadField label="United #" value={rewardUnitedNumber || '—'} />
+              <ReadField label="Delta #" value={rewardDeltaNumber || '—'} />
+              <ReadField label="American #" value={rewardAmericanNumber || '—'} />
+              <ReadField label="Custom Roles" value={roles.filter((r) => customRoleIds.includes(r.id)).map((r) => r.name).join(', ') || '—'} />
+              <ReadField label="Company Membership" value={companies.filter((c) => companyIds.includes(c.id)).map((c) => c.name).join(', ') || '—'} />
+              <ReadField label="Active Company" value={companies.find((c) => c.id === activeCompanyId)?.name || '—'} />
+            </div>
+          </>
+        ) : (
+          <form onSubmit={saveUser} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <FormField label="Name"><input value={name} onChange={(e) => setName(e.target.value)} className="field" required /></FormField>
+            <FormField label="Email"><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="field" required /></FormField>
+            <FormField label="Type"><select value={type} onChange={(e) => setType(e.target.value)} className="field">{userTypes.map((value) => <option key={value} value={value}>{value}</option>)}</select></FormField>
+            <FormField label="Status"><label className="field inline-flex items-center gap-2"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active</label></FormField>
+            <FormField label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" /></FormField>
+            <FormField label="Known Traveler Number"><input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} className="field" /></FormField>
+            <FormField label="Marriott #"><input value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} className="field" /></FormField>
+            <FormField label="United #"><input value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} className="field" /></FormField>
+            <FormField label="Delta #"><input value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} className="field" /></FormField>
+            <FormField label="American #"><input value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} className="field" /></FormField>
 
-        <div className="mt-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-300">Rewards / Loyalty Accounts</h2>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <input disabled={!editing} value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} placeholder="Marriott #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-            <input disabled={!editing} value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} placeholder="United #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-            <input disabled={!editing} value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} placeholder="Delta #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-            <input disabled={!editing} value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} placeholder="American #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
-          </div>
-        </div>
+            <div className="md:col-span-2">
+              <FormField label="Custom Roles">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {roles.filter((r) => r.active).map((r) => (
+                    <label key={r.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                      <input type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
+                      {r.name}
+                    </label>
+                  ))}
+                </div>
+              </FormField>
+            </div>
 
-        <div className="mt-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-300">Custom Roles</h2>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            {roles.filter((r) => r.active).map((r) => (
-              <label key={r.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-                <input disabled={!editing} type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
-                {r.name}
-              </label>
-            ))}
-          </div>
-        </div>
+            <div className="md:col-span-2">
+              <FormField label="Company Membership">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {companies.map((company) => (
+                    <label key={company.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                      <input type="checkbox" checked={companyIds.includes(company.id)} onChange={() => toggleCompany(company.id)} />
+                      {company.name}
+                    </label>
+                  ))}
+                </div>
+              </FormField>
+            </div>
 
-        <div className="mt-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-300">Company Membership</h2>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            {companies.map((company) => (
-              <label key={company.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-                <input disabled={!editing} type="checkbox" checked={companyIds.includes(company.id)} onChange={() => toggleCompany(company.id)} />
-                {company.name}
-              </label>
-            ))}
-          </div>
+            <FormField label="Active Company">
+              <select value={activeCompanyId} onChange={(e) => setActiveCompanyId(e.target.value)} className="field">
+                {companyIds.map((companyId) => {
+                  const company = companies.find((c) => c.id === companyId);
+                  return <option key={companyId} value={companyId}>{company?.name || companyId}</option>;
+                })}
+              </select>
+            </FormField>
 
-          <div className="mt-3">
-            <label className="mb-1 block text-sm text-zinc-300">Active Company</label>
-            <select disabled={!editing} value={activeCompanyId} onChange={(e) => setActiveCompanyId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100">
-              {companyIds.map((companyId) => {
-                const company = companies.find((c) => c.id === companyId);
-                return <option key={companyId} value={companyId}>{company?.name || companyId}</option>;
-              })}
-            </select>
-          </div>
-        </div>
+            {error ? <p className="md:col-span-2 text-sm text-rose-600">{error}</p> : null}
+            {saved ? <p className="md:col-span-2 text-sm text-emerald-600">{saved}</p> : null}
 
-        {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-        {saved ? <p className="mt-3 text-sm text-emerald-400">{saved}</p> : null}
-
-      </form>
+            <div className="md:col-span-2 flex gap-2 pt-2">
+              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Save User</button>
+              <button type="button" onClick={() => { setEditing(false); setError(''); setSaved(''); load(id); }} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium hover:bg-slate-50">Cancel</button>
+            </div>
+          </form>
+        )}
+      </section>
 
       <ModuleNotesTasks entityType="USER" entityId={id} />
     </main>
