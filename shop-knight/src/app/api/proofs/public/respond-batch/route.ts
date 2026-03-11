@@ -2,16 +2,18 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type Decision = 'APPROVED' | 'REVISIONS_REQUESTED' | 'SKIP';
+type BatchResponseInput = { token?: string; decision?: string; notes?: string };
+type NormalizedResponse = { token: string; decision: Decision; notes: string };
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const responses = Array.isArray(body?.responses) ? body.responses : [];
+  const responses: BatchResponseInput[] = Array.isArray(body?.responses) ? body.responses : [];
 
   if (responses.length === 0) {
     return NextResponse.json({ error: 'responses are required' }, { status: 400 });
   }
 
-  const normalized = responses.map((item: { token?: string; decision?: string; notes?: string }) => ({
+  const normalized: NormalizedResponse[] = responses.map((item) => ({
     token: String(item?.token || '').trim(),
     decision: String(item?.decision || '').trim() as Decision,
     notes: String(item?.notes || '').trim(),
