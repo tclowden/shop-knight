@@ -81,6 +81,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const { push } = useToast();
   const [id, setId] = useState('');
   const [order, setOrder] = useState<SalesOrder | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
@@ -136,6 +137,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [creatingTrip, setCreatingTrip] = useState(false);
 
   async function load(orderId: string) {
+    setLoadError('');
     const [soRes, pRes, usersRes, statusesRes, oppRes, travelerRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
@@ -169,6 +171,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       setProjectManagerId(so.projectManagerId || '');
       setDesignerId(so.designerId || '');
       setOpportunityId(so.opportunityId || '');
+    } else {
+      const payload = await soRes.json().catch(() => ({}));
+      setLoadError(payload?.error || `Failed to load sales order (${soRes.status})`);
     }
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
@@ -446,6 +451,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   useUnsavedGuard(headerDirty);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
+  if (!order && loadError) return <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-rose-700">{loadError}</main>;
   if (!order) return <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-700">Loading sales order…</main>;
 
   return (
