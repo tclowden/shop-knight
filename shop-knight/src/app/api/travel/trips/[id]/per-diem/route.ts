@@ -66,6 +66,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const travelerCount = Math.max(1, trip.travelers.length || 1);
     const total = mie * days * travelerCount;
 
+    const userId = (auth.session.user as { id?: string } | undefined)?.id || null;
+    const request = await prisma.perDiemRequest.create({
+      data: {
+        companyId,
+        tripId: trip.id,
+        status: 'NEW',
+        destinationCity: city,
+        destinationState: state,
+        year,
+        dailyRate: mie,
+        lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
+        days,
+        travelerCount: trip.travelers.length,
+        total,
+        createdByUserId: userId,
+      },
+      select: { id: true, status: true },
+    });
+
     return NextResponse.json({
       ok: true,
       reviewer: 'Eden Riffe',
@@ -78,6 +97,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
       travelerCount: trip.travelers.length,
       total,
+      requestId: request.id,
+      requestStatus: request.status,
       source: 'GSA Per Diem API',
     });
   } catch {
