@@ -28,6 +28,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       opportunity: { include: { customer: true } },
       salesRep: true,
       projectManager: true,
+      department: true,
       lines: { include: { product: true }, orderBy: { id: 'asc' } },
     },
   });
@@ -79,6 +80,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       installAddress: body?.installAddress !== undefined ? String(body.installAddress || '') : undefined,
       salesRepId: body?.salesRepId !== undefined ? (body.salesRepId ? String(body.salesRepId) : null) : undefined,
       projectManagerId: body?.projectManagerId !== undefined ? (body.projectManagerId ? String(body.projectManagerId) : null) : undefined,
+      departmentId: body?.departmentId !== undefined ? (body.departmentId ? String(body.departmentId) : null) : undefined,
       customerPoNumber: body?.customerPoNumber !== undefined ? String(body.customerPoNumber || '') : undefined,
       totalPriceInDollars: body?.totalPriceInDollars !== undefined ? toNumber(body.totalPriceInDollars) : undefined,
       totalTaxInDollars: body?.totalTaxInDollars !== undefined ? toNumber(body.totalTaxInDollars) : undefined,

@@ -38,6 +38,8 @@ export async function GET() {
       rewardDeltaNumber: true,
       rewardAmericanNumber: true,
       active: true,
+      departmentId: true,
+      department: { select: { id: true, name: true } },
       createdAt: true,
       customRoles: {
         select: {
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
         rewardAmericanNumber: body?.rewardAmericanNumber ? String(body.rewardAmericanNumber) : null,
         active: true,
         activeCompanyId: companyId,
+        departmentId: body?.departmentId ? String(body.departmentId) : null,
         companyMemberships: {
           create: [{ companyId }],
         },
@@ -116,6 +119,8 @@ export async function POST(req: Request) {
         rewardDeltaNumber: true,
         rewardAmericanNumber: true,
         active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
         createdAt: true,
         customRoles: {
           select: {

@@ -30,6 +30,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       salesRep: true,
       projectManager: true,
       designer: true,
+      department: true,
       lines: { include: { product: true }, orderBy: { id: 'asc' } },
     },
   });
@@ -113,6 +114,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       salesRepId: body?.salesRepId !== undefined ? (body.salesRepId ? String(body.salesRepId) : null) : undefined,
       projectManagerId: body?.projectManagerId !== undefined ? (body.projectManagerId ? String(body.projectManagerId) : null) : undefined,
       designerId: body?.designerId !== undefined ? (body.designerId ? String(body.designerId) : null) : undefined,
+      departmentId: body?.departmentId !== undefined ? (body.departmentId ? String(body.departmentId) : null) : undefined,
     },
     include: {
       opportunity: { include: { customer: true } },
@@ -120,6 +122,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       salesRep: true,
       projectManager: true,
       designer: true,
+      department: true,
       lines: { include: { product: true }, orderBy: { id: 'asc' } },
     },
   });

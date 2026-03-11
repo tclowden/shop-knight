@@ -109,6 +109,7 @@ model Company {
   travelers          Traveler[]
   trips              Trip[]
   perDiemRequests    PerDiemRequest[]
+  departments        Department[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 }
@@ -127,12 +128,14 @@ model User {
   rewardAmericanNumber        String?
   active                      Boolean            @default(true)
   activeCompanyId             String?
+  departmentId                String?
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
   tasks                       Task[]
   notes                       Note[]
   companyMemberships          UserCompany[]
   activeCompany               Company?           @relation("ActiveCompanyUsers", fields: [activeCompanyId], references: [id])
+  department                  Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   customRoles                 UserCustomRole[]
   templateSteps               TaskTemplateStep[] @relation("TemplateSpecificAssignee")
   salesRepOpportunities       Opportunity[]      @relation("OpportunitySalesRep")
@@ -147,6 +150,22 @@ model User {
   createdTrips                Trip[]             @relation("TripCreator")
   approvedTrips               Trip[]             @relation("TripApprover")
   createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
+}
+
+model Department {
+  id           String        @id @default(cuid())
+  companyId    String?
+  name         String
+  active       Boolean       @default(true)
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users        User[]
+  opportunities Opportunity[]
+  quotes       Quote[]
+  salesOrders  SalesOrder[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([companyId, name])
 }
 
 model CustomRole {
@@ -215,6 +234,7 @@ model Opportunity {
   ownerId           String?
   salesRepId        String?
   projectManagerId  String?
+  departmentId      String?
   description       String?
   source            String?
   priority          String?
@@ -229,6 +249,7 @@ model Opportunity {
   customer          Customer         @relation(fields: [customerId], references: [id])
   salesRep          User?            @relation("OpportunitySalesRep", fields: [salesRepId], references: [id])
   projectManager    User?            @relation("OpportunityProjectManager", fields: [projectManagerId], references: [id])
+  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   quotes            Quote[]
   salesOrders       SalesOrder[]
   projects          Project[]
@@ -257,6 +278,7 @@ model Quote {
   installAddress             String?
   salesRepId                 String?
   projectManagerId           String?
+  departmentId               String?
   totalPriceInDollars        Decimal?     @db.Decimal(12, 2)
   totalTaxInDollars          Decimal?     @db.Decimal(12, 2)
   totalPriceWithTaxInDollars Decimal?     @db.Decimal(12, 2)
@@ -288,6 +310,7 @@ model Quote {
   opportunity                Opportunity  @relation(fields: [opportunityId], references: [id])
   salesRep                   User?        @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
   projectManager             User?        @relation("QuoteProjectManager", fields: [projectManagerId], references: [id])
+  department                 Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   lines                      QuoteLine[]
   salesOrders                SalesOrder[]
   tasks                      Task[]
@@ -378,6 +401,7 @@ model SalesOrder {
   orderNumber            String
   opportunityId          String
   sourceQuoteId          String?
+  departmentId           String?
   title                  String?
   statusId               String?
   primaryCustomerContact String?
@@ -402,6 +426,7 @@ model SalesOrder {
   company                Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   opportunity            Opportunity       @relation(fields: [opportunityId], references: [id])
   sourceQuote            Quote?            @relation(fields: [sourceQuoteId], references: [id])
+  department             Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   status                 SalesOrderStatus? @relation(fields: [statusId], references: [id])
   salesRep               User?             @relation("SalesOrderSalesRep", fields: [salesRepId], references: [id])
   projectManager         User?             @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])

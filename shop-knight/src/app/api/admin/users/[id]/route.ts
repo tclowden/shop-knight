@@ -47,6 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const rewardUnitedNumber = body?.rewardUnitedNumber === undefined ? undefined : (body.rewardUnitedNumber ? String(body.rewardUnitedNumber) : null);
   const rewardDeltaNumber = body?.rewardDeltaNumber === undefined ? undefined : (body.rewardDeltaNumber ? String(body.rewardDeltaNumber) : null);
   const rewardAmericanNumber = body?.rewardAmericanNumber === undefined ? undefined : (body.rewardAmericanNumber ? String(body.rewardAmericanNumber) : null);
+  const departmentId = body?.departmentId === undefined ? undefined : (body.departmentId ? String(body.departmentId) : null);
 
   if (name !== undefined && !name) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
@@ -122,6 +123,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           rewardAmericanNumber,
           active: body?.active !== undefined ? Boolean(body.active) : undefined,
           activeCompanyId: nextActiveCompanyId,
+          departmentId,
           customRoles: customRoleIds
             ? {
                 deleteMany: {},
@@ -142,6 +144,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           rewardAmericanNumber: true,
           active: true,
           activeCompanyId: true,
+          departmentId: true,
+          department: { select: { id: true, name: true } },
           companyMemberships: { select: { companyId: true } },
           customRoles: {
             select: {

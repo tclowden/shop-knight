@@ -71,6 +71,7 @@ export async function GET(req: Request) {
       salesRep: true,
       projectManager: true,
       designer: true,
+      department: true,
     },
     orderBy: { orderNumber: 'asc' },
   });
@@ -96,6 +97,8 @@ export async function GET(req: Request) {
       salesRepName: so.salesRep?.name ?? null,
       projectManagerName: so.projectManager?.name ?? null,
       designerName: so.designer?.name ?? null,
+      departmentId: so.departmentId,
+      departmentName: so.department?.name ?? null,
     }))
   );
 }
@@ -112,6 +115,8 @@ export async function POST(req: Request) {
   const requestedOpportunityId = String(body?.opportunityId || '').trim();
   const sourceQuoteId = body?.sourceQuoteId ? String(body.sourceQuoteId).trim() : null;
   const initialLine = body?.initialLine && typeof body.initialLine === 'object' ? body.initialLine : null;
+  const sessionUserId = (auth.session.user as { id?: string } | undefined)?.id;
+  const creator = sessionUserId ? await prisma.user.findUnique({ where: { id: sessionUserId }, select: { departmentId: true } }) : null;
 
   let opportunityId = requestedOpportunityId;
   if (!opportunityId) {
@@ -147,6 +152,7 @@ export async function POST(req: Request) {
     sourceQuoteId,
     title: body?.title ? String(body.title) : sourceQuote?.title ?? null,
     statusId: status.id,
+    departmentId: body?.departmentId ? String(body.departmentId) : (creator?.departmentId || null),
     primaryCustomerContact: body?.primaryCustomerContact ? String(body.primaryCustomerContact) : null,
     customerInvoiceContact: body?.customerInvoiceContact ? String(body.customerInvoiceContact) : null,
     billingAddress: body?.billingAddress ? String(body.billingAddress) : null,
