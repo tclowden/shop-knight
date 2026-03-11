@@ -100,7 +100,7 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const existing = await prisma.quote.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
 
-  const linkedSalesOrders = await prisma.salesOrder.count({ where: withCompany(companyId, { quoteId: id }) });
+  const linkedSalesOrders = await prisma.salesOrder.count({ where: withCompany(companyId, { sourceQuoteId: id }) });
   if (linkedSalesOrders > 0) {
     return NextResponse.json({ error: 'Cannot archive quote with linked sales orders' }, { status: 409 });
   }
