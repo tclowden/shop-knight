@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 import { StatusChip } from '@/components/status-chip';
 
@@ -18,9 +19,13 @@ type Quote = {
 };
 
 export default function QuotesPage() {
+  const { data: session } = useSession();
   const [items, setItems] = useState<Quote[]>([]);
   const [q, setQ] = useState('');
   const [stateFilter, setStateFilter] = useState('ALL');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('ADMIN') || session?.user?.roles?.includes('SUPER_ADMIN');
 
   const states = useMemo(
     () => ['ALL', ...Array.from(new Set(items.map((i) => i.workflowState || i.status))).sort()],
@@ -45,8 +50,28 @@ export default function QuotesPage() {
     setItems(await res.json());
   }
 
+  async function handleDelete(quoteId: string) {
+    if (!isAdmin || deletingId) return;
+    const ok = window.confirm('Delete this quote? This action cannot be undone.');
+    if (!ok) return;
+
+    try {
+      setDeletingId(quoteId);
+      const res = await fetch(`/api/quotes/${quoteId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to delete quote');
+      }
+      setItems((prev) => prev.filter((item) => item.id !== quoteId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete quote';
+      window.alert(message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -89,6 +114,7 @@ export default function QuotesPage() {
               <th className="px-4 py-3 font-semibold">Customer</th>
               <th className="px-4 py-3 font-semibold">Total</th>
               <th className="px-4 py-3 font-semibold">Created</th>
+              {isAdmin ? <th className="px-4 py-3 text-right font-semibold">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -101,11 +127,23 @@ export default function QuotesPage() {
                 <td className="px-4 py-4">{qRow.customer}</td>
                 <td className="px-4 py-4">{qRow.totalPriceWithTaxInDollars ?? '—'}</td>
                 <td className="px-4 py-4 text-slate-500">{new Date(qRow.createdAt).toLocaleDateString()}</td>
+                {isAdmin ? (
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(qRow.id)}
+                      disabled={deletingId === qRow.id}
+                      className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {deletingId === qRow.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
             {visibleItems.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>No quotes found.</td>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={isAdmin ? 8 : 7}>No quotes found.</td>
               </tr>
             ) : null}
           </tbody>

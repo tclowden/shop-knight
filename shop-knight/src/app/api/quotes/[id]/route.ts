@@ -88,3 +88,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await params;
+  const existing = await prisma.quote.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+
+  const linkedSalesOrders = await prisma.salesOrder.count({ where: withCompany(companyId, { quoteId: id }) });
+  if (linkedSalesOrders > 0) {
+    return NextResponse.json({ error: 'Cannot delete quote with linked sales orders' }, { status: 409 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const quoteLineIds = await tx.quoteLine.findMany({
+      where: { quote: { id, companyId } },
+      select: { id: true },
+    });
+
+    const ids = quoteLineIds.map((line) => line.id);
+    if (ids.length > 0) {
+      await tx.proof.deleteMany({ where: { quoteLineId: { in: ids } } });
+      await tx.quoteLine.deleteMany({ where: { id: { in: ids } } });
+    }
+
+    await tx.task.deleteMany({ where: { quoteId: id, companyId } });
+    await tx.note.deleteMany({ where: { entityType: 'QUOTE', entityId: id } });
+    await tx.quote.delete({ where: { id } });
+  });
+
+  return NextResponse.json({ ok: true });
+}
