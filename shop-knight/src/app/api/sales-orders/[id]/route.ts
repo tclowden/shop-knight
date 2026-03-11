@@ -35,7 +35,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   });
 
   if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
-  return NextResponse.json(so);
+
+  const linkedTrips = await prisma.trip.findMany({
+    where: { companyId, salesOrderRef: so.orderNumber },
+    include: { travelers: { include: { traveler: true } } },
+    orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  return NextResponse.json({ ...so, linkedTrips });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -112,7 +119,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
   });
 
-  return NextResponse.json(updated);
+  const linkedTrips = await prisma.trip.findMany({
+    where: { companyId, salesOrderRef: updated.orderNumber },
+    include: { travelers: { include: { traveler: true } } },
+    orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+  });
+
+  return NextResponse.json({ ...updated, linkedTrips });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {

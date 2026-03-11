@@ -29,6 +29,16 @@ type Proof = {
   } | null;
 };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
+type LinkedTrip = {
+  id: string;
+  name: string;
+  destinations?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status: string;
+  billable: boolean;
+  salesOrderRef?: string | null;
+};
 type SalesOrder = {
   opportunityId?: string;
   id: string;
@@ -59,6 +69,7 @@ type SalesOrder = {
   designer?: { name: string } | null;
   opportunity: { name: string; customer: { name: string } };
   lines: Line[];
+  linkedTrips?: LinkedTrip[];
 };
 
 const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medium';
@@ -111,6 +122,11 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [projectManagerId, setProjectManagerId] = useState('');
   const [designerId, setDesignerId] = useState('');
   const [opportunityId, setOpportunityId] = useState('');
+  const [tripName, setTripName] = useState('');
+  const [tripDestination, setTripDestination] = useState('');
+  const [tripStartDate, setTripStartDate] = useState('');
+  const [tripEndDate, setTripEndDate] = useState('');
+  const [creatingTrip, setCreatingTrip] = useState(false);
 
   async function load(orderId: string) {
     const [soRes, pRes, usersRes, statusesRes, oppRes] = await Promise.all([
@@ -150,6 +166,37 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (usersRes.ok) setUsers(await usersRes.json());
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+  }
+
+  async function createLinkedTrip(e: React.FormEvent) {
+    e.preventDefault();
+    if (!tripName.trim()) { push('Trip name is required', 'error'); return; }
+
+    setCreatingTrip(true);
+    const res = await fetch(`/api/sales-orders/${id}/trips`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: tripName.trim(),
+        destinations: tripDestination,
+        startDate: tripStartDate || null,
+        endDate: tripEndDate || null,
+      }),
+    });
+    setCreatingTrip(false);
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || 'Failed to create trip', 'error');
+      return;
+    }
+
+    push('Trip created and linked to this sales order', 'success');
+    setTripName('');
+    setTripDestination('');
+    setTripStartDate('');
+    setTripEndDate('');
+    await load(id);
   }
 
   async function sendBatchProofApproval() {
@@ -479,6 +526,37 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </div>
           </form>
         )}
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Travel</h2>
+          <span className="text-xs text-slate-500">Linked by SO #{order.orderNumber}</span>
+        </div>
+        <form onSubmit={createLinkedTrip} className="grid grid-cols-1 gap-2 md:grid-cols-5">
+          <input value={tripName} onChange={(e) => setTripName(e.target.value)} placeholder="Trip name" className="field" required />
+          <input value={tripDestination} onChange={(e) => setTripDestination(e.target.value)} placeholder="Destination" className="field" />
+          <input value={tripStartDate} onChange={(e) => setTripStartDate(e.target.value)} type="date" className="field" />
+          <input value={tripEndDate} onChange={(e) => setTripEndDate(e.target.value)} type="date" className="field" />
+          <button disabled={creatingTrip} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{creatingTrip ? 'Creating…' : 'Create Trip'}</button>
+        </form>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-slate-500"><tr><th className="py-2">Trip</th><th className="py-2">Destination</th><th className="py-2">Dates</th><th className="py-2">Status</th><th className="py-2">Billing</th></tr></thead>
+            <tbody>
+              {(order.linkedTrips || []).map((trip) => (
+                <tr key={trip.id} className="border-t border-slate-100">
+                  <td className="py-2 font-medium"><a href={`/travel/${trip.id}`} className="text-sky-700 hover:underline">{trip.name}</a></td>
+                  <td className="py-2">{trip.destinations || '—'}</td>
+                  <td className="py-2 text-slate-600">{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : '—'} → {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : '—'}</td>
+                  <td className="py-2">{trip.status}</td>
+                  <td className="py-2">{trip.billable ? `Billable${trip.salesOrderRef ? ` (${trip.salesOrderRef})` : ''}` : 'Non-billable'}</td>
+                </tr>
+              ))}
+              {(order.linkedTrips || []).length === 0 ? <tr><td colSpan={5} className="py-3 text-slate-500">No linked trips yet.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
