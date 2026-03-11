@@ -114,12 +114,20 @@ export default function SalesOrdersPage() {
               Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}
             </div>
             {!showArchived ? (
-              <Link
-                href="/sales/orders/new"
-                className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
-              >
-                + Add New Sales Order
-              </Link>
+              <>
+                <Link
+                  href="/sales/orders/calendar"
+                  className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Sales Order Calendar
+                </Link>
+                <Link
+                  href="/sales/orders/new"
+                  className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
+                >
+                  + Add New Sales Order
+                </Link>
+              </>
             ) : null}
           </div>
         </div>

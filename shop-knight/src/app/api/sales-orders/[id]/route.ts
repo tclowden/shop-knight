@@ -59,19 +59,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const { id } = await params;
-  const existing = await prisma.salesOrder.findFirst({ where: { id, companyId }, select: { id: true } });
+  const existing = await prisma.salesOrder.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
 
   const body = await req.json();
 
-  let opportunityId: string | undefined;
+  let opportunityId: string | null | undefined;
   if (body?.opportunityId !== undefined) {
     if (!body.opportunityId) {
-      return NextResponse.json({ error: 'opportunityId cannot be empty' }, { status: 400 });
+      opportunityId = null;
+    } else {
+      const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
+      opportunityId = nextOpportunity?.id || null;
     }
-    const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
-    if (!nextOpportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
-    opportunityId = nextOpportunity.id;
   }
 
   let statusId: string | undefined;

@@ -127,7 +127,12 @@ export default function NewSalesOrderPage() {
     setStatuses(Array.isArray(statusItems) ? statusItems : []);
     setCustomers(Array.isArray(customerItems) ? customerItems : []);
     setOpportunityId('');
-    if (statusItems.length > 0) setStatus(statusItems[0].name);
+    if (Array.isArray(statusItems) && statusItems.length > 0) {
+      const newStatus = statusItems.find((s: SalesOrderStatus) => String(s.name).toLowerCase() === 'new');
+      setStatus(newStatus?.name || statusItems[0].name);
+    } else {
+      setStatus('New');
+    }
   }
 
   function recalcLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
