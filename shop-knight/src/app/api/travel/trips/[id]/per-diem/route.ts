@@ -3,6 +3,19 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 import { dateDiffDays, fetchGsaPerDiem, getTripYear, normalizeStateCode } from '@/lib/per-diem';
 
+async function retry<T>(fn: () => Promise<T>, attempts = 2, waitMs = 250): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+  throw lastError;
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER']);
   if (!auth.ok) return auth.response;
@@ -14,10 +27,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const body = await req.json().catch(() => ({}));
 
     const { id } = await params;
-    const trip = await prisma.trip.findFirst({
+    const trip = await retry(() => prisma.trip.findFirst({
       where: withCompany(companyId, { id }),
       include: { travelers: { include: { traveler: true } } },
-    });
+    }), 3, 300);
 
     if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
 
@@ -33,10 +46,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (city !== trip.destinationCity || state !== normalizeStateCode(trip.destinationState)) {
-      await prisma.trip.update({
+      await retry(() => prisma.trip.update({
         where: { id: trip.id },
         data: { destinationCity: city, destinationState: state },
-      });
+      }), 2, 250);
     }
 
     const year = getTripYear(trip.startDate, trip.endDate);
@@ -67,7 +80,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const total = mie * days * travelerCount;
 
     const userId = (auth.session.user as { id?: string } | undefined)?.id || null;
-    const request = await prisma.perDiemRequest.create({
+    const request = await retry(() => prisma.perDiemRequest.create({
       data: {
         companyId,
         tripId: trip.id,
@@ -83,7 +96,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         createdByUserId: userId,
       },
       select: { id: true, status: true },
-    });
+    }), 3, 300);
 
     return NextResponse.json({
       ok: true,
@@ -101,7 +114,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       requestStatus: request.status,
       source: 'GSA Per Diem API',
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.toLowerCase().includes('timed out')) {
+      return NextResponse.json({ error: 'Per-diem request timed out while saving. Please retry.' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Per-diem request failed due to a temporary server/database timeout. Please retry.' }, { status: 503 });
   }
 }
