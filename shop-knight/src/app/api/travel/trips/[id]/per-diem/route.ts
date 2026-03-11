@@ -17,12 +17,14 @@ function normalizeStateCode(value: string | null | undefined) {
   return String(value).trim().toUpperCase();
 }
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const body = await req.json().catch(() => ({}));
 
   const { id } = await params;
   const trip = await prisma.trip.findFirst({
@@ -37,10 +39,17 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'GSA API key missing. Set GSA_API_KEY in environment.' }, { status: 400 });
   }
 
-  const city = trip.destinationCity?.trim() || null;
-  const state = normalizeStateCode(trip.destinationState);
+  const city = (body?.destinationCity ? String(body.destinationCity) : trip.destinationCity)?.trim() || null;
+  const state = normalizeStateCode(body?.destinationState ? String(body.destinationState) : trip.destinationState);
   if (!city || !state) {
     return NextResponse.json({ error: 'Trip destination city and state are required for per-diem lookup.' }, { status: 400 });
+  }
+
+  if (city !== trip.destinationCity || state !== normalizeStateCode(trip.destinationState)) {
+    await prisma.trip.update({
+      where: { id: trip.id },
+      data: { destinationCity: city, destinationState: state },
+    });
   }
 
   const year = getTripYear(trip.startDate, trip.endDate);

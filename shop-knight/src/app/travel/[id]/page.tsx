@@ -134,13 +134,21 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     setLoadingPerDiem(true);
     setPerDiemMessage('');
 
-    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, { method: 'POST' });
+    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinationCity, destinationState }),
+    });
     const payload = await res.json().catch(() => ({}));
     setLoadingPerDiem(false);
 
     if (!res.ok) {
       setPerDiemMessage(payload?.error || 'Failed to generate per-diem draft');
       return;
+    }
+
+    if ((destinationCity || destinationState) && trip) {
+      setTrip({ ...trip, destinationCity, destinationState });
     }
 
     setPerDiemMessage(`Per-diem draft ready: ${payload.total} for ${payload.travelerCount} traveler(s), ${payload.days} day(s) at ${payload.dailyRate}/day (reviewer: ${payload.reviewer}).`);
