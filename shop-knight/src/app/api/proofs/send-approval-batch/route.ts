@@ -10,7 +10,9 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const recipientEmail = String(body?.recipientEmail || '').trim();
-  const proofIds = Array.isArray(body?.proofIds) ? body.proofIds.map(String).filter(Boolean) : [];
+  const proofIds: string[] = Array.isArray(body?.proofIds)
+    ? body.proofIds.map((id: unknown) => String(id)).filter(Boolean)
+    : [];
 
   if (!recipientEmail || proofIds.length === 0) {
     return NextResponse.json({ error: 'recipientEmail and proofIds are required' }, { status: 400 });
