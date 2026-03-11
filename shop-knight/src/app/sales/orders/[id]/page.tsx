@@ -12,6 +12,7 @@ type Product = { id: string; sku: string; name: string; salePrice: string | numb
 type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string };
+type TravelerOption = { id: string; fullName: string };
 type Proof = {
   id: string;
   version: number;
@@ -82,6 +83,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
+  const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
@@ -126,15 +128,17 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [tripDestination, setTripDestination] = useState('');
   const [tripStartDate, setTripStartDate] = useState('');
   const [tripEndDate, setTripEndDate] = useState('');
+  const [tripTravelerIds, setTripTravelerIds] = useState<string[]>([]);
   const [creatingTrip, setCreatingTrip] = useState(false);
 
   async function load(orderId: string) {
-    const [soRes, pRes, usersRes, statusesRes, oppRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, oppRes, travelerRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
       fetch('/api/admin/sales-order-statuses'),
       fetch('/api/opportunities'),
+      fetch('/api/travel/travelers'),
     ]);
     if (soRes.ok) {
       const so = await soRes.json();
@@ -166,6 +170,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (usersRes.ok) setUsers(await usersRes.json());
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+    if (travelerRes.ok) setTravelers(await travelerRes.json());
   }
 
   async function createLinkedTrip(e: React.FormEvent) {
@@ -181,6 +186,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         destinations: tripDestination,
         startDate: tripStartDate || null,
         endDate: tripEndDate || null,
+        travelerIds: tripTravelerIds,
       }),
     });
     setCreatingTrip(false);
@@ -196,6 +202,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     setTripDestination('');
     setTripStartDate('');
     setTripEndDate('');
+    setTripTravelerIds([]);
     await load(id);
   }
 
@@ -533,11 +540,19 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           <h2 className="text-base font-semibold">Travel</h2>
           <span className="text-xs text-slate-500">Linked by SO #{order.orderNumber}</span>
         </div>
-        <form onSubmit={createLinkedTrip} className="grid grid-cols-1 gap-2 md:grid-cols-5">
+        <form onSubmit={createLinkedTrip} className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input value={tripName} onChange={(e) => setTripName(e.target.value)} placeholder="Trip name" className="field" required />
           <input value={tripDestination} onChange={(e) => setTripDestination(e.target.value)} placeholder="Destination" className="field" />
           <input value={tripStartDate} onChange={(e) => setTripStartDate(e.target.value)} type="date" className="field" />
           <input value={tripEndDate} onChange={(e) => setTripEndDate(e.target.value)} type="date" className="field" />
+          <select
+            multiple
+            value={tripTravelerIds}
+            onChange={(e) => setTripTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
+            className="field h-24 md:col-span-2"
+          >
+            {travelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+          </select>
           <button disabled={creatingTrip} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{creatingTrip ? 'Creating…' : 'Create Trip'}</button>
         </form>
         <div className="mt-3 overflow-x-auto">

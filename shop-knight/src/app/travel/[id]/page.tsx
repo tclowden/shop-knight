@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Traveler = { id: string; fullName: string };
+type TravelerOption = { id: string; fullName: string };
 type Trip = {
   id: string;
   name: string;
@@ -33,6 +34,9 @@ type Segment = {
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [allTravelers, setAllTravelers] = useState<TravelerOption[]>([]);
+  const [selectedTravelerIds, setSelectedTravelerIds] = useState<string[]>([]);
+  const [savingTravelers, setSavingTravelers] = useState(false);
   const [segmentType, setSegmentType] = useState('FLIGHT');
   const [status, setStatus] = useState('PLANNING');
   const [loadingPerDiem, setLoadingPerDiem] = useState(false);
@@ -53,8 +57,24 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       const tripData = await tripRes.json();
       setTrip(tripData);
       setStatus(tripData.status || 'PLANNING');
+      setSelectedTravelerIds((tripData.travelers || []).map((t: { traveler: { id: string } }) => t.traveler.id));
     }
     if (segmentRes.ok) setSegments(await segmentRes.json());
+  }
+
+  async function saveTravelers(e: FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+
+    setSavingTravelers(true);
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ travelerIds: selectedTravelerIds }),
+    });
+    setSavingTravelers(false);
+    if (!res.ok) return;
+    await load(trip.id);
   }
 
   async function addSegment(e: FormEvent) {
@@ -106,6 +126,10 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     params.then((p) => load(p.id));
+    fetch('/api/travel/travelers').then(async (res) => {
+      if (!res.ok) return;
+      setAllTravelers(await res.json());
+    });
   }, [params]);
 
   if (!trip) return <main className="mx-auto max-w-7xl p-8">Loading trip…</main>;
@@ -142,6 +166,21 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             {perDiemMessage ? <p className="mt-2 text-xs text-slate-600">{perDiemMessage}</p> : null}
           </div>
         </div>
+      </section>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Travelers</h2>
+        <form onSubmit={saveTravelers} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <select
+            multiple
+            value={selectedTravelerIds}
+            onChange={(e) => setSelectedTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
+            className="field h-24 md:col-span-3"
+          >
+            {allTravelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+          </select>
+          <button disabled={savingTravelers} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingTravelers ? 'Saving…' : 'Save Travelers'}</button>
+        </form>
       </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

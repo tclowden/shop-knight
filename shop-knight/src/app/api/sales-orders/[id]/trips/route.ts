@@ -24,6 +24,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const name = String(body?.name || '').trim();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
+  const travelerIds = Array.isArray(body?.travelerIds) ? body.travelerIds.map(String).filter(Boolean) : [];
+
   const created = await prisma.trip.create({
     data: {
       companyId,
@@ -36,6 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       billable: body?.billable === undefined ? true : Boolean(body.billable),
       salesOrderRef: salesOrder.orderNumber,
       createdByUserId: userId,
+      travelers: travelerIds.length > 0 ? { create: travelerIds.map((travelerId: string) => ({ travelerId })) } : undefined,
     },
     include: { travelers: { include: { traveler: true } }, segments: true },
   });
