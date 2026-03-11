@@ -109,6 +109,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newQty, setNewQty] = useState('1');
+  const [showAddLineModal, setShowAddLineModal] = useState(false);
   const [newUnitPrice, setNewUnitPrice] = useState('0');
   const [newTaxable, setNewTaxable] = useState(true);
   const [newUnitCost, setNewUnitCost] = useState('0.00');
@@ -364,6 +365,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     setNewTaxable(true);
     setNewUnitCost('0.00');
     setNewGpmPercent('35');
+    setShowAddLineModal(false);
     await load(id);
   }
 
@@ -674,29 +676,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <details open>
-          <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
-        <h2 className="mb-3 mt-2 text-base font-semibold">Add Line Item</h2>
-        <form onSubmit={addLine} className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
-            <FormFieldSmall label="Product">
-              <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="field">
-                <option value="">Custom / no product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
-              </select>
-            </FormFieldSmall>
-            <FormFieldSmall label="Description"><input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="field" required /></FormFieldSmall>
-            <FormFieldSmall label="Quantity"><input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="field" required /></FormFieldSmall>
-            <FormFieldSmall label="Unit Price"><input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="field" required /></FormFieldSmall>
-            <FormFieldSmall label="Taxable"><span className="field flex items-center"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span></FormFieldSmall>
-            <div className="flex items-end"><button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line</button></div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <FormFieldSmall label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
-            <FormFieldSmall label="GPM %"><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
-            <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
-          </div>
-        </form>
-        </details>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Add Line Item</h2>
+          <button onClick={() => setShowAddLineModal(true)} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line Item</button>
+        </div>
       </section>
 
       <section className="mb-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -783,6 +766,36 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         </details>
       </section>
+
+      {showAddLineModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-4xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Add Line Item</h3>
+              <button type="button" onClick={() => setShowAddLineModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
+            </div>
+            <form onSubmit={addLine} className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+                <FormFieldSmall label="Product">
+                  <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="field">
+                    <option value="">Custom / no product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
+                  </select>
+                </FormFieldSmall>
+                <FormFieldSmall label="Description"><input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="field" required /></FormFieldSmall>
+                <FormFieldSmall label="Quantity"><input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="field" required /></FormFieldSmall>
+                <FormFieldSmall label="Unit Price"><input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="field" required /></FormFieldSmall>
+                <FormFieldSmall label="Taxable"><span className="field flex items-center"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span></FormFieldSmall>
+                <div className="flex items-end"><button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Line</button></div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <FormFieldSmall label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
+                <FormFieldSmall label="GPM %"><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
+                <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 text-sm shadow">
         <p className="flex justify-between text-lg font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p>
