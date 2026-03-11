@@ -52,10 +52,12 @@ export default function ProductsAdminPage() {
     setCategory('General');
     setUom('EA');
     setDescription('');
+    const created = await res.json();
+
     setSalePrice('0.00');
     setCostPrice('0.00');
     setTaxable(true);
-    setProducts((prev) => [await res.json(), ...prev]);
+    setProducts((prev) => [created, ...prev]);
   }
 
   async function handleArchive(productId: string) {
