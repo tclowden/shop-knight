@@ -185,8 +185,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
     const options = proofsByLine.flatMap((proofs, index) =>
       proofs
-        .filter((p) => !p.lastRequest)
+        .filter((p) => p.status !== 'APPROVED')
         .map((p) => ({
+
           id: p.id,
           fileName: p.fileName,
           mimeType: p.mimeType,
@@ -627,8 +628,6 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
 
     if (nextProofs.length === 0) setProofState('NONE');
     else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED')) setProofState('REJECTED');
-    else if (nextProofs.some((p) => p.lastRequest && !p.lastRequest.respondedAt)) setProofState('PENDING');
-    else if (nextProofs.some((p) => !p.lastRequest)) setProofState('UNSENT');
     else if (nextProofs.every((p) => p.status === 'APPROVED')) setProofState('APPROVED');
     else setProofState('UNSENT');
   }
