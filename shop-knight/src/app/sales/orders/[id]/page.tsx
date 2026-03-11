@@ -67,6 +67,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [filterText, setFilterText] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
+  const [batchProofRecipient, setBatchProofRecipient] = useState('');
+  const [selectedProofIds, setSelectedProofIds] = useState<string[]>([]);
+  const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -138,6 +141,23 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (usersRes.ok) setUsers(await usersRes.json());
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+  }
+
+  async function sendBatchProofApproval() {
+    if (!batchProofRecipient.trim()) { push('Enter recipient email first', 'error'); return; }
+    if (selectedProofIds.length === 0) { push('Select one or more proofs first', 'error'); return; }
+
+    setSendingBatchProofs(true);
+    const res = await fetch('/api/proofs/send-approval-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientEmail: batchProofRecipient.trim(), proofIds: selectedProofIds }),
+    });
+    setSendingBatchProofs(false);
+
+    if (!res.ok) { push('Failed to send batch proof email', 'error'); return; }
+    push(`Proof approval email sent for ${selectedProofIds.length} proof(s)`, 'success');
+    setSelectedProofIds([]);
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -438,6 +458,15 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </form>
       </section>
 
+      <section className="mb-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <p className="text-xs text-slate-500">Batch proof approvals</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="field w-full max-w-sm" />
+          <button type="button" onClick={sendBatchProofApproval} disabled={sendingBatchProofs} className="inline-flex h-10 items-center rounded-lg bg-sky-600 px-3 text-xs font-semibold text-white disabled:opacity-60">{sendingBatchProofs ? 'Sending…' : `Send Selected (${selectedProofIds.length})`}</button>
+          {selectedProofIds.length > 0 ? <button type="button" onClick={() => setSelectedProofIds([])} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">Clear Selection</button> : null}
+        </div>
+      </section>
+
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-4">
           <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
@@ -461,6 +490,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   onToggleCollapse={toggleCollapse}
                   onMakeChild={makeChild}
                   toast={push}
+                  selectedProofIds={selectedProofIds}
+                  onToggleProofSelection={(proofId, selected) => {
+                    setSelectedProofIds((prev) => {
+                      if (selected) return prev.includes(proofId) ? prev : [...prev, proofId];
+                      return prev.filter((id) => id !== proofId);
+                    });
+                  }}
                 />
               ))}
             </tbody>
@@ -513,7 +549,7 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -635,6 +671,10 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
                   <p className="text-slate-500">{proof.status}{proof.approvalNotes ? ` • ${proof.approvalNotes}` : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                    <input type="checkbox" checked={selectedProofIds.includes(proof.id)} onChange={(e) => onToggleProofSelection(proof.id, e.target.checked)} />
+                    Select
+                  </label>
                   <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-sky-700">Open</a>
                   <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="rounded-md border border-slate-300 bg-white px-2 py-1">{sendingProofId === proof.id ? 'Sending…' : 'Send'}</button>
                 </div>

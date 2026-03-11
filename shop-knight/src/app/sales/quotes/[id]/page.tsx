@@ -69,6 +69,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [editingHeader, setEditingHeader] = useState(false);
   const [converting, setConverting] = useState(false);
   const [convertedSalesOrderId, setConvertedSalesOrderId] = useState('');
+  const [batchProofRecipient, setBatchProofRecipient] = useState('');
+  const [selectedProofIds, setSelectedProofIds] = useState<string[]>([]);
+  const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -129,6 +132,23 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     push('Quote converted to sales order', 'success');
     await load(id);
     setConverting(false);
+  }
+
+  async function sendBatchProofApproval() {
+    if (!batchProofRecipient.trim()) { push('Enter recipient email first', 'error'); return; }
+    if (selectedProofIds.length === 0) { push('Select one or more proofs first', 'error'); return; }
+
+    setSendingBatchProofs(true);
+    const res = await fetch('/api/proofs/send-approval-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientEmail: batchProofRecipient.trim(), proofIds: selectedProofIds }),
+    });
+    setSendingBatchProofs(false);
+
+    if (!res.ok) { push('Failed to send batch proof email', 'error'); return; }
+    push(`Proof approval email sent for ${selectedProofIds.length} proof(s)`, 'success');
+    setSelectedProofIds([]);
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -394,6 +414,15 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </form>
 
+      <div className="mb-3 rounded border border-zinc-700 p-3">
+        <p className="text-xs text-zinc-400">Batch proof approvals</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="w-full max-w-sm rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <button type="button" onClick={sendBatchProofApproval} disabled={sendingBatchProofs} className="rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{sendingBatchProofs ? 'Sending…' : `Send Selected (${selectedProofIds.length})`}</button>
+          {selectedProofIds.length > 0 ? <button type="button" onClick={() => setSelectedProofIds([])} className="rounded border border-zinc-600 px-3 py-2 text-xs">Clear Selection</button> : null}
+        </div>
+      </div>
+
       <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
 
       <div className="overflow-hidden rounded border border-zinc-800">
@@ -415,6 +444,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                 onToggleCollapse={toggleCollapse}
                 onMakeChild={makeChild}
                 toast={push}
+                selectedProofIds={selectedProofIds}
+                onToggleProofSelection={(proofId, selected) => {
+                  setSelectedProofIds((prev) => {
+                    if (selected) return prev.includes(proofId) ? prev : [...prev, proofId];
+                    return prev.filter((id) => id !== proofId);
+                  });
+                }}
               />
             ))}
           </tbody>
@@ -432,7 +468,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
+function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -552,6 +588,10 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
                   <p className="text-zinc-400">{proof.status}{proof.approvalNotes ? ` • ${proof.approvalNotes}` : ''}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1 text-[11px] text-zinc-300">
+                    <input type="checkbox" checked={selectedProofIds.includes(proof.id)} onChange={(e) => onToggleProofSelection(proof.id, e.target.checked)} />
+                    Select
+                  </label>
                   <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-sky-300">Open</a>
                   <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="rounded border border-zinc-600 px-2 py-1">{sendingProofId === proof.id ? 'Sending…' : 'Send'}</button>
                 </div>
