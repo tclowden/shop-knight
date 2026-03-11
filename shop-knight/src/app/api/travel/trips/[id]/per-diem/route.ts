@@ -56,13 +56,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> }; county?: string } | null = null;
     let mie = 0;
+    let usedFallback = false;
+    let fallbackNote: string | null = null;
     try {
-      const gsa = await fetchGsaPerDiem(city, state, year, apiKey);
+      const gsa = await retry(() => fetchGsaPerDiem(city, state, year, apiKey), 3, 400);
       rateEntry = gsa.rateEntry;
       mie = gsa.mie;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed per-diem lookup';
-      return NextResponse.json({ error: message }, { status: 504 });
+      const cached = await prisma.perDiemRequest.findFirst({
+        where: withCompany(companyId, { destinationCity: city, destinationState: state, year }),
+        orderBy: { updatedAt: 'desc' },
+      });
+      if (!cached?.dailyRate) {
+        const message = error instanceof Error ? error.message : 'Failed per-diem lookup';
+        return NextResponse.json({ error: `${message} (no cached rate available)` }, { status: 504 });
+      }
+      mie = Number(cached.dailyRate);
+      rateEntry = { county: null, months: { month: [] } };
+      usedFallback = true;
+      fallbackNote = 'Used cached per-diem rate due to temporary GSA lookup failure.';
     }
 
     const tripMonth = (trip.startDate || trip.endDate || new Date()).getMonth() + 1;
@@ -112,7 +124,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       total,
       requestId: request.id,
       requestStatus: request.status,
-      source: 'GSA Per Diem API',
+      source: usedFallback ? 'Cached Per-Diem Rate' : 'GSA Per Diem API',
+      note: fallbackNote,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
