@@ -12,6 +12,7 @@ const links = [
   { href: '/customers', label: 'Customers' },
   { href: '/vendors', label: 'Vendors' },
   { href: '/tasks', label: 'Tasks' },
+  { href: '/travel', label: 'Travel' },
   { href: '/tasks/calendar', label: 'Task Calendar' },
 ];
 

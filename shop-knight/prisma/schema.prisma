@@ -66,65 +66,87 @@ enum ProofStatus {
   REVISIONS_REQUESTED
 }
 
+enum TripStatus {
+  PLANNING
+  PRE_TRAVEL
+  IN_TRANSIT
+  ON_SITE
+  RETURNED
+  CANCELED
+}
+
+enum TravelSegmentType {
+  FLIGHT
+  HOTEL
+  CAR
+  GROUND
+  OTHER
+}
+
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  active    Boolean  @default(true)
-  users     UserCompany[]
-  activeUsers User[] @relation("ActiveCompanyUsers")
-  customRoles CustomRole[]
-  customers Customer[]
-  vendors   Vendor[]
-  opportunities Opportunity[]
-  quotes    Quote[]
-  salesOrders SalesOrder[]
-  products  Product[]
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  active             Boolean            @default(true)
+  users              UserCompany[]
+  activeUsers        User[]             @relation("ActiveCompanyUsers")
+  customRoles        CustomRole[]
+  customers          Customer[]
+  vendors            Vendor[]
+  opportunities      Opportunity[]
+  quotes             Quote[]
+  salesOrders        SalesOrder[]
+  products           Product[]
   salesOrderStatuses SalesOrderStatus[]
-  taskTemplates TaskTemplate[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  taskTemplates      TaskTemplate[]
+  travelers          Traveler[]
+  trips              Trip[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String
-  passwordHash String
-  type         UserType
-  active       Boolean      @default(true)
-  activeCompanyId String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  tasks                          Task[]
-  notes                          Note[]
-  companyMemberships             UserCompany[]
-  activeCompany                  Company?          @relation("ActiveCompanyUsers", fields: [activeCompanyId], references: [id])
-  customRoles                    UserCustomRole[]
-  templateSteps                  TaskTemplateStep[] @relation("TemplateSpecificAssignee")
-  salesRepOpportunities          Opportunity[]      @relation("OpportunitySalesRep")
-  projectManagerOpportunities    Opportunity[]      @relation("OpportunityProjectManager")
-  salesRepQuotes                 Quote[]            @relation("QuoteSalesRep")
-  projectManagerQuotes           Quote[]            @relation("QuoteProjectManager")
-  salesRepSalesOrders            SalesOrder[]       @relation("SalesOrderSalesRep")
-  projectManagerSalesOrders      SalesOrder[]       @relation("SalesOrderProjectManager")
-  designerSalesOrders            SalesOrder[]       @relation("SalesOrderDesigner")
+  id                          String             @id @default(cuid())
+  email                       String             @unique
+  name                        String
+  passwordHash                String
+  type                        UserType
+  active                      Boolean            @default(true)
+  activeCompanyId             String?
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+  tasks                       Task[]
+  notes                       Note[]
+  companyMemberships          UserCompany[]
+  activeCompany               Company?           @relation("ActiveCompanyUsers", fields: [activeCompanyId], references: [id])
+  customRoles                 UserCustomRole[]
+  templateSteps               TaskTemplateStep[] @relation("TemplateSpecificAssignee")
+  salesRepOpportunities       Opportunity[]      @relation("OpportunitySalesRep")
+  projectManagerOpportunities Opportunity[]      @relation("OpportunityProjectManager")
+  salesRepQuotes              Quote[]            @relation("QuoteSalesRep")
+  projectManagerQuotes        Quote[]            @relation("QuoteProjectManager")
+  salesRepSalesOrders         SalesOrder[]       @relation("SalesOrderSalesRep")
+  projectManagerSalesOrders   SalesOrder[]       @relation("SalesOrderProjectManager")
+  designerSalesOrders         SalesOrder[]       @relation("SalesOrderDesigner")
+  managedTrips                Traveler[]         @relation("TripManager")
+  travelerProfiles            Traveler[]
+  createdTrips                Trip[]             @relation("TripCreator")
+  approvedTrips               Trip[]             @relation("TripApprover")
 }
 
 model CustomRole {
-  id        String   @id @default(cuid())
-  companyId String?
-  name      String
-  active    Boolean  @default(true)
-  permissions Json?
-  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  companyId       String?
+  name            String
+  active          Boolean          @default(true)
+  permissions     Json?
+  company         Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   userAssignments UserCustomRole[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([companyId, name])
 }
-
 
 model UserCompany {
   userId    String
@@ -158,104 +180,104 @@ model Customer {
 }
 
 model Vendor {
-  id        String          @id @default(cuid())
+  id        String              @id @default(cuid())
   companyId String?
   name      String
   email     String?
   phone     String?
-  company   Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   poLines   PurchaseOrderLine[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 }
 
 model Opportunity {
-  id                  String             @id @default(cuid())
-  companyId           String?
-  name                String
-  stage               OpportunityStage   @default(LEAD)
-  customerId          String
-  ownerId             String?
-  salesRepId          String?
-  projectManagerId    String?
-  description         String?
-  source              String?
-  priority            String?
-  expectedCloseDate   DateTime?
-  probability         Decimal?           @db.Decimal(5, 2)
-  estimatedValue      Decimal?           @db.Decimal(12, 2)
-  customerPoNumber    String?
-  customerPoDate      DateTime?
-  dueDate             DateTime?
-  inHandDate          DateTime?
-  company             Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer            Customer           @relation(fields: [customerId], references: [id])
-  salesRep            User?              @relation("OpportunitySalesRep", fields: [salesRepId], references: [id])
-  projectManager      User?              @relation("OpportunityProjectManager", fields: [projectManagerId], references: [id])
-  quotes              Quote[]
-  salesOrders         SalesOrder[]
-  projects            Project[]
-  jobs                Job[]
-  tasks               Task[]
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  id                String           @id @default(cuid())
+  companyId         String?
+  name              String
+  stage             OpportunityStage @default(LEAD)
+  customerId        String
+  ownerId           String?
+  salesRepId        String?
+  projectManagerId  String?
+  description       String?
+  source            String?
+  priority          String?
+  expectedCloseDate DateTime?
+  probability       Decimal?         @db.Decimal(5, 2)
+  estimatedValue    Decimal?         @db.Decimal(12, 2)
+  customerPoNumber  String?
+  customerPoDate    DateTime?
+  dueDate           DateTime?
+  inHandDate        DateTime?
+  company           Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer          Customer         @relation(fields: [customerId], references: [id])
+  salesRep          User?            @relation("OpportunitySalesRep", fields: [salesRepId], references: [id])
+  projectManager    User?            @relation("OpportunityProjectManager", fields: [projectManagerId], references: [id])
+  quotes            Quote[]
+  salesOrders       SalesOrder[]
+  projects          Project[]
+  jobs              Job[]
+  tasks             Task[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 model Quote {
-  id                            String      @id @default(cuid())
-  companyId                     String?
-  quoteNumber                   String
-  opportunityId                 String
-  status                        QuoteStatus @default(DRAFT)
-  title                         String?
-  description                   String?
-  txnDate                       DateTime?
-  quoteDate                     DateTime?
-  txnNumber                     String?
-  customerContactRole           String?
-  billingAddress                String?
-  billingAttentionTo            String?
-  shippingAddress               String?
-  shippingAttentionTo           String?
-  installAddress                String?
-  salesRepId                    String?
-  projectManagerId              String?
-  totalPriceInDollars           Decimal?    @db.Decimal(12, 2)
-  totalTaxInDollars             Decimal?    @db.Decimal(12, 2)
-  totalPriceWithTaxInDollars    Decimal?    @db.Decimal(12, 2)
-  workflowState                 String?     @default("draft")
-  expiryDate                    DateTime?
-  nextContactDate               DateTime?
-  potentialClosingDate          DateTime?
-  closingPotential              Decimal?    @db.Decimal(5, 2)
-  customerPoNumber              String?
-  customerPoDate                DateTime?
-  autoExpire                    Boolean     @default(false)
-  downpaymentPercent            Decimal?    @db.Decimal(5, 2)
-  shippingTracking              String?
-  shippingDate                  DateTime?
-  lastNote                      String?
-  lastEmailedDate               DateTime?
-  quoteFor                      String?
-  customerNote                  String?
-  site                          String?
-  quickQuote                    Boolean     @default(false)
-  dueDate                       DateTime?
-  inHandDate                    DateTime?
-  primaryContactName            String?
-  primaryContactEmail           String?
-  primaryContactPhoneWithExt    String?
-  primarySalesRepName           String?
-  companyName                   String?
-  company                       Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  opportunity                   Opportunity @relation(fields: [opportunityId], references: [id])
-  salesRep                      User?       @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
-  projectManager                User?       @relation("QuoteProjectManager", fields: [projectManagerId], references: [id])
-  lines                         QuoteLine[]
-  salesOrders                   SalesOrder[]
-  tasks                         Task[]
-  createdAt                     DateTime    @default(now())
-  updatedAt                     DateTime    @updatedAt
+  id                         String       @id @default(cuid())
+  companyId                  String?
+  quoteNumber                String
+  opportunityId              String
+  status                     QuoteStatus  @default(DRAFT)
+  title                      String?
+  description                String?
+  txnDate                    DateTime?
+  quoteDate                  DateTime?
+  txnNumber                  String?
+  customerContactRole        String?
+  billingAddress             String?
+  billingAttentionTo         String?
+  shippingAddress            String?
+  shippingAttentionTo        String?
+  installAddress             String?
+  salesRepId                 String?
+  projectManagerId           String?
+  totalPriceInDollars        Decimal?     @db.Decimal(12, 2)
+  totalTaxInDollars          Decimal?     @db.Decimal(12, 2)
+  totalPriceWithTaxInDollars Decimal?     @db.Decimal(12, 2)
+  workflowState              String?      @default("draft")
+  expiryDate                 DateTime?
+  nextContactDate            DateTime?
+  potentialClosingDate       DateTime?
+  closingPotential           Decimal?     @db.Decimal(5, 2)
+  customerPoNumber           String?
+  customerPoDate             DateTime?
+  autoExpire                 Boolean      @default(false)
+  downpaymentPercent         Decimal?     @db.Decimal(5, 2)
+  shippingTracking           String?
+  shippingDate               DateTime?
+  lastNote                   String?
+  lastEmailedDate            DateTime?
+  quoteFor                   String?
+  customerNote               String?
+  site                       String?
+  quickQuote                 Boolean      @default(false)
+  dueDate                    DateTime?
+  inHandDate                 DateTime?
+  primaryContactName         String?
+  primaryContactEmail        String?
+  primaryContactPhoneWithExt String?
+  primarySalesRepName        String?
+  companyName                String?
+  company                    Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  opportunity                Opportunity  @relation(fields: [opportunityId], references: [id])
+  salesRep                   User?        @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
+  projectManager             User?        @relation("QuoteProjectManager", fields: [projectManagerId], references: [id])
+  lines                      QuoteLine[]
+  salesOrders                SalesOrder[]
+  tasks                      Task[]
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
 
   @@unique([companyId, quoteNumber])
 }
@@ -321,203 +343,203 @@ enum AttributeInputType {
 }
 
 model ProductAttribute {
-  id          String             @id @default(cuid())
-  productId   String
-  code        String
-  name        String
-  inputType   AttributeInputType @default(TEXT)
-  required    Boolean            @default(false)
-  options     Json?
+  id           String             @id @default(cuid())
+  productId    String
+  code         String
+  name         String
+  inputType    AttributeInputType @default(TEXT)
+  required     Boolean            @default(false)
+  options      Json?
   defaultValue String?
-  sortOrder   Int                @default(0)
-  product     Product            @relation(fields: [productId], references: [id])
+  sortOrder    Int                @default(0)
+  product      Product            @relation(fields: [productId], references: [id])
 
   @@unique([productId, code])
 }
 
 model SalesOrder {
-  id                       String            @id @default(cuid())
-  companyId                String?
-  orderNumber              String
-  opportunityId            String
-  sourceQuoteId            String?
-  title                    String?
-  statusId                 String?
-  primaryCustomerContact   String?
-  customerInvoiceContact   String?
-  billingAddress           String?
-  billingAttentionTo       String?
-  shippingAddress          String?
-  shippingAttentionTo      String?
-  installAddress           String?
-  shippingMethod           String?
-  shippingTracking         String?
-  salesOrderDate           DateTime?
-  dueDate                  DateTime?
-  installDate              DateTime?
-  shippingDate             DateTime?
-  paymentTerms             String?
-  downPaymentType          String?
-  downPaymentValue         Decimal?          @db.Decimal(12, 2)
-  salesRepId               String?
-  projectManagerId         String?
-  designerId               String?
-  company                  Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  opportunity              Opportunity        @relation(fields: [opportunityId], references: [id])
-  sourceQuote              Quote?             @relation(fields: [sourceQuoteId], references: [id])
-  status                   SalesOrderStatus?  @relation(fields: [statusId], references: [id])
-  salesRep                 User?              @relation("SalesOrderSalesRep", fields: [salesRepId], references: [id])
-  projectManager           User?              @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
-  designer                 User?              @relation("SalesOrderDesigner", fields: [designerId], references: [id])
-  lines                    SalesOrderLine[]
-  tasks                    Task[]
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  id                     String            @id @default(cuid())
+  companyId              String?
+  orderNumber            String
+  opportunityId          String
+  sourceQuoteId          String?
+  title                  String?
+  statusId               String?
+  primaryCustomerContact String?
+  customerInvoiceContact String?
+  billingAddress         String?
+  billingAttentionTo     String?
+  shippingAddress        String?
+  shippingAttentionTo    String?
+  installAddress         String?
+  shippingMethod         String?
+  shippingTracking       String?
+  salesOrderDate         DateTime?
+  dueDate                DateTime?
+  installDate            DateTime?
+  shippingDate           DateTime?
+  paymentTerms           String?
+  downPaymentType        String?
+  downPaymentValue       Decimal?          @db.Decimal(12, 2)
+  salesRepId             String?
+  projectManagerId       String?
+  designerId             String?
+  company                Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  opportunity            Opportunity       @relation(fields: [opportunityId], references: [id])
+  sourceQuote            Quote?            @relation(fields: [sourceQuoteId], references: [id])
+  status                 SalesOrderStatus? @relation(fields: [statusId], references: [id])
+  salesRep               User?             @relation("SalesOrderSalesRep", fields: [salesRepId], references: [id])
+  projectManager         User?             @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
+  designer               User?             @relation("SalesOrderDesigner", fields: [designerId], references: [id])
+  lines                  SalesOrderLine[]
+  tasks                  Task[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   @@unique([companyId, orderNumber])
 }
 
 model SalesOrderStatus {
-  id         String       @id @default(cuid())
-  companyId  String?
-  name       String
-  sortOrder  Int          @default(0)
-  active     Boolean      @default(true)
-  company    Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  companyId   String?
+  name        String
+  sortOrder   Int          @default(0)
+  active      Boolean      @default(true)
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   salesOrders SalesOrder[]
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@unique([companyId, name])
 }
 
 model SalesOrderLine {
-  id           String              @id @default(cuid())
-  salesOrderId String
-  description  String
-  qty          Int
-  unitPrice    Decimal             @db.Decimal(12, 2)
-  sortOrder    Int                 @default(0)
-  parentLineId String?
-  collapsed    Boolean             @default(false)
+  id              String              @id @default(cuid())
+  salesOrderId    String
+  description     String
+  qty             Int
+  unitPrice       Decimal             @db.Decimal(12, 2)
+  sortOrder       Int                 @default(0)
+  parentLineId    String?
+  collapsed       Boolean             @default(false)
   attributeValues Json?
-  productId    String?
-  salesOrder   SalesOrder          @relation(fields: [salesOrderId], references: [id])
-  product      Product?            @relation(fields: [productId], references: [id])
-  poLines      PurchaseOrderLine[]
-  proofs       Proof[]
+  productId       String?
+  salesOrder      SalesOrder          @relation(fields: [salesOrderId], references: [id])
+  product         Product?            @relation(fields: [productId], references: [id])
+  poLines         PurchaseOrderLine[]
+  proofs          Proof[]
 }
 
 model PurchaseOrder {
-  id          String              @id @default(cuid())
-  poNumber    String              @unique
+  id            String              @id @default(cuid())
+  poNumber      String              @unique
   opportunityId String?
-  lines       PurchaseOrderLine[]
-  tasks       Task[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  lines         PurchaseOrderLine[]
+  tasks         Task[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 }
 
 model PurchaseOrderLine {
-  id              String         @id @default(cuid())
-  purchaseOrderId String
-  vendorId        String
+  id               String          @id @default(cuid())
+  purchaseOrderId  String
+  vendorId         String
   salesOrderLineId String?
-  description     String
-  qty             Int
-  unitCost        Decimal        @db.Decimal(12, 2)
-  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
-  vendor          Vendor         @relation(fields: [vendorId], references: [id])
-  salesOrderLine  SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id])
+  description      String
+  qty              Int
+  unitCost         Decimal         @db.Decimal(12, 2)
+  purchaseOrder    PurchaseOrder   @relation(fields: [purchaseOrderId], references: [id])
+  vendor           Vendor          @relation(fields: [vendorId], references: [id])
+  salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id])
 }
 
 model Project {
-  id            String       @id @default(cuid())
+  id            String      @id @default(cuid())
   name          String
   opportunityId String
-  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id])
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
   tasks         Task[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Job {
-  id            String       @id @default(cuid())
+  id            String      @id @default(cuid())
   name          String
   opportunityId String
-  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id])
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
   tasks         Task[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Task {
-  id         String      @id @default(cuid())
+  id         String     @id @default(cuid())
   title      String
-  status     TaskStatus  @default(TODO)
+  status     TaskStatus @default(TODO)
   assigneeId String?
   entityType EntityType
   entityId   String
   dueAt      DateTime?
-  assignee   User?       @relation(fields: [assigneeId], references: [id])
+  assignee   User?      @relation(fields: [assigneeId], references: [id])
 
-  opportunityId  String?
-  quoteId        String?
-  salesOrderId   String?
+  opportunityId   String?
+  quoteId         String?
+  salesOrderId    String?
   purchaseOrderId String?
-  projectId      String?
-  jobId          String?
+  projectId       String?
+  jobId           String?
 
-  opportunity   Opportunity?  @relation(fields: [opportunityId], references: [id])
-  quote         Quote?        @relation(fields: [quoteId], references: [id])
-  salesOrder    SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  opportunity   Opportunity?   @relation(fields: [opportunityId], references: [id])
+  quote         Quote?         @relation(fields: [quoteId], references: [id])
+  salesOrder    SalesOrder?    @relation(fields: [salesOrderId], references: [id])
   purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  project       Project?      @relation(fields: [projectId], references: [id])
-  job           Job?          @relation(fields: [jobId], references: [id])
+  project       Project?       @relation(fields: [projectId], references: [id])
+  job           Job?           @relation(fields: [jobId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Note {
-  id         String     @id @default(cuid())
-  body       String
-  entityType EntityType
-  entityId   String
+  id          String     @id @default(cuid())
+  body        String
+  entityType  EntityType
+  entityId    String
   createdById String?
-  createdBy  User?      @relation(fields: [createdById], references: [id])
-  createdAt  DateTime   @default(now())
+  createdBy   User?      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime   @default(now())
 }
 
 model Proof {
-  id                String           @id @default(cuid())
-  quoteLineId       String?
-  salesOrderLineId  String?
-  version           Int              @default(1)
-  fileName          String
-  mimeType          String
-  fileData          Bytes
-  status            ProofStatus      @default(PENDING)
-  approvalNotes     String?
-  approvedAt        DateTime?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  quoteLine         QuoteLine?       @relation(fields: [quoteLineId], references: [id])
-  salesOrderLine    SalesOrderLine?  @relation(fields: [salesOrderLineId], references: [id])
-  requests          ProofApprovalRequest[]
+  id               String                 @id @default(cuid())
+  quoteLineId      String?
+  salesOrderLineId String?
+  version          Int                    @default(1)
+  fileName         String
+  mimeType         String
+  fileData         Bytes
+  status           ProofStatus            @default(PENDING)
+  approvalNotes    String?
+  approvedAt       DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  quoteLine        QuoteLine?             @relation(fields: [quoteLineId], references: [id])
+  salesOrderLine   SalesOrderLine?        @relation(fields: [salesOrderLineId], references: [id])
+  requests         ProofApprovalRequest[]
 }
 
 model ProofApprovalRequest {
-  id             String      @id @default(cuid())
+  id             String       @id @default(cuid())
   proofId        String
   recipientEmail String
-  token          String      @unique
+  token          String       @unique
   expiresAt      DateTime
   respondedAt    DateTime?
   decision       ProofStatus?
   responseNotes  String?
-  createdAt      DateTime    @default(now())
-  proof          Proof       @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  proof          Proof        @relation(fields: [proofId], references: [id], onDelete: Cascade)
 }
 
 model TaskTemplate {
@@ -543,4 +565,102 @@ model TaskTemplateStep {
   specificAssigneeId String?
   template           TaskTemplate         @relation(fields: [templateId], references: [id])
   specificAssignee   User?                @relation("TemplateSpecificAssignee", fields: [specificAssigneeId], references: [id])
+}
+
+model Traveler {
+  id                    String    @id @default(cuid())
+  companyId             String?
+  userId                String?
+  fullName              String
+  email                 String?
+  phone                 String?
+  emergencyName         String?
+  emergencyRelationship String?
+  emergencyPhone        String?
+  dateOfBirth           DateTime?
+  knownTravelerNumber   String?
+  passportNumber        String?
+  passportExpiration    DateTime?
+  passportCountry       String?
+  dietaryNotes          String?
+  medicalNotes          String?
+  loyaltyAirline        String?
+  loyaltyHotel          String?
+  loyaltyRentalCar      String?
+  managerUserId         String?
+  active                Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  company      Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  manager      User?          @relation("TripManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  tripLinks    TripTraveler[]
+  tripSegments TripSegment[]
+
+  @@index([companyId, fullName])
+}
+
+model Trip {
+  id               String     @id @default(cuid())
+  companyId        String?
+  name             String
+  projectRef       String?
+  destinations     String?
+  purpose          String?
+  startDate        DateTime?
+  endDate          DateTime?
+  status           TripStatus @default(PLANNING)
+  billable         Boolean    @default(false)
+  salesOrderRef    String?
+  createdByUserId  String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser  User?          @relation("TripCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUser User?          @relation("TripApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  travelers      TripTraveler[]
+  segments       TripSegment[]
+
+  @@index([companyId, startDate, endDate])
+}
+
+model TripTraveler {
+  id         String   @id @default(cuid())
+  tripId     String
+  travelerId String
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  traveler Traveler @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, travelerId])
+}
+
+model TripSegment {
+  id               String            @id @default(cuid())
+  tripId           String
+  travelerId       String?
+  segmentType      TravelSegmentType
+  provider         String?
+  confirmationCode String?
+  startAt          DateTime?
+  endAt            DateTime?
+  origin           String?
+  destination      String?
+  address          String?
+  notes            String?
+  estimatedCost    Decimal?          @db.Decimal(12, 2)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  traveler Traveler? @relation(fields: [travelerId], references: [id], onDelete: SetNull)
+
+  @@index([tripId, segmentType])
 }
