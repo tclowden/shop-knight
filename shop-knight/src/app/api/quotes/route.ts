@@ -58,8 +58,12 @@ export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const quotes = await prisma.quote.findMany({
     where: {
+      companyId,
       OR: [
         { workflowState: null },
         { workflowState: { not: 'archived' } },
