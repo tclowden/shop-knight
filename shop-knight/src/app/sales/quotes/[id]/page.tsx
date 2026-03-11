@@ -20,6 +20,13 @@ type Proof = {
   status: 'PENDING' | 'APPROVED' | 'REVISIONS_REQUESTED';
   approvalNotes?: string | null;
   createdAt: string;
+  lastRequest?: {
+    id: string;
+    recipientEmail: string;
+    expiresAt: string;
+    respondedAt: string | null;
+    decision: string | null;
+  } | null;
 };
 type Line = {
   id: string;
@@ -72,6 +79,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [batchProofRecipient, setBatchProofRecipient] = useState('');
   const [selectedProofIds, setSelectedProofIds] = useState<string[]>([]);
   const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
+  const [showProofPicker, setShowProofPicker] = useState(false);
+  const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string }>>([]);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -149,6 +158,30 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     if (!res.ok) { push('Failed to send batch proof email', 'error'); return; }
     push(`Proof approval email sent for ${selectedProofIds.length} proof(s)`, 'success');
     setSelectedProofIds([]);
+  }
+
+  async function loadUnsentProofOptions() {
+    if (!quote) return;
+    const proofsByLine = await Promise.all(
+      quote.lines.map(async (line) => {
+        const res = await fetch(`/api/proofs?lineType=QUOTE_LINE&lineId=${line.id}`);
+        if (!res.ok) return [] as Proof[];
+        return (await res.json()) as Proof[];
+      })
+    );
+
+    const options = proofsByLine.flatMap((proofs, index) =>
+      proofs
+        .filter((p) => !p.lastRequest)
+        .map((p) => ({
+          id: p.id,
+          fileName: p.fileName,
+          mimeType: p.mimeType,
+          lineDescription: quote.lines[index]?.description || 'Line item',
+        }))
+    );
+
+    setUnsentProofOptions(options);
   }
 
   async function saveHeader(e: React.FormEvent) {
@@ -418,9 +451,26 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         <p className="text-xs text-zinc-400">Batch proof approvals</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="w-full max-w-sm rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <button type="button" onClick={async () => { await loadUnsentProofOptions(); setShowProofPicker(true); }} className="rounded border border-zinc-600 px-3 py-2 text-xs">Select Proofs</button>
           <button type="button" onClick={sendBatchProofApproval} disabled={sendingBatchProofs} className="rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{sendingBatchProofs ? 'Sending…' : `Send Selected (${selectedProofIds.length})`}</button>
           {selectedProofIds.length > 0 ? <button type="button" onClick={() => setSelectedProofIds([])} className="rounded border border-zinc-600 px-3 py-2 text-xs">Clear Selection</button> : null}
         </div>
+        {showProofPicker ? (
+          <div className="mt-3 space-y-2 rounded border border-zinc-700 p-2">
+            {unsentProofOptions.map((proof) => (
+              <label key={proof.id} className="flex items-center gap-2 rounded border border-zinc-700 p-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={selectedProofIds.includes(proof.id)}
+                  onChange={(e) => setSelectedProofIds((prev) => e.target.checked ? (prev.includes(proof.id) ? prev : [...prev, proof.id]) : prev.filter((id) => id !== proof.id))}
+                />
+                {proof.mimeType.startsWith('image/') ? <img src={`/api/proofs/file/${proof.id}`} alt={proof.fileName} className="h-10 w-10 rounded object-cover" /> : <span className="inline-flex h-10 w-10 items-center justify-center rounded bg-zinc-800">PDF</span>}
+                <span>{proof.fileName} <span className="text-zinc-400">• {proof.lineDescription}</span></span>
+              </label>
+            ))}
+            {unsentProofOptions.length === 0 ? <p className="text-xs text-zinc-400">No unsent proofs found.</p> : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
@@ -476,6 +526,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofEmail, setProofEmail] = useState('');
   const [sendingProofId, setSendingProofId] = useState('');
+  const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
   useEffect(() => {
     if (!dirty) return;
     const t = setTimeout(() => onSave(draft), 700);
@@ -485,7 +536,15 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   async function loadProofs() {
     const res = await fetch(`/api/proofs?lineType=QUOTE_LINE&lineId=${line.id}`);
     if (!res.ok) return;
-    setProofs(await res.json());
+    const nextProofs = (await res.json()) as Proof[];
+    setProofs(nextProofs);
+
+    if (nextProofs.length === 0) setProofState('NONE');
+    else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED')) setProofState('REJECTED');
+    else if (nextProofs.some((p) => p.lastRequest && !p.lastRequest.respondedAt)) setProofState('PENDING');
+    else if (nextProofs.some((p) => !p.lastRequest)) setProofState('UNSENT');
+    else if (nextProofs.every((p) => p.status === 'APPROVED')) setProofState('APPROVED');
+    else setProofState('UNSENT');
   }
 
   async function uploadProof() {
@@ -521,6 +580,11 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
     toast('Proof approval email sent', 'success');
     await loadProofs();
   }
+
+  useEffect(() => {
+    loadProofs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line.id]);
 
   useEffect(() => {
     if (!showProofs) return;
@@ -559,7 +623,18 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
         <button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button>
         <button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button>
         <button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button>
-        <button onClick={() => setShowProofs((v) => !v)} className="rounded border border-sky-700 px-2 py-1 text-sky-300">{showProofs ? 'Hide Proofs' : 'Proofs'}</button>
+        <button
+          onClick={() => setShowProofs((v) => !v)}
+          className={`rounded border px-2 py-1 ${
+            proofState === 'NONE' ? 'border-slate-400 text-slate-400' :
+            proofState === 'UNSENT' ? 'border-sky-700 text-sky-300' :
+            proofState === 'PENDING' ? 'border-amber-500 text-amber-400' :
+            proofState === 'APPROVED' ? 'border-emerald-600 text-emerald-400' :
+            'border-rose-600 text-rose-400'
+          }`}
+        >
+          {showProofs ? 'Hide Proofs' : 'Proofs'}
+        </button>
         <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
           <option value="">Top level</option>
           {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
