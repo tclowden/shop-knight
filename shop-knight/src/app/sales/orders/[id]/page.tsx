@@ -322,6 +322,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
+      <Nav />
       <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Sales Order {order.orderNumber}</h1>
@@ -331,7 +332,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           <StatusChip value={order.status?.name || 'Unknown'} />
         </div>
       </header>
-      <Nav />
 
       <section className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
         <SummaryCell label="Customer" value={order.opportunity.customer.name} />

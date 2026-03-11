@@ -265,9 +265,9 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto max-w-5xl p-8">
+      <Nav />
       <h1 className="text-2xl font-semibold">{opportunity?.name || `Opportunity ${id}`}</h1>
       <p className="text-sm text-zinc-400">Working flow: quotes → sales orders → sales order lines → linked PO lines.</p>
-      <Nav />
 
       <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Stage</p><div className="mt-1"><StatusChip value={opportunity?.stage || 'Unknown'} /></div></div>

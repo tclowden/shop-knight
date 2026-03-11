@@ -298,9 +298,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main className="mx-auto max-w-6xl p-8">
+      <Nav />
       <h1 className="text-2xl font-semibold">Quote {quote.quoteNumber}</h1>
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
-      <Nav />
 
       <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <button
