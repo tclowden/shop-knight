@@ -84,7 +84,10 @@ export default function TravelPage() {
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <div className="text-sm text-slate-600">Phase 1 foundation is live: travelers + trips.</div>
-          <Link href="/travel/travelers" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Manage Travelers</Link>
+          <div className="flex items-center gap-2">
+            <Link href="/travel/map" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Travel Map</Link>
+            <Link href="/travel/travelers" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Manage Travelers</Link>
+          </div>
         </div>
 
         <form onSubmit={createTrip} className="grid grid-cols-1 gap-2 md:grid-cols-4">
