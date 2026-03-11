@@ -83,6 +83,13 @@ enum TravelSegmentType {
   OTHER
 }
 
+enum PerDiemRequestStatus {
+  NEW
+  IN_REVIEW
+  COMPLETE
+  CANCELED
+}
+
 model Company {
   id                 String             @id @default(cuid())
   name               String
@@ -101,6 +108,7 @@ model Company {
   taskTemplates      TaskTemplate[]
   travelers          Traveler[]
   trips              Trip[]
+  perDiemRequests    PerDiemRequest[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 }
@@ -138,6 +146,7 @@ model User {
   travelerProfiles            Traveler[]
   createdTrips                Trip[]             @relation("TripCreator")
   approvedTrips               Trip[]             @relation("TripApprover")
+  createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
 }
 
 model CustomRole {
@@ -632,6 +641,7 @@ model Trip {
   approvedByUser User?          @relation("TripApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   travelers      TripTraveler[]
   segments       TripSegment[]
+  perDiemRequests PerDiemRequest[]
 
   @@index([companyId, startDate, endDate])
 }
@@ -671,4 +681,32 @@ model TripSegment {
   traveler Traveler? @relation(fields: [travelerId], references: [id], onDelete: SetNull)
 
   @@index([tripId, segmentType])
+}
+
+model PerDiemRequest {
+  id                String               @id @default(cuid())
+  companyId         String?
+  tripId            String
+  status            PerDiemRequestStatus @default(NEW)
+  destinationCity   String?
+  destinationState  String?
+  year              Int?
+  dailyRate         Decimal?             @db.Decimal(12, 2)
+  lodgingRate       Decimal?             @db.Decimal(12, 2)
+  days              Int?
+  travelerCount     Int?
+  total             Decimal?             @db.Decimal(12, 2)
+  notes             String?
+  createdByUserId   String?
+  completedAt       DateTime?
+  canceledAt        DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  createdByUser User?    @relation("PerDiemRequestCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status, createdAt])
+  @@index([tripId, createdAt])
 }

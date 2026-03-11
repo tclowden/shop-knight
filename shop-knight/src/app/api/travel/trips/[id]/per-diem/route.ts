@@ -1,21 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
-
-function dateDiffDays(start: Date | null, end: Date | null) {
-  if (!start || !end) return 1;
-  const ms = end.getTime() - start.getTime();
-  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)) + 1);
-}
-
-function getTripYear(startDate: Date | null, endDate: Date | null) {
-  return (startDate || endDate || new Date()).getFullYear();
-}
-
-function normalizeStateCode(value: string | null | undefined) {
-  if (!value) return null;
-  return String(value).trim().toUpperCase();
-}
+import { dateDiffDays, fetchGsaPerDiem, getTripYear, normalizeStateCode } from '@/lib/per-diem';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER']);
@@ -54,27 +40,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const year = getTripYear(trip.startDate, trip.endDate);
-    const url = `https://api.gsa.gov/travel/perdiem/v2/rates/city/${encodeURIComponent(city)}/state/${encodeURIComponent(state)}/year/${year}?api_key=${encodeURIComponent(apiKey)}`;
 
-    let gsaRes: Response;
+    let rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> }; county?: string } | null = null;
+    let mie = 0;
     try {
-      gsaRes = await fetch(url, { method: 'GET', cache: 'no-store' });
-    } catch {
-      return NextResponse.json({ error: 'GSA lookup timed out. Please try again in a moment.' }, { status: 504 });
+      const gsa = await fetchGsaPerDiem(city, state, year, apiKey);
+      rateEntry = gsa.rateEntry;
+      mie = gsa.mie;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed per-diem lookup';
+      return NextResponse.json({ error: message }, { status: 504 });
     }
-
-    const gsaData = await gsaRes.json().catch(() => null);
-
-    if (!gsaRes.ok || !gsaData?.rates || !Array.isArray(gsaData.rates) || gsaData.rates.length === 0) {
-      return NextResponse.json({
-        error: `No per-diem rates found for ${city}, ${state} (${year}).`,
-        gsaStatus: gsaRes.status,
-      }, { status: 404 });
-    }
-
-    const rateContainer = gsaData.rates[0];
-    const rateEntry = Array.isArray(rateContainer?.rate) ? rateContainer.rate[0] : null;
-    const mie = Number(rateEntry?.meals ?? 0);
 
     const tripMonth = (trip.startDate || trip.endDate || new Date()).getMonth() + 1;
     const monthRates = rateEntry?.months?.month;

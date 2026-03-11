@@ -1,122 +1,125 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 
-type Trip = {
+type TripOption = { id: string; name: string; destinationCity?: string | null; destinationState?: string | null };
+type RequestItem = {
   id: string;
-  name: string;
+  status: 'NEW' | 'IN_REVIEW' | 'COMPLETE' | 'CANCELED';
+  trip: { id: string; name: string };
   destinationCity?: string | null;
   destinationState?: string | null;
-  destinations?: string | null;
-  startDate?: string | null;
-  endDate?: string | null;
-  status: string;
-  travelers: Array<{ traveler: { id: string; fullName: string } }>;
-};
-
-type PerDiemResult = {
-  dailyRate: number;
-  lodgingRate?: number | null;
-  days: number;
-  travelerCount: number;
-  total: number;
-  year: number;
-  county?: string | null;
-  destination: string;
+  total?: string | number | null;
+  createdAt: string;
 };
 
 export default function PerDiemRequestsPage() {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [loadingId, setLoadingId] = useState('');
-  const [results, setResults] = useState<Record<string, PerDiemResult>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [trips, setTrips] = useState<TripOption[]>([]);
+  const [items, setItems] = useState<RequestItem[]>([]);
+  const [statusFilter, setStatusFilter] = useState('OPEN');
+  const [tripId, setTripId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState('');
 
-  async function load() {
-    const res = await fetch('/api/travel/trips');
-    if (!res.ok) return;
-    setTrips(await res.json());
-  }
+  const load = useCallback(async () => {
+    const [tripRes, reqRes] = await Promise.all([
+      fetch('/api/travel/trips'),
+      fetch(`/api/travel/per-diem-requests?status=${statusFilter === 'OPEN' ? '' : statusFilter}`),
+    ]);
+    if (tripRes.ok) setTrips(await tripRes.json());
+    if (reqRes.ok) setItems(await reqRes.json());
+  }, [statusFilter]);
 
-  async function generateForTrip(trip: Trip) {
-    setLoadingId(trip.id);
-    setErrors((prev) => ({ ...prev, [trip.id]: '' }));
+  async function createRequest(e: FormEvent) {
+    e.preventDefault();
+    if (!tripId) { setMessage('Select a trip first.'); return; }
 
-    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, { method: 'POST' });
+    setCreating(true);
+    setMessage('');
+    const res = await fetch('/api/travel/per-diem-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId, notes }),
+    });
     const payload = await res.json().catch(() => ({}));
-    setLoadingId('');
+    setCreating(false);
 
     if (!res.ok) {
-      setErrors((prev) => ({ ...prev, [trip.id]: payload?.error || 'Failed to generate per-diem' }));
+      setMessage(payload?.error || 'Failed to create per-diem request');
       return;
     }
 
-    setResults((prev) => ({ ...prev, [trip.id]: payload }));
+    setTripId('');
+    setNotes('');
+    setMessage('Per-diem request created.');
+    await load();
   }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, []);
+  }, [load]);
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
       <h1 className="text-3xl font-semibold tracking-tight">Per-Diem Requests</h1>
-      <p className="text-sm text-slate-500">Manage per-diem generation by trip.</p>
+      <p className="text-sm text-slate-500">Create and manage per-diem request workflow.</p>
       <Nav />
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-base font-semibold">Create Request</h2>
+        <form onSubmit={createRequest} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <select value={tripId} onChange={(e) => setTripId(e.target.value)} className="field md:col-span-2">
+            <option value="">Select trip…</option>
+            {trips.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}{t.destinationCity && t.destinationState ? ` — ${t.destinationCity}, ${t.destinationState}` : ''}</option>
+            ))}
+          </select>
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className="field" />
+          <button disabled={creating} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{creating ? 'Creating…' : 'Create Request'}</button>
+        </form>
+        {message ? <p className="mt-2 text-xs text-slate-600">{message}</p> : null}
+      </section>
+
+      <section className="mb-2 flex items-center gap-2">
+        <label className="text-sm text-slate-600">Status filter</label>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="field h-10 w-52">
+          <option value="OPEN">Open (default)</option>
+          <option value="NEW">New</option>
+          <option value="IN_REVIEW">In Review</option>
+          <option value="CANCELED">Canceled</option>
+          <option value="COMPLETE">Complete</option>
+          <option value="ALL">All</option>
+        </select>
+      </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
+              <th className="px-4 py-3 font-semibold">Request</th>
               <th className="px-4 py-3 font-semibold">Trip</th>
               <th className="px-4 py-3 font-semibold">Destination</th>
-              <th className="px-4 py-3 font-semibold">Dates</th>
-              <th className="px-4 py-3 font-semibold">Travelers</th>
-              <th className="px-4 py-3 font-semibold">Per-Diem</th>
-              <th className="px-4 py-3 font-semibold">Actions</th>
+              <th className="px-4 py-3 font-semibold">Total</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Created</th>
             </tr>
           </thead>
           <tbody>
-            {trips.map((trip) => {
-              const result = results[trip.id];
-              const error = errors[trip.id];
-              return (
-                <tr key={trip.id} className="border-t border-slate-100 align-top hover:bg-slate-50">
-                  <td className="px-4 py-4 font-medium">
-                    <Link href={`/travel/${trip.id}`} className="text-sky-700 hover:underline">{trip.name}</Link>
-                    <p className="text-xs text-slate-500">{trip.status}</p>
-                  </td>
-                  <td className="px-4 py-4">{trip.destinationCity && trip.destinationState ? `${trip.destinationCity}, ${trip.destinationState}` : (trip.destinations || '—')}</td>
-                  <td className="px-4 py-4 text-slate-600">{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : '—'} → {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-4">{trip.travelers.map((t) => t.traveler.fullName).join(', ') || '—'}</td>
-                  <td className="px-4 py-4 text-xs">
-                    {result ? (
-                      <div className="space-y-1 text-slate-700">
-                        <p><span className="font-semibold">M&IE:</span> ${result.dailyRate}/day</p>
-                        <p><span className="font-semibold">Lodging:</span> {result.lodgingRate ? `$${result.lodgingRate}/night` : '—'}</p>
-                        <p><span className="font-semibold">Total:</span> ${result.total}</p>
-                        <p className="text-slate-500">{result.destination} • {result.year}{result.county ? ` • ${result.county} County` : ''}</p>
-                      </div>
-                    ) : (
-                      <span className="text-slate-500">Not generated</span>
-                    )}
-                    {error ? <p className="mt-1 text-rose-600">{error}</p> : null}
-                  </td>
-                  <td className="px-4 py-4">
-                    <button
-                      onClick={() => generateForTrip(trip)}
-                      disabled={loadingId === trip.id}
-                      className="inline-flex h-9 items-center rounded-lg bg-sky-600 px-3 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
-                    >
-                      {loadingId === trip.id ? 'Generating…' : 'Generate'}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {trips.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No trips found.</td></tr> : null}
+            {items.map((item) => (
+              <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="px-4 py-4"><Link href={`/travel/per-diem/${item.id}`} className="text-sky-700 hover:underline">{item.id.slice(0, 8).toUpperCase()}</Link></td>
+                <td className="px-4 py-4">{item.trip.name}</td>
+                <td className="px-4 py-4">{item.destinationCity && item.destinationState ? `${item.destinationCity}, ${item.destinationState}` : '—'}</td>
+                <td className="px-4 py-4">{item.total ?? '—'}</td>
+                <td className="px-4 py-4">{item.status}</td>
+                <td className="px-4 py-4 text-slate-600">{new Date(item.createdAt).toLocaleString()}</td>
+              </tr>
+            ))}
+            {items.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No requests found for this filter.</td></tr> : null}
           </tbody>
         </table>
       </section>
