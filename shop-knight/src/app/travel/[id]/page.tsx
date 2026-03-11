@@ -44,6 +44,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [destinationCity, setDestinationCity] = useState('');
   const [destinationState, setDestinationState] = useState('');
   const [savingDestination, setSavingDestination] = useState(false);
+  const [destinationMessage, setDestinationMessage] = useState('');
   const [loadingPerDiem, setLoadingPerDiem] = useState(false);
   const [perDiemMessage, setPerDiemMessage] = useState('');
   const [travelerId, setTravelerId] = useState('');
@@ -119,13 +120,19 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     if (!trip) return;
 
     setSavingDestination(true);
+    setDestinationMessage('');
     const res = await fetch(`/api/travel/trips/${trip.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ destinationCity: destinationCity || null, destinationState: destinationState || null }),
     });
     setSavingDestination(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setDestinationMessage(payload?.error || 'Failed to save destination');
+      return;
+    }
+    setDestinationMessage('Destination saved.');
     await load(trip.id);
   }
 
@@ -147,9 +154,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    if ((destinationCity || destinationState) && trip) {
-      setTrip({ ...trip, destinationCity, destinationState });
-    }
+    if (trip) await load(trip.id);
 
     setPerDiemMessage(`Per-diem draft ready: ${payload.total} for ${payload.travelerCount} traveler(s), ${payload.days} day(s) at ${payload.dailyRate}/day (reviewer: ${payload.reviewer}).`);
   }
@@ -209,6 +214,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
           </select>
           <div className="md:col-span-2">
             <button disabled={savingDestination} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingDestination ? 'Saving…' : 'Save Destination'}</button>
+            {destinationMessage ? <p className="mt-2 text-xs text-slate-600">{destinationMessage}</p> : null}
           </div>
         </form>
       </section>
