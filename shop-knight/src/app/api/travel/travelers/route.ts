@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'OPERATIONS']);
+  const auth = await requireRoles(['ADMIN', 'OPERATIONS', 'SALES', 'PROJECT_MANAGER', 'SALES_REP']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);

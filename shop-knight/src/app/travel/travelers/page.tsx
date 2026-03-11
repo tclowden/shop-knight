@@ -25,6 +25,8 @@ export default function TravelersPage() {
   const [knownTravelerNumber, setKnownTravelerNumber] = useState('');
   const [userId, setUserId] = useState('');
   const [managerUserId, setManagerUserId] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const [travelerRes, userRes] = await Promise.all([
@@ -37,12 +39,22 @@ export default function TravelersPage() {
 
   async function createTraveler(e: FormEvent) {
     e.preventDefault();
+    setError('');
+    setSaving(true);
+
     const res = await fetch('/api/travel/travelers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fullName, email, phone, knownTravelerNumber, userId, managerUserId: managerUserId || null }),
     });
-    if (!res.ok) return;
+
+    const payload = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(payload?.error || 'Failed to add traveler');
+      return;
+    }
+
     setFullName('');
     setEmail('');
     setPhone('');
@@ -76,8 +88,9 @@ export default function TravelersPage() {
           <option value="">Manager (optional)</option>
           {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
-        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-3">Add Traveler</button>
+        <button disabled={saving} className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 md:col-span-3">{saving ? 'Saving…' : 'Add Traveler'}</button>
       </form>
+      {error ? <p className="mb-4 text-sm text-rose-600">{error}</p> : null}
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
