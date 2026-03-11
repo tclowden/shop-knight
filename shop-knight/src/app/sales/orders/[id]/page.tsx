@@ -613,7 +613,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofEmail, setProofEmail] = useState('');
   const [sendingProofId, setSendingProofId] = useState('');
-  const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+  const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
 
   useEffect(() => {
     if (!dirty) return;
@@ -628,6 +628,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     setProofs(nextProofs);
 
     if (nextProofs.length === 0) setProofState('NONE');
+    else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED') && nextProofs.some((p) => !p.lastRequest)) setProofState('RESEND_NEEDED');
     else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED')) setProofState('REJECTED');
     else if (nextProofs.some((p) => p.lastRequest && !p.lastRequest.respondedAt)) setProofState('PENDING');
     else if (nextProofs.some((p) => !p.lastRequest)) setProofState('UNSENT');
@@ -717,6 +718,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
               proofState === 'NONE' ? 'border-slate-300 bg-slate-50 text-slate-500' :
               proofState === 'UNSENT' ? 'border-sky-300 bg-sky-50 text-sky-700' :
               proofState === 'PENDING' ? 'border-amber-300 bg-amber-50 text-amber-700' :
+              proofState === 'RESEND_NEEDED' ? 'border-orange-300 bg-orange-50 text-orange-700' :
               proofState === 'APPROVED' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' :
               'border-rose-300 bg-rose-50 text-rose-700'
             }`}

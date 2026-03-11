@@ -530,7 +530,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofEmail, setProofEmail] = useState('');
   const [sendingProofId, setSendingProofId] = useState('');
-  const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED'>('NONE');
+  const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
   useEffect(() => {
     if (!dirty) return;
     const t = setTimeout(() => onSave(draft), 700);
@@ -544,6 +544,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
     setProofs(nextProofs);
 
     if (nextProofs.length === 0) setProofState('NONE');
+    else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED') && nextProofs.some((p) => !p.lastRequest)) setProofState('RESEND_NEEDED');
     else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED')) setProofState('REJECTED');
     else if (nextProofs.some((p) => p.lastRequest && !p.lastRequest.respondedAt)) setProofState('PENDING');
     else if (nextProofs.some((p) => !p.lastRequest)) setProofState('UNSENT');
@@ -633,6 +634,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
             proofState === 'NONE' ? 'border-slate-400 text-slate-400' :
             proofState === 'UNSENT' ? 'border-sky-700 text-sky-300' :
             proofState === 'PENDING' ? 'border-amber-500 text-amber-400' :
+            proofState === 'RESEND_NEEDED' ? 'border-orange-500 text-orange-400' :
             proofState === 'APPROVED' ? 'border-emerald-600 text-emerald-400' :
             'border-rose-600 text-rose-400'
           }`}
