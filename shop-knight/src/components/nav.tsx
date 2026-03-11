@@ -31,7 +31,7 @@ export function Nav() {
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
 
   return (
-    <nav className="mb-6 flex flex-wrap gap-2 border-b border-slate-200 pb-4 text-sm">
+    <nav className="sticky top-0 z-40 mb-6 flex flex-wrap gap-2 border-b border-slate-200 bg-[#f5f7fa]/95 pb-4 pt-2 text-sm backdrop-blur">
       {links.map((link) => (
         <Link
           key={link.href}
