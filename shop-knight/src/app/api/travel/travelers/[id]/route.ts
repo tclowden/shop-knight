@@ -16,7 +16,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
   const { id } = await params;
 
-  const item = await prisma.traveler.findFirst({ where: withCompany(companyId, { id }) });
+  const item = await prisma.traveler.findFirst({
+    where: withCompany(companyId, { id }),
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      manager: { select: { id: true, name: true, email: true } },
+    },
+  });
   if (!item) return NextResponse.json({ error: 'Traveler not found' }, { status: 404 });
 
   return NextResponse.json(item);
@@ -34,10 +40,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!existing) return NextResponse.json({ error: 'Traveler not found' }, { status: 404 });
 
   const body = await req.json();
+
+  const nextUserId = body?.userId !== undefined ? (body.userId ? String(body.userId) : null) : undefined;
+  if (nextUserId) {
+    const linkedUser = await prisma.user.findFirst({
+      where: {
+        id: nextUserId,
+        active: true,
+        OR: [{ activeCompanyId: companyId }, { companyMemberships: { some: { companyId } } }],
+      },
+      select: { id: true },
+    });
+    if (!linkedUser) return NextResponse.json({ error: 'Linked user not found in active company' }, { status: 404 });
+  }
+
+  const nextManagerUserId = body?.managerUserId !== undefined ? (body.managerUserId ? String(body.managerUserId) : null) : undefined;
+  if (nextManagerUserId) {
+    const manager = await prisma.user.findFirst({
+      where: {
+        id: nextManagerUserId,
+        active: true,
+        OR: [{ activeCompanyId: companyId }, { companyMemberships: { some: { companyId } } }],
+      },
+      select: { id: true },
+    });
+    if (!manager) return NextResponse.json({ error: 'Manager user not found in active company' }, { status: 404 });
+  }
+
   const updated = await prisma.traveler.update({
     where: { id },
     data: {
       fullName: body?.fullName !== undefined ? String(body.fullName || '') : undefined,
+      userId: nextUserId,
       email: body?.email !== undefined ? (body.email ? String(body.email) : null) : undefined,
       phone: body?.phone !== undefined ? (body.phone ? String(body.phone) : null) : undefined,
       emergencyName: body?.emergencyName !== undefined ? (body.emergencyName ? String(body.emergencyName) : null) : undefined,
@@ -53,7 +87,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       loyaltyRentalCar: body?.loyaltyRentalCar !== undefined ? (body.loyaltyRentalCar ? String(body.loyaltyRentalCar) : null) : undefined,
       dietaryNotes: body?.dietaryNotes !== undefined ? (body.dietaryNotes ? String(body.dietaryNotes) : null) : undefined,
       medicalNotes: body?.medicalNotes !== undefined ? (body.medicalNotes ? String(body.medicalNotes) : null) : undefined,
-      managerUserId: body?.managerUserId !== undefined ? (body.managerUserId ? String(body.managerUserId) : null) : undefined,
+      managerUserId: nextManagerUserId,
       active: body?.active !== undefined ? Boolean(body.active) : undefined,
     },
   });
