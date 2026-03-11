@@ -627,12 +627,19 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     const nextProofs = (await res.json()) as Proof[];
     setProofs(nextProofs);
 
-    if (nextProofs.length === 0) setProofState('NONE');
-    else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED') && nextProofs.some((p) => !p.lastRequest)) setProofState('RESEND_NEEDED');
-    else if (nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED')) setProofState('REJECTED');
-    else if (nextProofs.some((p) => p.lastRequest && !p.lastRequest.respondedAt)) setProofState('PENDING');
-    else if (nextProofs.some((p) => !p.lastRequest)) setProofState('UNSENT');
-    else if (nextProofs.every((p) => p.status === 'APPROVED')) setProofState('APPROVED');
+    if (nextProofs.length === 0) {
+      setProofState('NONE');
+      return;
+    }
+
+    const latest = [...nextProofs].sort((a, b) => b.version - a.version || +new Date(b.createdAt) - +new Date(a.createdAt))[0];
+    const hasRejectedHistory = nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED');
+
+    if (!latest.lastRequest && hasRejectedHistory) setProofState('RESEND_NEEDED');
+    else if (latest.status === 'REVISIONS_REQUESTED') setProofState('REJECTED');
+    else if (latest.lastRequest && !latest.lastRequest.respondedAt) setProofState('PENDING');
+    else if (!latest.lastRequest) setProofState('UNSENT');
+    else if (latest.status === 'APPROVED') setProofState('APPROVED');
     else setProofState('UNSENT');
   }
 
