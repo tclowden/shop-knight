@@ -46,6 +46,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [activeCompanyId, setActiveCompanyId] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
+  const [editing, setEditing] = useState(false);
 
   async function load(userId: string) {
     const [usersRes, rolesRes, companiesRes] = await Promise.all([
@@ -146,6 +147,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
     setSaved('Saved');
     await load(id);
+    setEditing(false);
   }
 
   useEffect(() => {
@@ -164,29 +166,40 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
       <Nav />
 
       <form onSubmit={saveUser} className="mb-4 rounded border border-zinc-800 p-3">
+        <div className="mb-3 flex items-center gap-2">
+          {!editing ? (
+            <button type="button" onClick={() => { setSaved(''); setError(''); setEditing(true); }} className="rounded bg-blue-600 px-3 py-2 text-white">Edit User</button>
+          ) : (
+            <>
+              <button className="rounded bg-blue-600 px-3 py-2 text-white">Save User</button>
+              <button type="button" onClick={() => { setEditing(false); setError(''); setSaved(''); load(id); }} className="rounded border border-zinc-600 px-3 py-2">Cancel</button>
+            </>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+          <input disabled={!editing} value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" required />
+          <input disabled={!editing} value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" required />
+          <select disabled={!editing} value={type} onChange={(e) => setType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100">
             {userTypes.map((value) => (
               <option key={value} value={value}>{value}</option>
             ))}
           </select>
           <label className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+            <input disabled={!editing} type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
             Active
           </label>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          <input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} placeholder="Known Traveler Number (KTN)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <input disabled={!editing} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
+          <input disabled={!editing} value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} placeholder="Known Traveler Number (KTN)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
         </div>
 
         <div className="mt-4">
           <h2 className="mb-2 text-sm font-medium text-zinc-300">Rewards / Loyalty Accounts</h2>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <input value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} placeholder="Marriott #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <input value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} placeholder="United #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <input value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} placeholder="Delta #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <input value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} placeholder="American #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input disabled={!editing} value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} placeholder="Marriott #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
+            <input disabled={!editing} value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} placeholder="United #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
+            <input disabled={!editing} value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} placeholder="Delta #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
+            <input disabled={!editing} value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} placeholder="American #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100" />
           </div>
         </div>
 
@@ -195,7 +208,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             {roles.filter((r) => r.active).map((r) => (
               <label key={r.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-                <input type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
+                <input disabled={!editing} type="checkbox" checked={customRoleIds.includes(r.id)} onChange={() => toggleRole(r.id)} />
                 {r.name}
               </label>
             ))}
@@ -207,7 +220,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             {companies.map((company) => (
               <label key={company.id} className="flex items-center gap-2 rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-                <input type="checkbox" checked={companyIds.includes(company.id)} onChange={() => toggleCompany(company.id)} />
+                <input disabled={!editing} type="checkbox" checked={companyIds.includes(company.id)} onChange={() => toggleCompany(company.id)} />
                 {company.name}
               </label>
             ))}
@@ -215,7 +228,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
 
           <div className="mt-3">
             <label className="mb-1 block text-sm text-zinc-300">Active Company</label>
-            <select value={activeCompanyId} onChange={(e) => setActiveCompanyId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+            <select disabled={!editing} value={activeCompanyId} onChange={(e) => setActiveCompanyId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900 disabled:cursor-not-allowed disabled:bg-zinc-100">
               {companyIds.map((companyId) => {
                 const company = companies.find((c) => c.id === companyId);
                 return <option key={companyId} value={companyId}>{company?.name || companyId}</option>;
@@ -227,9 +240,6 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
         {saved ? <p className="mt-3 text-sm text-emerald-400">{saved}</p> : null}
 
-        <div className="mt-3">
-          <button className="rounded bg-blue-600 px-3 py-2">Save User</button>
-        </div>
       </form>
 
       <ModuleNotesTasks entityType="USER" entityId={id} />
