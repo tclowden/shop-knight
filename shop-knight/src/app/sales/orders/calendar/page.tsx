@@ -9,6 +9,8 @@ type SalesOrder = {
   title?: string | null;
   status?: string | null;
   customer: string;
+  departmentName?: string | null;
+  projectManagerName?: string | null;
   earlyBirdDiscountDate?: string | null;
   advancedReceivingDeadline?: string | null;
   shipFromRoarkDate?: string | null;
@@ -17,6 +19,8 @@ type SalesOrder = {
   travelToSiteStart?: string | null;
   travelToSiteEnd?: string | null;
 };
+
+type DateType = 'EARLY_BIRD' | 'ADV_RECEIVING' | 'SHIP_ROARK' | 'OUTBOUND_SHOW' | 'EST_INVOICE' | 'TRAVEL_WINDOW';
 
 type CalendarEvent = {
   id: string;
@@ -27,6 +31,7 @@ type CalendarEvent = {
   title: string;
   kind: 'MILESTONE' | 'RANGE';
   endDate?: string;
+  dateType: DateType;
 };
 
 function ymd(d: Date) {
@@ -41,6 +46,10 @@ function parseDate(value?: string | null) {
 
 export default function SalesOrderCalendarPage() {
   const [items, setItems] = useState<SalesOrder[]>([]);
+  const [dateTypeFilter, setDateTypeFilter] = useState<'ALL' | DateType>('ALL');
+  const [departmentFilter, setDepartmentFilter] = useState('ALL');
+  const [projectManagerFilter, setProjectManagerFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [monthCursor, setMonthCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -57,21 +66,37 @@ export default function SalesOrderCalendarPage() {
     load();
   }, []);
 
+  const departments = useMemo(() => ['ALL', ...Array.from(new Set(items.map((i) => i.departmentName || 'Unassigned'))).sort()], [items]);
+  const projectManagers = useMemo(() => ['ALL', ...Array.from(new Set(items.map((i) => i.projectManagerName || 'Unassigned'))).sort()], [items]);
+  const statuses = useMemo(() => ['ALL', ...Array.from(new Set(items.map((i) => i.status || 'Unknown'))).sort()], [items]);
+
+  const filteredOrders = useMemo(() => {
+    return items.filter((so) => {
+      const dept = so.departmentName || 'Unassigned';
+      const pm = so.projectManagerName || 'Unassigned';
+      const status = so.status || 'Unknown';
+      if (departmentFilter !== 'ALL' && dept !== departmentFilter) return false;
+      if (projectManagerFilter !== 'ALL' && pm !== projectManagerFilter) return false;
+      if (statusFilter !== 'ALL' && status !== statusFilter) return false;
+      return true;
+    });
+  }, [items, departmentFilter, projectManagerFilter, statusFilter]);
+
   const events = useMemo(() => {
     const out: CalendarEvent[] = [];
-    for (const so of items) {
+    for (const so of filteredOrders) {
       const title = so.title || so.customer;
-      if (so.earlyBirdDiscountDate) out.push({ id: `${so.id}-ebd`, date: so.earlyBirdDiscountDate, label: 'Early Bird Discount Date', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE' });
-      if (so.advancedReceivingDeadline) out.push({ id: `${so.id}-ard`, date: so.advancedReceivingDeadline, label: 'Advanced Receiving Deadline', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE' });
-      if (so.shipFromRoarkDate) out.push({ id: `${so.id}-sfr`, date: so.shipFromRoarkDate, label: 'Shipping Leaves Roark', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE' });
-      if (so.outboundShippingFromShowDate) out.push({ id: `${so.id}-osf`, date: so.outboundShippingFromShowDate, label: 'Outbound Shipping from Show', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE' });
-      if (so.estimatedInvoiceDate) out.push({ id: `${so.id}-eid`, date: so.estimatedInvoiceDate, label: 'Estimated Invoice Date', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE' });
+      if (so.earlyBirdDiscountDate) out.push({ id: `${so.id}-ebd`, date: so.earlyBirdDiscountDate, label: 'Early Bird Discount Date', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE', dateType: 'EARLY_BIRD' });
+      if (so.advancedReceivingDeadline) out.push({ id: `${so.id}-ard`, date: so.advancedReceivingDeadline, label: 'Advanced Receiving Deadline', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE', dateType: 'ADV_RECEIVING' });
+      if (so.shipFromRoarkDate) out.push({ id: `${so.id}-sfr`, date: so.shipFromRoarkDate, label: 'Shipping Leaves Roark', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE', dateType: 'SHIP_ROARK' });
+      if (so.outboundShippingFromShowDate) out.push({ id: `${so.id}-osf`, date: so.outboundShippingFromShowDate, label: 'Outbound Shipping from Show', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE', dateType: 'OUTBOUND_SHOW' });
+      if (so.estimatedInvoiceDate) out.push({ id: `${so.id}-eid`, date: so.estimatedInvoiceDate, label: 'Estimated Invoice Date', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'MILESTONE', dateType: 'EST_INVOICE' });
       if (so.travelToSiteStart && so.travelToSiteEnd) {
-        out.push({ id: `${so.id}-travel`, date: so.travelToSiteStart, endDate: so.travelToSiteEnd, label: 'Travel To/From Site', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'RANGE' });
+        out.push({ id: `${so.id}-travel`, date: so.travelToSiteStart, endDate: so.travelToSiteEnd, label: 'Travel To/From Site', orderId: so.id, orderNumber: so.orderNumber, title, kind: 'RANGE', dateType: 'TRAVEL_WINDOW' });
       }
     }
-    return out;
-  }, [items]);
+    return dateTypeFilter === 'ALL' ? out : out.filter((e) => e.dateType === dateTypeFilter);
+  }, [filteredOrders, dateTypeFilter]);
 
   const calendarDays = useMemo(() => {
     const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
@@ -109,6 +134,27 @@ export default function SalesOrderCalendarPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Sales Order Calendar</h1>
       <p className="text-sm text-slate-500">Milestones and travel windows for sales orders.</p>
       <Nav />
+
+      <div className="mb-3 grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-4">
+        <select value={dateTypeFilter} onChange={(e) => setDateTypeFilter(e.target.value as 'ALL' | DateType)} className="field h-10">
+          <option value="ALL">All Date Types</option>
+          <option value="EARLY_BIRD">Early Bird Discount Date</option>
+          <option value="ADV_RECEIVING">Advanced Receiving Deadline</option>
+          <option value="SHIP_ROARK">Shipping Leaves Roark</option>
+          <option value="OUTBOUND_SHOW">Outbound Shipping from Show</option>
+          <option value="EST_INVOICE">Estimated Invoice Date</option>
+          <option value="TRAVEL_WINDOW">Travel To/From Site (Range)</option>
+        </select>
+        <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="field h-10">
+          {departments.map((d) => <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>)}
+        </select>
+        <select value={projectManagerFilter} onChange={(e) => setProjectManagerFilter(e.target.value)} className="field h-10">
+          {projectManagers.map((pm) => <option key={pm} value={pm}>{pm === 'ALL' ? 'All Project Managers' : pm}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="field h-10">
+          {statuses.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All Statuses' : s}</option>)}
+        </select>
+      </div>
 
       <div className="mb-3 flex items-center gap-2">
         <button onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))} className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm">← Prev</button>
