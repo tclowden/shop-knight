@@ -64,13 +64,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = await req.json();
 
-  let opportunityId: string | null | undefined;
+  let opportunityId: string | undefined;
   if (body?.opportunityId !== undefined) {
-    if (!body.opportunityId) {
-      opportunityId = null;
-    } else {
+    if (body.opportunityId) {
       const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
-      opportunityId = nextOpportunity?.id || null;
+      opportunityId = nextOpportunity?.id;
+    } else {
+      // Keep existing opportunity assignment when blank is submitted.
+      opportunityId = undefined;
     }
   }
 
