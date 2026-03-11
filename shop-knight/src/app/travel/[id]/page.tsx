@@ -12,6 +12,8 @@ type Trip = {
   startDate?: string | null;
   endDate?: string | null;
   status: string;
+  billable: boolean;
+  salesOrderRef?: string | null;
   travelers: Array<{ traveler: Traveler }>;
 };
 
@@ -32,6 +34,9 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [trip, setTrip] = useState<Trip | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [segmentType, setSegmentType] = useState('FLIGHT');
+  const [status, setStatus] = useState('PLANNING');
+  const [loadingPerDiem, setLoadingPerDiem] = useState(false);
+  const [perDiemMessage, setPerDiemMessage] = useState('');
   const [travelerId, setTravelerId] = useState('');
   const [provider, setProvider] = useState('');
   const [confirmationCode, setConfirmationCode] = useState('');
@@ -44,7 +49,11 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       fetch(`/api/travel/trips/${id}`),
       fetch(`/api/travel/trips/${id}/segments`),
     ]);
-    if (tripRes.ok) setTrip(await tripRes.json());
+    if (tripRes.ok) {
+      const tripData = await tripRes.json();
+      setTrip(tripData);
+      setStatus(tripData.status || 'PLANNING');
+    }
     if (segmentRes.ok) setSegments(await segmentRes.json());
   }
 
@@ -67,6 +76,34 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     await load(trip.id);
   }
 
+  async function saveStatus(nextStatus: string) {
+    if (!trip) return;
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (!res.ok) return;
+    await load(trip.id);
+  }
+
+  async function generatePerDiem() {
+    if (!trip) return;
+    setLoadingPerDiem(true);
+    setPerDiemMessage('');
+
+    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, { method: 'POST' });
+    const payload = await res.json().catch(() => ({}));
+    setLoadingPerDiem(false);
+
+    if (!res.ok) {
+      setPerDiemMessage(payload?.error || 'Failed to generate per-diem draft');
+      return;
+    }
+
+    setPerDiemMessage(`Per-diem draft ready: ${payload.total} for ${payload.travelerCount} traveler(s), ${payload.days} day(s) at ${payload.dailyRate}/day (reviewer: ${payload.reviewer}).`);
+  }
+
   useEffect(() => {
     params.then((p) => load(p.id));
   }, [params]);
@@ -78,6 +115,34 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       <Nav />
       <h1 className="text-3xl font-semibold tracking-tight">{trip.name}</h1>
       <p className="text-sm text-slate-500">{trip.destinations || 'No destination'} • {trip.status}</p>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-slate-600">Trip Status</span>
+            <select value={status} onChange={(e) => { setStatus(e.target.value); saveStatus(e.target.value); }} className="field">
+              <option value="PLANNING">Planning</option>
+              <option value="PRE_TRAVEL">Pre-Travel</option>
+              <option value="IN_TRANSIT">In-Transit</option>
+              <option value="ON_SITE">On-Site</option>
+              <option value="RETURNED">Returned</option>
+              <option value="CANCELED">Canceled</option>
+            </select>
+          </label>
+
+          <div className="text-sm text-slate-600">
+            <p>Billing: <span className="font-medium">{trip.billable ? 'Billable' : 'Non-billable'}</span></p>
+            <p>SO Ref: <span className="font-medium">{trip.salesOrderRef || '—'}</span></p>
+          </div>
+
+          <div>
+            <button type="button" onClick={generatePerDiem} disabled={loadingPerDiem} className="inline-flex h-11 items-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
+              {loadingPerDiem ? 'Generating…' : 'Generate Per-Diem Draft'}
+            </button>
+            {perDiemMessage ? <p className="mt-2 text-xs text-slate-600">{perDiemMessage}</p> : null}
+          </div>
+        </div>
+      </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Add Travel Segment</h2>
