@@ -176,8 +176,9 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
     const options = proofsByLine.flatMap((proofs, index) =>
       proofs
-        .filter((p) => !p.lastRequest)
+        .filter((p) => p.status !== 'APPROVED')
         .map((p) => ({
+
           id: p.id,
           fileName: p.fileName,
           mimeType: p.mimeType,

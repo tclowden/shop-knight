@@ -185,8 +185,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
     const options = proofsByLine.flatMap((proofs, index) =>
       proofs
-        .filter((p) => !p.lastRequest)
+        .filter((p) => p.status !== 'APPROVED')
         .map((p) => ({
+
 
 
           id: p.id,
