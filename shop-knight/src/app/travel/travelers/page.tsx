@@ -21,8 +21,6 @@ export default function TravelersPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [knownTravelerNumber, setKnownTravelerNumber] = useState('');
   const [userId, setUserId] = useState('');
   const [managerUserId, setManagerUserId] = useState('');
   const [error, setError] = useState('');
@@ -45,7 +43,7 @@ export default function TravelersPage() {
     const res = await fetch('/api/travel/travelers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, email, phone, knownTravelerNumber, userId, managerUserId: managerUserId || null }),
+      body: JSON.stringify({ fullName, email, userId, managerUserId: managerUserId || null }),
     });
 
     const payload = await res.json().catch(() => ({}));
@@ -57,8 +55,6 @@ export default function TravelersPage() {
 
     setFullName('');
     setEmail('');
-    setPhone('');
-    setKnownTravelerNumber('');
     setUserId('');
     setManagerUserId('');
     await load();
@@ -82,8 +78,7 @@ export default function TravelersPage() {
         </select>
         <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" className="field" required />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
-        <input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} placeholder="Known traveler #" className="field" />
+        <p className="field flex items-center text-xs text-slate-500">Phone, KTN, and rewards are managed in the linked User profile.</p>
         <select value={managerUserId} onChange={(e) => setManagerUserId(e.target.value)} className="field">
           <option value="">Manager (optional)</option>
           {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

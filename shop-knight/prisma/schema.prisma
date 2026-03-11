@@ -111,6 +111,12 @@ model User {
   name                        String
   passwordHash                String
   type                        UserType
+  phone                       String?
+  knownTravelerNumber         String?
+  rewardMarriottNumber        String?
+  rewardUnitedNumber          String?
+  rewardDeltaNumber           String?
+  rewardAmericanNumber        String?
   active                      Boolean            @default(true)
   activeCompanyId             String?
   createdAt                   DateTime           @default(now())

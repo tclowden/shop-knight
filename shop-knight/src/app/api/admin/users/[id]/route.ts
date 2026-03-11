@@ -41,6 +41,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const companyIds = body?.companyIds === undefined ? undefined : normalizeCompanyIds(body.companyIds);
   const activeCompanyId = body?.activeCompanyId === undefined ? undefined : String(body.activeCompanyId || '').trim();
   const type = body?.type === undefined ? undefined : (String(body.type) as UserTypeValue);
+  const phone = body?.phone === undefined ? undefined : (body.phone ? String(body.phone) : null);
+  const knownTravelerNumber = body?.knownTravelerNumber === undefined ? undefined : (body.knownTravelerNumber ? String(body.knownTravelerNumber) : null);
+  const rewardMarriottNumber = body?.rewardMarriottNumber === undefined ? undefined : (body.rewardMarriottNumber ? String(body.rewardMarriottNumber) : null);
+  const rewardUnitedNumber = body?.rewardUnitedNumber === undefined ? undefined : (body.rewardUnitedNumber ? String(body.rewardUnitedNumber) : null);
+  const rewardDeltaNumber = body?.rewardDeltaNumber === undefined ? undefined : (body.rewardDeltaNumber ? String(body.rewardDeltaNumber) : null);
+  const rewardAmericanNumber = body?.rewardAmericanNumber === undefined ? undefined : (body.rewardAmericanNumber ? String(body.rewardAmericanNumber) : null);
 
   if (name !== undefined && !name) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
@@ -108,6 +114,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           name,
           email,
           type,
+          phone,
+          knownTravelerNumber,
+          rewardMarriottNumber,
+          rewardUnitedNumber,
+          rewardDeltaNumber,
+          rewardAmericanNumber,
           active: body?.active !== undefined ? Boolean(body.active) : undefined,
           activeCompanyId: nextActiveCompanyId,
           customRoles: customRoleIds
@@ -122,6 +134,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           name: true,
           email: true,
           type: true,
+          phone: true,
+          knownTravelerNumber: true,
+          rewardMarriottNumber: true,
+          rewardUnitedNumber: true,
+          rewardDeltaNumber: true,
+          rewardAmericanNumber: true,
           active: true,
           activeCompanyId: true,
           companyMemberships: { select: { companyId: true } },

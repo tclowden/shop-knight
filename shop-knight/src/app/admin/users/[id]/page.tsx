@@ -9,6 +9,12 @@ type User = {
   name: string;
   email: string;
   type: string;
+  phone?: string | null;
+  knownTravelerNumber?: string | null;
+  rewardMarriottNumber?: string | null;
+  rewardUnitedNumber?: string | null;
+  rewardDeltaNumber?: string | null;
+  rewardAmericanNumber?: string | null;
   active: boolean;
   activeCompanyId?: string | null;
   customRoles?: Array<{ roleId: string; role: { id: string; name: string } }>;
@@ -28,6 +34,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [type, setType] = useState('SALES');
+  const [phone, setPhone] = useState('');
+  const [knownTravelerNumber, setKnownTravelerNumber] = useState('');
+  const [rewardMarriottNumber, setRewardMarriottNumber] = useState('');
+  const [rewardUnitedNumber, setRewardUnitedNumber] = useState('');
+  const [rewardDeltaNumber, setRewardDeltaNumber] = useState('');
+  const [rewardAmericanNumber, setRewardAmericanNumber] = useState('');
   const [active, setActive] = useState(true);
   const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
   const [companyIds, setCompanyIds] = useState<string[]>([]);
@@ -50,6 +62,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     setName(found?.name || '');
     setEmail(found?.email || '');
     setType(found?.type || 'SALES');
+    setPhone(found?.phone || '');
+    setKnownTravelerNumber(found?.knownTravelerNumber || '');
+    setRewardMarriottNumber(found?.rewardMarriottNumber || '');
+    setRewardUnitedNumber(found?.rewardUnitedNumber || '');
+    setRewardDeltaNumber(found?.rewardDeltaNumber || '');
+    setRewardAmericanNumber(found?.rewardAmericanNumber || '');
     setCustomRoleIds(found?.customRoles?.map((entry) => entry.roleId) || []);
     setActive(Boolean(found?.active));
 
@@ -107,6 +125,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         name,
         email,
         type,
+        phone,
+        knownTravelerNumber,
+        rewardMarriottNumber,
+        rewardUnitedNumber,
+        rewardDeltaNumber,
+        rewardAmericanNumber,
         active,
         customRoleIds,
         companyIds,
@@ -152,6 +176,18 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
             Active
           </label>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} placeholder="Known Traveler Number (KTN)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+        </div>
+
+        <div className="mt-4">
+          <h2 className="mb-2 text-sm font-medium text-zinc-300">Rewards / Loyalty Accounts</h2>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <input value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} placeholder="Marriott #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} placeholder="United #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} placeholder="Delta #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} placeholder="American #" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </div>
         </div>
 
         <div className="mt-4">
