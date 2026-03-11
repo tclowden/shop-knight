@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Traveler = { id: string; fullName: string };
@@ -38,6 +38,8 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [segments, setSegments] = useState<Segment[]>([]);
   const [allTravelers, setAllTravelers] = useState<TravelerOption[]>([]);
   const [selectedTravelerIds, setSelectedTravelerIds] = useState<string[]>([]);
+  const [travelerSearch, setTravelerSearch] = useState('');
+  const [pendingAddTravelerIds, setPendingAddTravelerIds] = useState<string[]>([]);
   const [savingTravelers, setSavingTravelers] = useState(false);
   const [travelersMessage, setTravelersMessage] = useState('');
   const [segmentType, setSegmentType] = useState('FLIGHT');
@@ -220,6 +222,19 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     });
   }, [params]);
 
+  const assignedTravelers = useMemo(
+    () => allTravelers.filter((t) => selectedTravelerIds.includes(t.id)),
+    [allTravelers, selectedTravelerIds]
+  );
+  const availableTravelers = useMemo(() => {
+    const q = travelerSearch.trim().toLowerCase();
+    return allTravelers.filter((t) => {
+      if (selectedTravelerIds.includes(t.id)) return false;
+      if (!q) return true;
+      return t.fullName.toLowerCase().includes(q);
+    });
+  }, [allTravelers, selectedTravelerIds, travelerSearch]);
+
   if (!trip) return <main className="mx-auto max-w-7xl p-8">Loading trip…</main>;
 
   return (
@@ -289,24 +304,42 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Travelers</h2>
-        <p className="mt-1 text-xs text-slate-500">Select traveler profiles to attach to this trip, then save.</p>
+        <p className="mt-1 text-xs text-slate-500">Type to filter, multi-select names, click Add Selected, then Save Travelers.</p>
         <form onSubmit={saveTravelers} className="mt-3 space-y-3">
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {allTravelers.map((t) => (
-              <label key={t.id} className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedTravelerIds.includes(t.id)}
-                  onChange={(e) => {
-                    setSelectedTravelerIds((prev) => {
-                      if (e.target.checked) return prev.includes(t.id) ? prev : [...prev, t.id];
-                      return prev.filter((id) => id !== t.id);
-                    });
-                  }}
-                />
-                <span>{t.fullName}</span>
-              </label>
-            ))}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <input value={travelerSearch} onChange={(e) => setTravelerSearch(e.target.value)} placeholder="Search travelers..." className="field mb-2" />
+              <select
+                multiple
+                value={pendingAddTravelerIds}
+                onChange={(e) => setPendingAddTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
+                className="field h-40 w-full"
+              >
+                {availableTravelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTravelerIds((prev) => Array.from(new Set([...prev, ...pendingAddTravelerIds])));
+                  setPendingAddTravelerIds([]);
+                }}
+                className="mt-2 inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-2 text-xs font-medium"
+              >
+                Add Selected
+              </button>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Assigned to Trip</p>
+              <div className="space-y-1">
+                {assignedTravelers.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm">
+                    <span>{t.fullName}</span>
+                    <button type="button" onClick={() => setSelectedTravelerIds((prev) => prev.filter((id) => id !== t.id))} className="text-xs text-rose-700">Remove</button>
+                  </div>
+                ))}
+                {assignedTravelers.length === 0 ? <p className="text-xs text-slate-500">No travelers assigned yet.</p> : null}
+              </div>
+            </div>
           </div>
           {allTravelers.length === 0 ? <p className="text-xs text-slate-500">No traveler profiles found. Add them in Travel → Manage Travelers.</p> : null}
           <div className="flex items-center gap-3">
