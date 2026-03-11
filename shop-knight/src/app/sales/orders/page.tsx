@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 import { StatusChip } from '@/components/status-chip';
 
@@ -17,9 +18,13 @@ type SalesOrder = {
 };
 
 export default function SalesOrdersPage() {
+  const { data: session } = useSession();
   const [items, setItems] = useState<SalesOrder[]>([]);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('ADMIN') || session?.user?.roles?.includes('SUPER_ADMIN');
 
   const statuses = useMemo(() => ['ALL', ...Array.from(new Set(items.map((i) => i.status || 'Unknown'))).sort()], [items]);
 
@@ -41,8 +46,28 @@ export default function SalesOrdersPage() {
     setItems(await res.json());
   }
 
+  async function handleArchive(salesOrderId: string) {
+    if (!isAdmin || archivingId) return;
+    const ok = window.confirm('Archive this sales order?');
+    if (!ok) return;
+
+    try {
+      setArchivingId(salesOrderId);
+      const res = await fetch(`/api/sales-orders/${salesOrderId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive sales order');
+      }
+      setItems((prev) => prev.filter((item) => item.id !== salesOrderId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive sales order';
+      window.alert(message);
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -97,6 +122,7 @@ export default function SalesOrdersPage() {
               <th className="px-4 py-3 font-semibold">Customer</th>
               <th className="px-4 py-3 font-semibold">Source Quote ID</th>
               <th className="px-4 py-3 font-semibold">Created</th>
+              {isAdmin ? <th className="px-4 py-3 text-right font-semibold">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -113,11 +139,23 @@ export default function SalesOrdersPage() {
                 <td className="px-4 py-4 text-slate-600">{so.customer}</td>
                 <td className="px-4 py-4 text-slate-500">{so.sourceQuoteId || '—'}</td>
                 <td className="px-4 py-4 text-slate-500">{new Date(so.createdAt).toLocaleDateString()}</td>
+                {isAdmin ? (
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleArchive(so.id)}
+                      disabled={archivingId === so.id}
+                      className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {archivingId === so.id ? 'Archiving…' : 'Archive'}
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
             {visibleItems.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>No sales orders found.</td>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={isAdmin ? 8 : 7}>No sales orders found.</td>
               </tr>
             ) : null}
           </tbody>

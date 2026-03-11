@@ -114,3 +114,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await params;
+  const existing = await prisma.salesOrder.findFirst({ where: { id, companyId }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+
+  const archivedStatus = await prisma.salesOrderStatus.upsert({
+    where: { companyId_name: { companyId, name: 'Archived' } },
+    update: { active: true },
+    create: { companyId, name: 'Archived', active: true },
+  });
+
+  await prisma.salesOrder.update({
+    where: { id },
+    data: { statusId: archivedStatus.id },
+  });
+
+  return NextResponse.json({ ok: true, archived: true });
+}

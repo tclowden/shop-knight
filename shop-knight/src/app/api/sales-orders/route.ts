@@ -51,7 +51,13 @@ export async function GET(req: Request) {
   const opportunityId = searchParams.get('opportunityId') || undefined;
 
   const salesOrders = await prisma.salesOrder.findMany({
-    where: withCompany(companyId, opportunityId ? { opportunityId } : undefined),
+    where: withCompany(companyId, {
+      ...(opportunityId ? { opportunityId } : {}),
+      OR: [
+        { status: null },
+        { status: { is: { name: { not: 'Archived' } } } },
+      ],
+    }),
     include: {
       opportunity: { include: { customer: true } },
       status: true,

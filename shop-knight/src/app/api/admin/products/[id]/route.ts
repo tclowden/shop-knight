@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermissions(['admin.products.manage']);
@@ -21,4 +21,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   });
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermissions(['admin.products.manage']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await params;
+  const existing = await prisma.product.findFirst({ where: { id, companyId }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
+  await prisma.product.update({ where: { id }, data: { active: false } });
+  return NextResponse.json({ ok: true, archived: true });
 }

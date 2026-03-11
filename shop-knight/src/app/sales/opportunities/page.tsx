@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 import { StatusChip } from '@/components/status-chip';
 
@@ -19,9 +20,13 @@ type Opportunity = {
 };
 
 export default function OpportunitiesPage() {
+  const { data: session } = useSession();
   const [items, setItems] = useState<Opportunity[]>([]);
   const [q, setQ] = useState('');
   const [stageFilter, setStageFilter] = useState('ALL');
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('ADMIN') || session?.user?.roles?.includes('SUPER_ADMIN');
 
   const stages = useMemo(() => ['ALL', ...Array.from(new Set(items.map((i) => i.stage))).sort()], [items]);
 
@@ -44,8 +49,28 @@ export default function OpportunitiesPage() {
     setItems(await res.json());
   }
 
+  async function handleArchive(opportunityId: string) {
+    if (!isAdmin || archivingId) return;
+    const ok = window.confirm('Archive this opportunity?');
+    if (!ok) return;
+
+    try {
+      setArchivingId(opportunityId);
+      const res = await fetch(`/api/opportunities/${opportunityId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive opportunity');
+      }
+      setItems((prev) => prev.filter((item) => item.id !== opportunityId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive opportunity';
+      window.alert(message);
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -89,6 +114,7 @@ export default function OpportunitiesPage() {
               <th className="px-4 py-3 font-semibold">Due</th>
               <th className="px-4 py-3 font-semibold">Sales Rep</th>
               <th className="px-4 py-3 font-semibold">PM</th>
+              {isAdmin ? <th className="px-4 py-3 text-right font-semibold">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -106,11 +132,23 @@ export default function OpportunitiesPage() {
                 <td className="px-4 py-4 text-slate-500">{opp.dueDate ? new Date(opp.dueDate).toLocaleDateString() : '—'}</td>
                 <td className="px-4 py-4">{opp.salesRepName || '—'}</td>
                 <td className="px-4 py-4">{opp.projectManagerName || '—'}</td>
+                {isAdmin ? (
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleArchive(opp.id)}
+                      disabled={archivingId === opp.id}
+                      className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {archivingId === opp.id ? 'Archiving…' : 'Archive'}
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
             {visibleItems.length === 0 ? (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={8}>No opportunities found.</td>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={isAdmin ? 9 : 8}>No opportunities found.</td>
               </tr>
             ) : null}
           </tbody>

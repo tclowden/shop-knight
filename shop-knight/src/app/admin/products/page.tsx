@@ -27,6 +27,7 @@ export default function ProductsAdminPage() {
   const [costPrice, setCostPrice] = useState('0.00');
   const [taxable, setTaxable] = useState(true);
   const [error, setError] = useState('');
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch('/api/admin/products');
@@ -61,8 +62,28 @@ export default function ProductsAdminPage() {
     await load();
   }
 
+  async function handleArchive(productId: string) {
+    if (archivingId) return;
+    const ok = window.confirm('Archive this product?');
+    if (!ok) return;
+
+    try {
+      setArchivingId(productId);
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive product');
+      }
+      setProducts((prev) => prev.filter((item) => item.id !== productId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive product';
+      window.alert(message);
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -99,6 +120,7 @@ export default function ProductsAdminPage() {
               <th className="px-4 py-3 font-semibold">Cost</th>
               <th className="px-4 py-3 font-semibold">Taxable</th>
               <th className="px-4 py-3 font-semibold">Rules</th>
+              <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -113,10 +135,20 @@ export default function ProductsAdminPage() {
                 <td className="px-4 py-4">{p.costPrice ?? '—'}</td>
                 <td className="px-4 py-4">{p.taxable ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-4"><Link href={`/admin/products/${p.id}`} className="text-sky-700">Manage</Link></td>
+                <td className="px-4 py-4 text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleArchive(p.id)}
+                    disabled={archivingId === p.id}
+                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {archivingId === p.id ? 'Archiving…' : 'Archive'}
+                  </button>
+                </td>
               </tr>
             ))}
             {products.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={9}>No products yet.</td></tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={10}>No products yet.</td></tr>
             ) : null}
           </tbody>
         </table>

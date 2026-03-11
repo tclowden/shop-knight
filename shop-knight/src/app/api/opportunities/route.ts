@@ -22,7 +22,12 @@ export async function GET() {
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const opportunities = await prisma.opportunity.findMany({
-    where: withCompany(companyId),
+    where: withCompany(companyId, {
+      OR: [
+        { source: null },
+        { source: { not: 'ARCHIVED' } },
+      ],
+    }),
     include: { customer: true, salesRep: true, projectManager: true },
     orderBy: { name: 'asc' },
   });
