@@ -18,10 +18,12 @@ type Trip = {
 };
 
 type TravelerOption = { id: string; fullName: string };
+type SalesOrderOption = { id: string; orderNumber: string; title?: string | null };
 
 export default function TravelPage() {
   const [items, setItems] = useState<Trip[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrderOption[]>([]);
   const [name, setName] = useState('');
   const [destinations, setDestinations] = useState('');
   const [purpose, setPurpose] = useState('');
@@ -32,13 +34,15 @@ export default function TravelPage() {
   const [selectedTravelerIds, setSelectedTravelerIds] = useState<string[]>([]);
 
   async function load() {
-    const [tripRes, travelerRes] = await Promise.all([
+    const [tripRes, travelerRes, salesOrderRes] = await Promise.all([
       fetch('/api/travel/trips'),
       fetch('/api/travel/travelers'),
+      fetch('/api/sales-orders'),
     ]);
 
     if (tripRes.ok) setItems(await tripRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
+    if (salesOrderRes.ok) setSalesOrders(await salesOrderRes.json());
   }
 
   async function createTrip(e: FormEvent) {
@@ -103,7 +107,16 @@ export default function TravelPage() {
             <input type="checkbox" checked={billable} onChange={(e) => setBillable(e.target.checked)} />
             Billable
           </label>
-          {billable ? <input value={salesOrderRef} onChange={(e) => setSalesOrderRef(e.target.value)} placeholder="Sales Order #" className="field" /> : <div />}
+          {billable ? (
+            <select value={salesOrderRef} onChange={(e) => setSalesOrderRef(e.target.value)} className="field">
+              <option value="">Select Sales Order…</option>
+              {salesOrders.map((so) => (
+                <option key={so.id} value={so.orderNumber}>
+                  {so.orderNumber}{so.title ? ` — ${so.title}` : ''}
+                </option>
+              ))}
+            </select>
+          ) : <div />}
 
           <select
             multiple
