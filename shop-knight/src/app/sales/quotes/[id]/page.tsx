@@ -72,6 +72,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [users, setUsers] = useState<User[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [filterText, setFilterText] = useState('');
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
+  const [bulkParentId, setBulkParentId] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -290,6 +292,18 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     await saveLine({ ...line, parentLineId: parentId });
   }
 
+  async function bulkMakeChild(parentId: string | null) {
+    if (selectedLineIds.length === 0) { push('Select one or more lines first', 'error'); return; }
+    const selected = (quote?.lines || []).filter((l) => selectedLineIds.includes(l.id));
+    await Promise.all(selected.map((line) => fetch(`/api/quote-lines/${line.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...line, parentLineId: parentId }),
+    })));
+    setSelectedLineIds([]);
+    setBulkParentId('');
+    await load(id);
+    push('Updated rollup parent for selected lines', 'success');
+  }
+
   const roots = useMemo(() => (quote?.lines || []).filter((l) => !l.parentLineId), [quote?.lines]);
   const childrenMap = useMemo(() => {
     const map = new Map<string, Line[]>();
@@ -490,10 +504,19 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-zinc-700 p-2 text-xs">
+        <span className="text-zinc-400">Selected: {selectedLineIds.length}</span>
+        <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
+          <option value="">Top level</option>
+          {roots.filter((r) => !selectedLineIds.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
+        </select>
+        <button onClick={() => bulkMakeChild(bulkParentId || null)} className="rounded border border-zinc-600 px-2 py-1">Apply rollup</button>
+        <button onClick={() => setSelectedLineIds([])} className="rounded border border-zinc-600 px-2 py-1">Clear</button>
+      </div>
 
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Sel</th><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
               <QuoteLineRow
@@ -517,6 +540,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                     return prev.filter((id) => id !== proofId);
                   });
                 }}
+                selectedLineIds={selectedLineIds}
+                onToggleLineSelection={(lineId, selected) => {
+                  setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
+                }}
               />
             ))}
           </tbody>
@@ -534,7 +561,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void }) {
+function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -619,6 +646,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   return (
     <>
     <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="p-3 align-top"><input type="checkbox" checked={selectedLineIds.includes(line.id)} onChange={(e) => onToggleLineSelection(line.id, e.target.checked)} /></td>
       <td className="p-3 align-top">
         <span
           draggable
@@ -668,7 +696,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
     </tr>
     {showProofs ? (
       <tr className="border-t border-zinc-800 bg-zinc-950/30">
-        <td className="p-3" colSpan={7}>
+        <td className="p-3" colSpan={8}>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="text-xs text-zinc-300 md:col-span-2">Upload proof
               <div className="mt-1 flex gap-2">

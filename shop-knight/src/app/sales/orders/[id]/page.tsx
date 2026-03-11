@@ -88,6 +88,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [filterText, setFilterText] = useState('');
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
+  const [bulkParentId, setBulkParentId] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
   const [batchProofRecipient, setBatchProofRecipient] = useState('');
@@ -378,6 +380,18 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     await saveLine({ ...line, parentLineId: parentId });
   }
 
+  async function bulkMakeChild(parentId: string | null) {
+    if (selectedLineIds.length === 0) { push('Select one or more lines first', 'error'); return; }
+    const selected = (order?.lines || []).filter((l) => selectedLineIds.includes(l.id));
+    await Promise.all(selected.map((line) => fetch(`/api/sales-order-lines/${line.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...line, parentLineId: parentId }),
+    })));
+    setSelectedLineIds([]);
+    setBulkParentId('');
+    await load(id);
+    push('Updated rollup parent for selected lines', 'success');
+  }
+
   const roots = useMemo(() => (order?.lines || []).filter((l) => !l.parentLineId), [order?.lines]);
   const childrenMap = useMemo(() => {
     const map = new Map<string, Line[]>();
@@ -646,12 +660,21 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 p-4">
+        <div className="border-b border-slate-200 p-4 space-y-2">
           <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-500">Selected: {selectedLineIds.length}</span>
+            <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="field h-8 w-56 text-xs">
+              <option value="">Top level</option>
+              {roots.filter((r) => !selectedLineIds.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
+            </select>
+            <button onClick={() => bulkMakeChild(bulkParentId || null)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2 font-medium">Apply rollup</button>
+            <button onClick={() => setSelectedLineIds([])} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2 font-medium">Clear</button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-left text-sm">
-            <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Drag</th><th className="px-4 py-3 font-semibold">Description</th><th className="px-4 py-3 font-semibold">Qty</th><th className="px-4 py-3 font-semibold">Unit Price</th><th className="px-4 py-3 font-semibold">Line Total</th><th className="px-4 py-3 font-semibold">Actions</th></tr></thead>
+            <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Sel</th><th className="px-4 py-3 font-semibold">Drag</th><th className="px-4 py-3 font-semibold">Description</th><th className="px-4 py-3 font-semibold">Qty</th><th className="px-4 py-3 font-semibold">Unit Price</th><th className="px-4 py-3 font-semibold">Line Total</th><th className="px-4 py-3 font-semibold">Actions</th></tr></thead>
             <tbody>
               {visibleLines.map(({ line, depth }) => (
                 <SalesOrderLineRow
@@ -674,6 +697,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                       if (selected) return prev.includes(proofId) ? prev : [...prev, proofId];
                       return prev.filter((id) => id !== proofId);
                     });
+                  }}
+                  selectedLineIds={selectedLineIds}
+                  onToggleLineSelection={(lineId, selected) => {
+                    setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
                   }}
                 />
               ))}
@@ -727,7 +754,7 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -813,6 +840,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   return (
     <>
     <tr className="border-t border-slate-100" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="px-4 py-4 align-top"><input type="checkbox" checked={selectedLineIds.includes(line.id)} onChange={(e) => onToggleLineSelection(line.id, e.target.checked)} /></td>
       <td className="px-4 py-4 align-top">
         <span
           draggable
@@ -863,7 +891,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     </tr>
     {showProofs ? (
       <tr className="border-t border-slate-100 bg-slate-50/60">
-        <td className="px-4 py-3" colSpan={6}>
+        <td className="px-4 py-3" colSpan={7}>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="text-xs text-slate-600 md:col-span-2">Upload proof
               <div className="mt-1 flex gap-2">
