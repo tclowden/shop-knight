@@ -80,7 +80,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [selectedProofIds, setSelectedProofIds] = useState<string[]>([]);
   const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
   const [showProofPicker, setShowProofPicker] = useState(false);
-  const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string }>>([]);
+  const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string; statusLabel: string }>>([]);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -176,13 +176,20 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
     const options = proofsByLine.flatMap((proofs, index) =>
       proofs
-        .filter((p) => p.status !== 'APPROVED')
+        .filter((p) => p.status !== 'APPROVED' && p.lastRequest?.decision !== 'APPROVED')
         .map((p) => ({
 
           id: p.id,
           fileName: p.fileName,
           mimeType: p.mimeType,
           lineDescription: quote.lines[index]?.description || 'Line item',
+          statusLabel: !p.lastRequest
+            ? 'Never Sent'
+            : !p.lastRequest.respondedAt
+              ? 'Sent, Pending Approval'
+              : p.lastRequest.decision === 'REVISIONS_REQUESTED'
+                ? 'Sent, Rejected'
+                : 'Needs Review',
         }))
     );
 
@@ -470,7 +477,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                   onChange={(e) => setSelectedProofIds((prev) => e.target.checked ? (prev.includes(proof.id) ? prev : [...prev, proof.id]) : prev.filter((id) => id !== proof.id))}
                 />
                 {proof.mimeType.startsWith('image/') ? <img src={`/api/proofs/file/${proof.id}`} alt={proof.fileName} className="h-10 w-10 rounded object-cover" /> : <span className="inline-flex h-10 w-10 items-center justify-center rounded bg-zinc-800">PDF</span>}
-                <span>{proof.fileName} <span className="text-zinc-400">• {proof.lineDescription}</span></span>
+                <span>
+                  {proof.fileName} <span className="text-zinc-400">• {proof.lineDescription}</span>
+                  <span className="ml-2 text-[11px] text-zinc-400">({proof.statusLabel})</span>
+                </span>
               </label>
             ))}
             {unsentProofOptions.length === 0 ? <p className="text-xs text-zinc-400">No unsent proofs found.</p> : null}

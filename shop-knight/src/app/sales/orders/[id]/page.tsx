@@ -78,7 +78,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [selectedProofIds, setSelectedProofIds] = useState<string[]>([]);
   const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
   const [showProofPicker, setShowProofPicker] = useState(false);
-  const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string }>>([]);
+  const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string; statusLabel: string }>>([]);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -185,7 +185,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
     const options = proofsByLine.flatMap((proofs, index) =>
       proofs
-        .filter((p) => p.status !== 'APPROVED')
+        .filter((p) => p.status !== 'APPROVED' && p.lastRequest?.decision !== 'APPROVED')
         .map((p) => ({
 
 
@@ -194,6 +194,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           fileName: p.fileName,
           mimeType: p.mimeType,
           lineDescription: order.lines[index]?.description || 'Line item',
+          statusLabel: !p.lastRequest
+            ? 'Never Sent'
+            : !p.lastRequest.respondedAt
+              ? 'Sent, Pending Approval'
+              : p.lastRequest.decision === 'REVISIONS_REQUESTED'
+                ? 'Sent, Rejected'
+                : 'Needs Review',
         }))
     );
 
@@ -516,7 +523,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   onChange={(e) => setSelectedProofIds((prev) => e.target.checked ? (prev.includes(proof.id) ? prev : [...prev, proof.id]) : prev.filter((id) => id !== proof.id))}
                 />
                 {proof.mimeType.startsWith('image/') ? <img src={`/api/proofs/file/${proof.id}`} alt={proof.fileName} className="h-10 w-10 rounded object-cover" /> : <span className="inline-flex h-10 w-10 items-center justify-center rounded bg-slate-100">PDF</span>}
-                <span>{proof.fileName} <span className="text-slate-500">• {proof.lineDescription}</span></span>
+                <span>
+                  {proof.fileName} <span className="text-slate-500">• {proof.lineDescription}</span>
+                  <span className="ml-2 text-[11px] text-slate-500">({proof.statusLabel})</span>
+                </span>
               </label>
             ))}
             {unsentProofOptions.length === 0 ? <p className="text-xs text-slate-500">No unsent proofs found.</p> : null}
