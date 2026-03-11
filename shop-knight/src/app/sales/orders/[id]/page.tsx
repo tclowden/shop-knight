@@ -335,7 +335,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       }),
     });
     if (res.ok) push('Sales order saved', 'success');
-    else push('Failed to save sales order', 'error');
+    else {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || `Failed to save sales order (${res.status})`, 'error');
+    }
     await load(id);
     setSavingHeader(false);
     setEditingHeader(false);
@@ -535,6 +538,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Sales Order Info</summary>
         {!editingHeader ? (
           <>
             <div className="mb-4 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">Edit order info</button></div>
@@ -619,11 +624,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </div>
           </form>
         )}
+        </details>
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">Travel</h2>
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Travel</summary>
+        <div className="mb-3 mt-2 flex items-center justify-between gap-2">
           <span className="text-xs text-slate-500">Linked by SO #{order.orderNumber}</span>
         </div>
         <form onSubmit={createLinkedTrip} className="grid grid-cols-1 gap-2 md:grid-cols-6">
@@ -663,10 +670,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </tbody>
           </table>
         </div>
+        </details>
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-base font-semibold">Add Line Item</h2>
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
+        <h2 className="mb-3 mt-2 text-base font-semibold">Add Line Item</h2>
         <form onSubmit={addLine} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
             <FormFieldSmall label="Product">
@@ -686,10 +696,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
           </div>
         </form>
+        </details>
       </section>
 
       <section className="mb-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <p className="text-xs text-slate-500">Batch proof approvals</p>
+        <details open>
+          <summary className="cursor-pointer list-none text-sm font-semibold">Batch Proof Approvals</summary>
+        <p className="mt-2 text-xs text-slate-500">Batch proof approvals</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="field w-full max-w-sm" />
           <button type="button" onClick={async () => { await loadUnsentProofOptions(); setShowProofPicker(true); }} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700">Select Proofs</button>
@@ -715,9 +728,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             {unsentProofOptions.length === 0 ? <p className="text-xs text-slate-500">No unsent proofs found.</p> : null}
           </div>
         ) : null}
+        </details>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <details open>
+          <summary className="cursor-pointer list-none p-4 text-base font-semibold">Line Items</summary>
         <div className="border-b border-slate-200 p-4 space-y-2">
           <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -765,6 +781,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </tbody>
           </table>
         </div>
+        </details>
       </section>
 
       <div className="sticky bottom-2 mt-4 ml-auto w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 text-sm shadow">

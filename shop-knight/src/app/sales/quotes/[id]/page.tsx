@@ -405,6 +405,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Quote Info</summary>
         {!editingHeader ? (
           <>
             <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
@@ -440,9 +442,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
           </form>
         )}
+        </details>
       </div>
 
       <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <label className="text-xs text-zinc-300">Product
             <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
@@ -472,10 +477,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
           </label>
         </div>
+        </details>
       </form>
 
       <div className="mb-3 rounded border border-zinc-700 p-3">
-        <p className="text-xs text-zinc-400">Batch proof approvals</p>
+        <details open>
+          <summary className="cursor-pointer list-none text-sm font-semibold">Batch Proof Approvals</summary>
+        <p className="mt-2 text-xs text-zinc-400">Batch proof approvals</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="w-full max-w-sm rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           <button type="button" onClick={async () => { await loadUnsentProofOptions(); setShowProofPicker(true); }} className="rounded border border-zinc-600 px-3 py-2 text-xs">Select Proofs</button>
@@ -501,9 +509,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             {unsentProofOptions.length === 0 ? <p className="text-xs text-zinc-400">No unsent proofs found.</p> : null}
           </div>
         ) : null}
+        </details>
       </div>
 
-      <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
+      <details open className="mb-3 rounded border border-zinc-700 p-3">
+        <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
+      <div className="mb-3 mt-2"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-zinc-700 p-2 text-xs">
         <span className="text-zinc-400">Selected: {selectedLineIds.length}</span>
         <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
@@ -549,6 +560,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           </tbody>
         </table>
       </div>
+      </details>
 
       <div className="fixed bottom-4 right-4 z-40 w-[min(24rem,calc(100vw-1rem))] rounded border border-zinc-300 bg-white p-3 text-sm text-zinc-900 shadow-lg">
         <p className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></p>
