@@ -52,7 +52,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES']);
+  const auth = await requireRoles(['ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PROJECT_MANAGER', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -108,6 +108,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       dueDate: body?.dueDate !== undefined ? toDate(body.dueDate) : undefined,
       installDate: body?.installDate !== undefined ? toDate(body.installDate) : undefined,
       shippingDate: body?.shippingDate !== undefined ? toDate(body.shippingDate) : undefined,
+      earlyBirdDiscountDate: body?.earlyBirdDiscountDate !== undefined ? toDate(body.earlyBirdDiscountDate) : undefined,
+      advancedReceivingDeadline: body?.advancedReceivingDeadline !== undefined ? toDate(body.advancedReceivingDeadline) : undefined,
+      shipFromRoarkDate: body?.shipFromRoarkDate !== undefined ? toDate(body.shipFromRoarkDate) : undefined,
+      travelToSiteStart: body?.travelToSiteStart !== undefined ? toDate(body.travelToSiteStart) : undefined,
+      travelToSiteEnd: body?.travelToSiteEnd !== undefined ? toDate(body.travelToSiteEnd) : undefined,
+      outboundShippingFromShowDate: body?.outboundShippingFromShowDate !== undefined ? toDate(body.outboundShippingFromShowDate) : undefined,
+      estimatedInvoiceDate: body?.estimatedInvoiceDate !== undefined ? toDate(body.estimatedInvoiceDate) : undefined,
       paymentTerms: body?.paymentTerms !== undefined ? String(body.paymentTerms || '') : undefined,
       downPaymentType: body?.downPaymentType !== undefined ? String(body.downPaymentType || '') : undefined,
       downPaymentValue: body?.downPaymentValue !== undefined ? toNumber(body.downPaymentValue) : undefined,

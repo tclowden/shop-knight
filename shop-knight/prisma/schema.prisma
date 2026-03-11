@@ -417,6 +417,13 @@ model SalesOrder {
   dueDate                DateTime?
   installDate            DateTime?
   shippingDate           DateTime?
+  earlyBirdDiscountDate  DateTime?
+  advancedReceivingDeadline DateTime?
+  shipFromRoarkDate      DateTime?
+  travelToSiteStart      DateTime?
+  travelToSiteEnd        DateTime?
+  outboundShippingFromShowDate DateTime?
+  estimatedInvoiceDate   DateTime?
   paymentTerms           String?
   downPaymentType        String?
   downPaymentValue       Decimal?          @db.Decimal(12, 2)

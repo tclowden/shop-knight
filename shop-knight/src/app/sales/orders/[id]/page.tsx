@@ -61,6 +61,13 @@ type SalesOrder = {
   dueDate?: string | null;
   installDate?: string | null;
   shippingDate?: string | null;
+  earlyBirdDiscountDate?: string | null;
+  advancedReceivingDeadline?: string | null;
+  shipFromRoarkDate?: string | null;
+  travelToSiteStart?: string | null;
+  travelToSiteEnd?: string | null;
+  outboundShippingFromShowDate?: string | null;
+  estimatedInvoiceDate?: string | null;
   paymentTerms?: string | null;
   downPaymentType?: string | null;
   downPaymentValue?: string | number | null;
@@ -122,6 +129,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [dueDate, setDueDate] = useState('');
   const [installDate, setInstallDate] = useState('');
   const [shippingDate, setShippingDate] = useState('');
+  const [earlyBirdDiscountDate, setEarlyBirdDiscountDate] = useState('');
+  const [advancedReceivingDeadline, setAdvancedReceivingDeadline] = useState('');
+  const [shipFromRoarkDate, setShipFromRoarkDate] = useState('');
+  const [travelToSiteStart, setTravelToSiteStart] = useState('');
+  const [travelToSiteEnd, setTravelToSiteEnd] = useState('');
+  const [outboundShippingFromShowDate, setOutboundShippingFromShowDate] = useState('');
+  const [estimatedInvoiceDate, setEstimatedInvoiceDate] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
   const [downPaymentType, setDownPaymentType] = useState('DOLLARS');
   const [downPaymentValue, setDownPaymentValue] = useState('');
@@ -166,6 +180,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       setDueDate(so.dueDate ? String(so.dueDate).slice(0, 10) : '');
       setInstallDate(so.installDate ? String(so.installDate).slice(0, 10) : '');
       setShippingDate(so.shippingDate ? String(so.shippingDate).slice(0, 10) : '');
+      setEarlyBirdDiscountDate(so.earlyBirdDiscountDate ? String(so.earlyBirdDiscountDate).slice(0, 10) : '');
+      setAdvancedReceivingDeadline(so.advancedReceivingDeadline ? String(so.advancedReceivingDeadline).slice(0, 10) : '');
+      setShipFromRoarkDate(so.shipFromRoarkDate ? String(so.shipFromRoarkDate).slice(0, 10) : '');
+      setTravelToSiteStart(so.travelToSiteStart ? String(so.travelToSiteStart).slice(0, 10) : '');
+      setTravelToSiteEnd(so.travelToSiteEnd ? String(so.travelToSiteEnd).slice(0, 10) : '');
+      setOutboundShippingFromShowDate(so.outboundShippingFromShowDate ? String(so.outboundShippingFromShowDate).slice(0, 10) : '');
+      setEstimatedInvoiceDate(so.estimatedInvoiceDate ? String(so.estimatedInvoiceDate).slice(0, 10) : '');
       setPaymentTerms(so.paymentTerms || '');
       setDownPaymentType(so.downPaymentType || 'DOLLARS');
       setDownPaymentValue(so.downPaymentValue ? String(so.downPaymentValue) : '');
@@ -297,6 +318,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         dueDate: dueDate || null,
         installDate: installDate || null,
         shippingDate: shippingDate || null,
+        earlyBirdDiscountDate: earlyBirdDiscountDate || null,
+        advancedReceivingDeadline: advancedReceivingDeadline || null,
+        shipFromRoarkDate: shipFromRoarkDate || null,
+        travelToSiteStart: travelToSiteStart || null,
+        travelToSiteEnd: travelToSiteEnd || null,
+        outboundShippingFromShowDate: outboundShippingFromShowDate || null,
+        estimatedInvoiceDate: estimatedInvoiceDate || null,
         paymentTerms,
         downPaymentType,
         downPaymentValue,
@@ -446,6 +474,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       dueDate !== (order.dueDate ? String(order.dueDate).slice(0, 10) : '') ||
       installDate !== (order.installDate ? String(order.installDate).slice(0, 10) : '') ||
       shippingDate !== (order.shippingDate ? String(order.shippingDate).slice(0, 10) : '') ||
+      earlyBirdDiscountDate !== (order.earlyBirdDiscountDate ? String(order.earlyBirdDiscountDate).slice(0, 10) : '') ||
+      advancedReceivingDeadline !== (order.advancedReceivingDeadline ? String(order.advancedReceivingDeadline).slice(0, 10) : '') ||
+      shipFromRoarkDate !== (order.shipFromRoarkDate ? String(order.shipFromRoarkDate).slice(0, 10) : '') ||
+      travelToSiteStart !== (order.travelToSiteStart ? String(order.travelToSiteStart).slice(0, 10) : '') ||
+      travelToSiteEnd !== (order.travelToSiteEnd ? String(order.travelToSiteEnd).slice(0, 10) : '') ||
+      outboundShippingFromShowDate !== (order.outboundShippingFromShowDate ? String(order.outboundShippingFromShowDate).slice(0, 10) : '') ||
+      estimatedInvoiceDate !== (order.estimatedInvoiceDate ? String(order.estimatedInvoiceDate).slice(0, 10) : '') ||
       paymentTerms !== (order.paymentTerms || '') ||
       downPaymentType !== (order.downPaymentType || 'DOLLARS') ||
       downPaymentValue !== (order.downPaymentValue ? String(order.downPaymentValue) : '') ||
@@ -454,7 +489,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       designerId !== (order.designerId || '') ||
       opportunityId !== (order.opportunityId || '')
     );
-  }, [order, editingHeader, title, statusName, primaryCustomerContact, customerInvoiceContact, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, shippingMethod, shippingTracking, salesOrderDate, dueDate, installDate, shippingDate, paymentTerms, downPaymentType, downPaymentValue, salesRepId, projectManagerId, designerId, opportunityId]);
+  }, [order, editingHeader, title, statusName, primaryCustomerContact, customerInvoiceContact, billingAddress, billingAttentionTo, shippingAddress, shippingAttentionTo, installAddress, shippingMethod, shippingTracking, salesOrderDate, dueDate, installDate, shippingDate, earlyBirdDiscountDate, advancedReceivingDeadline, shipFromRoarkDate, travelToSiteStart, travelToSiteEnd, outboundShippingFromShowDate, estimatedInvoiceDate, paymentTerms, downPaymentType, downPaymentValue, salesRepId, projectManagerId, designerId, opportunityId]);
 
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
   const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
@@ -509,10 +544,21 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               <ReadField label="Status" value={order.status?.name || '—'} />
               <ReadField label="Primary Customer Contact" value={order.primaryCustomerContact || '—'} />
               <ReadField label="Customer Invoice Contact" value={order.customerInvoiceContact || '—'} />
-              <ReadField label="Sales Order Date" value={order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} />
-              <ReadField label="Due Date" value={order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'} />
-              <ReadField label="Install Date" value={order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'} />
-              <ReadField label="Shipping Date" value={order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'} />
+              <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule Dates</p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <ReadField label="Sales Order Date" value={order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Due Date" value={order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Install Date" value={order.installDate ? new Date(order.installDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Shipping Date" value={order.shippingDate ? new Date(order.shippingDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Early Bird Discount Date" value={order.earlyBirdDiscountDate ? new Date(order.earlyBirdDiscountDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Advanced Receiving Deadline" value={order.advancedReceivingDeadline ? new Date(order.advancedReceivingDeadline).toLocaleDateString() : '—'} />
+                  <ReadField label="Ship From Roark Date" value={order.shipFromRoarkDate ? new Date(order.shipFromRoarkDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Outbound Shipping from Show" value={order.outboundShippingFromShowDate ? new Date(order.outboundShippingFromShowDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Travel To/From Site" value={order.travelToSiteStart ? `${new Date(order.travelToSiteStart).toLocaleDateString()} → ${order.travelToSiteEnd ? new Date(order.travelToSiteEnd).toLocaleDateString() : '—'}` : '—'} />
+                  <ReadField label="Estimated Invoice Date" value={order.estimatedInvoiceDate ? new Date(order.estimatedInvoiceDate).toLocaleDateString() : '—'} />
+                </div>
+              </div>
               <ReadField label="Shipping Method" value={order.shippingMethod || '—'} />
               <ReadField label="Shipping Tracking" value={order.shippingTracking || '—'} />
               <ReadField label="Payment Terms" value={order.paymentTerms || '—'} />
@@ -534,10 +580,22 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <FormField label="Status"><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="field"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></FormField>
             <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
             <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
-            <FormField label="Sales Order Date"><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="field" /></FormField>
-            <FormField label="Due Date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field" /></FormField>
-            <FormField label="Install Date"><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="field" /></FormField>
-            <FormField label="Shipping Date"><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="field" /></FormField>
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule Dates</p>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <FormField label="Sales Order Date"><input type="date" value={salesOrderDate} onChange={(e) => setSalesOrderDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Due Date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Install Date"><input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Shipping Date"><input type="date" value={shippingDate} onChange={(e) => setShippingDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Early Bird Discount Date"><input type="date" value={earlyBirdDiscountDate} onChange={(e) => setEarlyBirdDiscountDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Advanced Receiving Deadline"><input type="date" value={advancedReceivingDeadline} onChange={(e) => setAdvancedReceivingDeadline(e.target.value)} className="field" /></FormField>
+                <FormField label="Ship From Roark Date"><input type="date" value={shipFromRoarkDate} onChange={(e) => setShipFromRoarkDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Outbound Shipping from Show"><input type="date" value={outboundShippingFromShowDate} onChange={(e) => setOutboundShippingFromShowDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Travel To Site Start"><input type="date" value={travelToSiteStart} onChange={(e) => setTravelToSiteStart(e.target.value)} className="field" /></FormField>
+                <FormField label="Travel From Site End"><input type="date" value={travelToSiteEnd} onChange={(e) => setTravelToSiteEnd(e.target.value)} className="field" /></FormField>
+                <FormField label="Estimated Invoice Date"><input type="date" value={estimatedInvoiceDate} onChange={(e) => setEstimatedInvoiceDate(e.target.value)} className="field" /></FormField>
+              </div>
+            </div>
             <FormField label="Shipping Method"><input value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="field" /></FormField>
             <FormField label="Shipping Tracking"><input value={shippingTracking} onChange={(e) => setShippingTracking(e.target.value)} className="field" /></FormField>
             <FormField label="Payment Terms"><input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} className="field" /></FormField>
