@@ -25,6 +25,7 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
   const [item, setItem] = useState<RequestDetail | null>(null);
   const [status, setStatus] = useState('NEW');
   const [notes, setNotes] = useState('');
+  const [dailyRate, setDailyRate] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -35,6 +36,7 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
     setItem(data);
     setStatus(data.status || 'NEW');
     setNotes(data.notes || '');
+    setDailyRate(data.dailyRate !== null && data.dailyRate !== undefined ? String(data.dailyRate) : '');
   }
 
   async function save(e: FormEvent) {
@@ -44,7 +46,7 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
     const res = await fetch(`/api/travel/per-diem-requests/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, notes }),
+      body: JSON.stringify({ status, notes, dailyRate: dailyRate ? Number(dailyRate) : undefined }),
     });
     const payload = await res.json().catch(() => ({}));
     setSaving(false);
@@ -94,7 +96,7 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
         <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
           <p>Destination: <span className="font-medium">{item.destinationCity && item.destinationState ? `${item.destinationCity}, ${item.destinationState}` : '—'}</span></p>
           <p>Year: <span className="font-medium">{item.year ?? '—'}</span></p>
-          <p>M&IE: <span className="font-medium">{item.dailyRate ?? '—'}</span></p>
+          <p>M&IE: <span className="font-medium">{item.dailyRate !== null && item.dailyRate !== undefined ? `$${Number(item.dailyRate).toFixed(2)}/day` : '—'}</span></p>
           <p>Days: <span className="font-medium">{item.days ?? '—'}</span></p>
           <p>Traveler count: <span className="font-medium">{item.travelerCount ?? '—'}</span></p>
           <p>Total: <span className="font-medium">{item.total ?? '—'}</span></p>
@@ -111,7 +113,8 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
             <option value="COMPLETE">Complete</option>
             <option value="CANCELED">Canceled</option>
           </select>
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="field md:col-span-2" />
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="field" />
+          <input value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} type="number" min="0" step="0.01" placeholder="M&IE override (admin)" className="field" />
           <div className="md:col-span-3 flex gap-2">
             <button disabled={saving} className="inline-flex h-11 items-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">Save Changes</button>
             <button type="button" onClick={recompute} disabled={saving} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700">Recompute from GSA</button>

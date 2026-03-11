@@ -35,7 +35,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const nextStatus = body?.status ? String(body.status) : null;
   const notes = body?.notes !== undefined ? String(body.notes || '') : undefined;
 
+  const role = String((auth.session.user as { role?: string } | undefined)?.role || '');
+  const roles = Array.isArray((auth.session.user as { roles?: string[] } | undefined)?.roles)
+    ? ((auth.session.user as { roles?: string[] } | undefined)?.roles || []).map(String)
+    : [];
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN' || roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
+
   let recomputeData: Record<string, unknown> = {};
+
+  let manualRateData: Record<string, unknown> = {};
+  if (body?.dailyRate !== undefined) {
+    if (!isAdmin) return NextResponse.json({ error: 'Only admins can override M&IE daily rate.' }, { status: 403 });
+    const rate = Number(body.dailyRate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      return NextResponse.json({ error: 'dailyRate must be a positive number.' }, { status: 400 });
+    }
+    const days = Number(existing.days || 0) > 0 ? Number(existing.days) : dateDiffDays(existing.trip.startDate, existing.trip.endDate);
+    const travelerCount = Number(existing.travelerCount || 0) > 0 ? Number(existing.travelerCount) : Math.max(1, existing.trip.travelers.length || 1);
+    manualRateData = {
+      dailyRate: rate,
+      days,
+      travelerCount,
+      total: rate * days * travelerCount,
+    };
+  }
   if (body?.action === 'recompute') {
     const apiKey = process.env.GSA_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'GSA API key missing' }, { status: 400 });
@@ -76,6 +99,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       canceledAt: nextStatus === 'CANCELED' ? new Date() : (nextStatus ? null : undefined),
       notes,
       ...recomputeData,
+      ...manualRateData,
     },
     include: { trip: { include: { travelers: { include: { traveler: true } } } }, createdByUser: true },
   });

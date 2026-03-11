@@ -98,6 +98,7 @@ export default function TravelPage() {
           <div className="text-sm text-slate-600">Phase 1 foundation is live: travelers + trips.</div>
           <div className="flex items-center gap-2">
             <Link href="/travel/map" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Travel Map</Link>
+            <Link href="/travel/booking" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Booking Board</Link>
             <Link href="/travel/per-diem" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Per-Diem Requests</Link>
             <Link href="/travel/travelers" className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Manage Travelers</Link>
           </div>
