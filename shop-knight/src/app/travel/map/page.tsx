@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type MapTrip = {
@@ -44,11 +44,54 @@ const statusColors: Record<string, string> = {
 
 const statusOptions = ['ALL', 'PLANNING', 'PRE_TRAVEL', 'IN_TRANSIT', 'ON_SITE', 'RETURNED', 'CANCELED'];
 
+type LeafletLib = {
+  map: (el: HTMLElement) => { setView: (coords: [number, number], zoom: number) => void; remove: () => void; fitBounds: (bounds: unknown, options?: { padding?: [number, number] }) => void };
+  tileLayer: (url: string, opts: { attribution: string; maxZoom?: number }) => { addTo: (map: unknown) => void };
+  marker: (coords: [number, number]) => { addTo: (map: unknown) => { bindPopup: (html: string) => void } };
+  latLngBounds: (coords: Array<[number, number]>) => unknown;
+};
+
+declare global { interface Window { L?: LeafletLib } }
+
+async function loadLeaflet(): Promise<LeafletLib | null> {
+  if (typeof window === 'undefined') return null;
+  if (window.L) return window.L;
+
+  if (!document.querySelector('link[data-leaflet="1"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    link.setAttribute('data-leaflet', '1');
+    document.head.appendChild(link);
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector('script[data-leaflet="1"]') as HTMLScriptElement | null;
+    if (existing) {
+      if (window.L) resolve();
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Failed to load Leaflet')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.async = true;
+    script.setAttribute('data-leaflet', '1');
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Leaflet'));
+    document.body.appendChild(script);
+  });
+
+  return window.L || null;
+}
+
 export default function TravelMapPage() {
   const [items, setItems] = useState<MapTrip[]>([]);
   const [alerts, setAlerts] = useState<RiskAlert[]>([]);
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [search, setSearch] = useState('');
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const leafletMapRef = useRef<{ setView: (coords: [number, number], zoom: number) => void; remove: () => void; fitBounds: (bounds: unknown, options?: { padding?: [number, number] }) => void } | null>(null);
 
   const load = useCallback(async () => {
     const statusQuery = statusFilter === 'ACTIVE' || statusFilter === 'ALL' ? '' : `?status=${encodeURIComponent(statusFilter)}`;
@@ -84,6 +127,60 @@ export default function TravelMapPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function renderMap() {
+      if (!mapRef.current) return;
+      const L = await loadLeaflet();
+      if (!L || cancelled || !mapRef.current) return;
+
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+
+      const map = L.map(mapRef.current);
+      leafletMapRef.current = map;
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      const geocodeItems = filtered
+        .map((trip) => ({ id: trip.id, location: trip.map?.label || trip.destinations || '' }))
+        .filter((item) => item.location);
+
+      const res = await fetch('/api/travel/map/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: geocodeItems }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      const points = Array.isArray(payload?.points) ? payload.points : [];
+
+      if (!points.length) {
+        map.setView([39.5, -98.35], 4);
+        return;
+      }
+
+      const bounds: Array<[number, number]> = [];
+      for (const point of points) {
+        const trip = filtered.find((t) => t.id === point.id);
+        if (!trip) continue;
+        bounds.push([point.lat, point.lon]);
+        const marker = L.marker([point.lat, point.lon]).addTo(map);
+        marker.bindPopup(`<strong>${trip.name}</strong><br/>${point.location}<br/>Status: ${trip.status}`);
+      }
+
+      if (bounds.length === 1) map.setView(bounds[0], 7);
+      else map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30] });
+    }
+
+    renderMap();
+    return () => { cancelled = true; };
+  }, [filtered]);
+
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
       <h1 className="text-3xl font-semibold tracking-tight">Travel Map</h1>
@@ -97,6 +194,12 @@ export default function TravelMapPage() {
         </select>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search trip, traveler, destination, SO ref..." className="field max-w-md" />
         <button onClick={load} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Refresh</button>
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Interactive Map</h2>
+        <p className="text-xs text-slate-500">Pins are based on current trip location labels/destinations.</p>
+        <div ref={mapRef} className="mt-3 h-[420px] w-full rounded-lg border border-slate-200" />
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
