@@ -183,26 +183,25 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       })
     );
 
-    const options = proofsByLine.flatMap((proofs, index) =>
-      proofs
-        .filter((p) => p.status !== 'APPROVED' && p.lastRequest?.decision !== 'APPROVED')
-        .map((p) => ({
+    const options = proofsByLine.flatMap((proofs, index) => {
+      const latest = [...proofs].sort((a, b) => b.version - a.version || +new Date(b.createdAt) - +new Date(a.createdAt))[0];
+      if (!latest) return [];
+      if (latest.status === 'APPROVED' || latest.lastRequest?.decision === 'APPROVED') return [];
 
-
-
-          id: p.id,
-          fileName: p.fileName,
-          mimeType: p.mimeType,
-          lineDescription: order.lines[index]?.description || 'Line item',
-          statusLabel: !p.lastRequest
-            ? 'Never Sent'
-            : !p.lastRequest.respondedAt
-              ? 'Sent, Pending Approval'
-              : p.lastRequest.decision === 'REVISIONS_REQUESTED'
-                ? 'Sent, Rejected'
-                : 'Needs Review',
-        }))
-    );
+      return [{
+        id: latest.id,
+        fileName: latest.fileName,
+        mimeType: latest.mimeType,
+        lineDescription: order.lines[index]?.description || 'Line item',
+        statusLabel: !latest.lastRequest
+          ? 'Never Sent'
+          : !latest.lastRequest.respondedAt
+            ? 'Sent, Pending Approval'
+            : latest.lastRequest.decision === 'REVISIONS_REQUESTED'
+              ? 'Sent, Rejected'
+              : 'Needs Review',
+      }];
+    });
 
     setUnsentProofOptions(options);
   }
