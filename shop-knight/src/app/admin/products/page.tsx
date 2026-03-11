@@ -27,13 +27,9 @@ export default function ProductsAdminPage() {
   const [costPrice, setCostPrice] = useState('0.00');
   const [taxable, setTaxable] = useState(true);
   const [error, setError] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
-  async function load() {
-    const res = await fetch('/api/admin/products');
-    if (!res.ok) return;
-    setProducts(await res.json());
-  }
 
   async function createProduct(e: FormEvent) {
     e.preventDefault();
@@ -59,24 +55,28 @@ export default function ProductsAdminPage() {
     setSalePrice('0.00');
     setCostPrice('0.00');
     setTaxable(true);
-    await load();
+    setProducts((prev) => [await res.json(), ...prev]);
   }
 
   async function handleArchive(productId: string) {
     if (archivingId) return;
-    const ok = window.confirm('Archive this product?');
+    const ok = window.confirm(showArchived ? 'Restore this product?' : 'Archive this product?');
     if (!ok) return;
 
     try {
       setArchivingId(productId);
-      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: showArchived ? 'POST' : 'DELETE',
+        headers: showArchived ? { 'Content-Type': 'application/json' } : undefined,
+        body: showArchived ? JSON.stringify({ action: 'restore' }) : undefined,
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive product');
+        throw new Error(typeof data?.error === 'string' ? data.error : `Failed to ${showArchived ? 'restore' : 'archive'} product`);
       }
       setProducts((prev) => prev.filter((item) => item.id !== productId));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to archive product';
+      const message = err instanceof Error ? err.message : `Failed to ${showArchived ? 'restore' : 'archive'} product`;
       window.alert(message);
     } finally {
       setArchivingId(null);
@@ -84,8 +84,13 @@ export default function ProductsAdminPage() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    const run = async () => {
+      const res = await fetch(`/api/admin/products?archived=${showArchived ? 'only' : 'active'}`);
+      if (!res.ok) return;
+      setProducts(await res.json());
+    };
+    run();
+  }, [showArchived]);
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
@@ -93,6 +98,17 @@ export default function ProductsAdminPage() {
       <p className="text-sm text-slate-500">Create products that appear as options in Quotes and Sales Orders.</p>
       <Nav />
 
+      <div className="mb-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowArchived((prev) => !prev)}
+          className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          {showArchived ? 'Show Active' : 'Show Archived'}
+        </button>
+      </div>
+
+      {!showArchived ? (
       <form onSubmit={createProduct} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-8">
         <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" className="field" required />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" className="field" required />
@@ -104,6 +120,7 @@ export default function ProductsAdminPage() {
         <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"><input checked={taxable} onChange={(e) => setTaxable(e.target.checked)} type="checkbox" /> Taxable</label>
         <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-8">Create Product</button>
       </form>
+      ) : null}
 
       {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
@@ -142,7 +159,7 @@ export default function ProductsAdminPage() {
                     disabled={archivingId === p.id}
                     className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {archivingId === p.id ? 'Archiving…' : 'Archive'}
+                    {archivingId === p.id ? (showArchived ? 'Restoring…' : 'Archiving…') : (showArchived ? 'Restore' : 'Archive')}
                   </button>
                 </td>
               </tr>

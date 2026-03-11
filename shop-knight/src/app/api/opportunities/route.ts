@@ -14,20 +14,27 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
+  const { searchParams } = new URL(req.url);
+  const archivedMode = searchParams.get('archived');
+
   const opportunities = await prisma.opportunity.findMany({
-    where: withCompany(companyId, {
-      OR: [
-        { source: null },
-        { source: { not: 'ARCHIVED' } },
-      ],
-    }),
+    where: withCompany(companyId, archivedMode === 'only'
+      ? { source: 'ARCHIVED' }
+      : archivedMode === 'all'
+        ? {}
+        : {
+            OR: [
+              { source: null },
+              { source: { not: 'ARCHIVED' } },
+            ],
+          }),
     include: { customer: true, salesRep: true, projectManager: true },
     orderBy: { name: 'asc' },
   });

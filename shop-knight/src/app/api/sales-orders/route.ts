@@ -49,14 +49,21 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const opportunityId = searchParams.get('opportunityId') || undefined;
+  const archivedMode = searchParams.get('archived');
 
   const salesOrders = await prisma.salesOrder.findMany({
     where: withCompany(companyId, {
       ...(opportunityId ? { opportunityId } : {}),
-      OR: [
-        { status: null },
-        { status: { is: { name: { not: 'Archived' } } } },
-      ],
+      ...(archivedMode === 'only'
+        ? { status: { is: { name: 'Archived' } } }
+        : archivedMode === 'all'
+          ? {}
+          : {
+              OR: [
+                { status: null },
+                { status: { is: { name: { not: 'Archived' } } } },
+              ],
+            }),
     }),
     include: {
       opportunity: { include: { customer: true } },

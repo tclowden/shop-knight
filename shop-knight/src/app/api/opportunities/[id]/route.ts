@@ -136,3 +136,21 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
 
   return NextResponse.json({ ok: true, archived: true });
 }
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const body = await req.json().catch(() => ({}));
+  if (body?.action !== 'restore') return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+
+  const { id } = await params;
+  const existing = await prisma.opportunity.findFirst({ where: withCompany(companyId, { id }), select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
+
+  await prisma.opportunity.update({ where: { id }, data: { source: null } });
+  return NextResponse.json({ ok: true, restored: true });
+}

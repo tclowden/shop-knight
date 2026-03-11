@@ -7,12 +7,19 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
+  const { searchParams } = new URL(req.url);
+  const archivedMode = searchParams.get('archived');
+
   const products = await prisma.product.findMany({
-    where: { active: true },
+    where: archivedMode === 'only'
+      ? { active: false }
+      : archivedMode === 'all'
+        ? {}
+        : { active: true },
     include: { attributes: { orderBy: { sortOrder: 'asc' } } },
     orderBy: { name: 'asc' },
   });

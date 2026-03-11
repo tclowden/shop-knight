@@ -22,6 +22,7 @@ export default function SalesOrdersPage() {
   const [items, setItems] = useState<SalesOrder[]>([]);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [showArchived, setShowArchived] = useState(false);
   const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('ADMIN') || session?.user?.roles?.includes('SUPER_ADMIN');
@@ -41,26 +42,26 @@ export default function SalesOrdersPage() {
     });
   }, [items, q, statusFilter]);
 
-  async function load() {
-    const res = await fetch('/api/sales-orders');
-    setItems(await res.json());
-  }
 
   async function handleArchive(salesOrderId: string) {
     if (!isAdmin || archivingId) return;
-    const ok = window.confirm('Archive this sales order?');
+    const ok = window.confirm(showArchived ? 'Restore this sales order?' : 'Archive this sales order?');
     if (!ok) return;
 
     try {
       setArchivingId(salesOrderId);
-      const res = await fetch(`/api/sales-orders/${salesOrderId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/sales-orders/${salesOrderId}`, {
+        method: showArchived ? 'POST' : 'DELETE',
+        headers: showArchived ? { 'Content-Type': 'application/json' } : undefined,
+        body: showArchived ? JSON.stringify({ action: 'restore' }) : undefined,
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive sales order');
+        throw new Error(typeof data?.error === 'string' ? data.error : `Failed to ${showArchived ? 'restore' : 'archive'} sales order`);
       }
       setItems((prev) => prev.filter((item) => item.id !== salesOrderId));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to archive sales order';
+      const message = err instanceof Error ? err.message : `Failed to ${showArchived ? 'restore' : 'archive'} sales order`;
       window.alert(message);
     } finally {
       setArchivingId(null);
@@ -68,8 +69,12 @@ export default function SalesOrdersPage() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    const run = async () => {
+      const res = await fetch(`/api/sales-orders?archived=${showArchived ? 'only' : 'active'}`);
+      setItems(await res.json());
+    };
+    run();
+  }, [showArchived]);
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
@@ -98,15 +103,24 @@ export default function SalesOrdersPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowArchived((prev) => !prev)}
+              className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              {showArchived ? 'Show Active' : 'Show Archived'}
+            </button>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
               Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}
             </div>
-            <Link
-              href="/sales/orders/new"
-              className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
-            >
-              + Add New Sales Order
-            </Link>
+            {!showArchived ? (
+              <Link
+                href="/sales/orders/new"
+                className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
+              >
+                + Add New Sales Order
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>
@@ -147,7 +161,7 @@ export default function SalesOrdersPage() {
                       disabled={archivingId === so.id}
                       className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {archivingId === so.id ? 'Archiving…' : 'Archive'}
+                      {archivingId === so.id ? (showArchived ? 'Restoring…' : 'Archiving…') : (showArchived ? 'Restore' : 'Archive')}
                     </button>
                   </td>
                 ) : null}
