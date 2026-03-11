@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 
@@ -23,7 +24,7 @@ type User = {
 type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
 
-const userTypes = ['ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 function ReadField({ label, value }: { label: string; value: string }) {
   return (
@@ -44,6 +45,7 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
 }
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { data: session } = useSession();
   const [id, setId] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<CustomRole[]>([]);
@@ -65,6 +67,11 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const [editing, setEditing] = useState(false);
+
+  const role = String(session?.user?.role || '');
+  const sessionRoles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  const isSuperAdmin = role === 'SUPER_ADMIN' || sessionRoles.includes('SUPER_ADMIN');
+  const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
   async function load(userId: string) {
     const [usersRes, rolesRes, companiesRes] = await Promise.all([
@@ -213,7 +220,7 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           <form onSubmit={saveUser} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <FormField label="Name"><input value={name} onChange={(e) => setName(e.target.value)} className="field" required /></FormField>
             <FormField label="Email"><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="field" required /></FormField>
-            <FormField label="Type"><select value={type} onChange={(e) => setType(e.target.value)} className="field">{userTypes.map((value) => <option key={value} value={value}>{value}</option>)}</select></FormField>
+            <FormField label="Type"><select value={type} onChange={(e) => setType(e.target.value)} className="field">{availableUserTypes.map((value) => <option key={value} value={value}>{value}</option>)}</select></FormField>
             <FormField label="Status"><label className="field inline-flex items-center gap-2"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active</label></FormField>
             <FormField label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" /></FormField>
             <FormField label="Known Traveler Number"><input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} className="field" /></FormField>

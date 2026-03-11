@@ -10,7 +10,6 @@ type RequestDetail = {
   destinationState?: string | null;
   year?: number | null;
   dailyRate?: string | number | null;
-  lodgingRate?: string | number | null;
   days?: number | null;
   travelerCount?: number | null;
   total?: string | number | null;
@@ -96,7 +95,6 @@ export default function PerDiemRequestDetailPage({ params }: { params: Promise<{
           <p>Destination: <span className="font-medium">{item.destinationCity && item.destinationState ? `${item.destinationCity}, ${item.destinationState}` : '—'}</span></p>
           <p>Year: <span className="font-medium">{item.year ?? '—'}</span></p>
           <p>M&IE: <span className="font-medium">{item.dailyRate ?? '—'}</span></p>
-          <p>Lodging: <span className="font-medium">{item.lodgingRate ?? '—'}</span></p>
           <p>Days: <span className="font-medium">{item.days ?? '—'}</span></p>
           <p>Traveler count: <span className="font-medium">{item.travelerCount ?? '—'}</span></p>
           <p>Total: <span className="font-medium">{item.total ?? '—'}</span></p>

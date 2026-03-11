@@ -11,10 +11,10 @@ type RequestItem = {
   trip: { id: string; name: string };
   destinationCity?: string | null;
   destinationState?: string | null;
+  dailyRate?: string | number | null;
   total?: string | number | null;
   createdAt: string;
 };
-
 export default function PerDiemRequestsPage() {
   const [trips, setTrips] = useState<TripOption[]>([]);
   const [items, setItems] = useState<RequestItem[]>([]);
@@ -103,6 +103,7 @@ export default function PerDiemRequestsPage() {
               <th className="px-4 py-3 font-semibold">Request</th>
               <th className="px-4 py-3 font-semibold">Trip</th>
               <th className="px-4 py-3 font-semibold">Destination</th>
+              <th className="px-4 py-3 font-semibold">M&IE</th>
               <th className="px-4 py-3 font-semibold">Total</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Created</th>
@@ -114,12 +115,13 @@ export default function PerDiemRequestsPage() {
                 <td className="px-4 py-4"><Link href={`/travel/per-diem/${item.id}`} className="text-sky-700 hover:underline">{item.id.slice(0, 8).toUpperCase()}</Link></td>
                 <td className="px-4 py-4">{item.trip.name}</td>
                 <td className="px-4 py-4">{item.destinationCity && item.destinationState ? `${item.destinationCity}, ${item.destinationState}` : '—'}</td>
-                <td className="px-4 py-4">{item.total ?? '—'}</td>
+                <td className="px-4 py-4">{item.dailyRate ? `$${Number(item.dailyRate).toFixed(2)}/day` : '—'}</td>
+                <td className="px-4 py-4">{item.total !== null && item.total !== undefined ? `$${Number(item.total).toFixed(2)}` : '—'}</td>
                 <td className="px-4 py-4">{item.status}</td>
                 <td className="px-4 py-4 text-slate-600">{new Date(item.createdAt).toLocaleString()}</td>
               </tr>
             ))}
-            {items.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No requests found for this filter.</td></tr> : null}
+            {items.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No requests found for this filter.</td></tr> : null}
           </tbody>
         </table>
       </section>
