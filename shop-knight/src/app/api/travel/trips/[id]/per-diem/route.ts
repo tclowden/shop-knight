@@ -72,7 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: `${message} (no cached rate available)` }, { status: 504 });
       }
       mie = Number(cached.dailyRate);
-      rateEntry = { county: null, months: { month: [] } };
+      rateEntry = { county: undefined, months: { month: [] } };
       usedFallback = true;
       fallbackNote = 'Used cached per-diem rate due to temporary GSA lookup failure.';
     }
