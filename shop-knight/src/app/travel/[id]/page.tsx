@@ -39,6 +39,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [allTravelers, setAllTravelers] = useState<TravelerOption[]>([]);
   const [selectedTravelerIds, setSelectedTravelerIds] = useState<string[]>([]);
   const [savingTravelers, setSavingTravelers] = useState(false);
+  const [travelersMessage, setTravelersMessage] = useState('');
   const [segmentType, setSegmentType] = useState('FLIGHT');
   const [status, setStatus] = useState('PLANNING');
   const [destinationCity, setDestinationCity] = useState('');
@@ -75,13 +76,19 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     if (!trip) return;
 
     setSavingTravelers(true);
+    setTravelersMessage('');
     const res = await fetch(`/api/travel/trips/${trip.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ travelerIds: selectedTravelerIds }),
     });
     setSavingTravelers(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setTravelersMessage(payload?.error || 'Failed to save travelers');
+      return;
+    }
+    setTravelersMessage('Travelers saved.');
     await load(trip.id);
   }
 
@@ -221,16 +228,30 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Travelers</h2>
-        <form onSubmit={saveTravelers} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
-          <select
-            multiple
-            value={selectedTravelerIds}
-            onChange={(e) => setSelectedTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
-            className="field h-24 md:col-span-3"
-          >
-            {allTravelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
-          </select>
-          <button disabled={savingTravelers} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingTravelers ? 'Saving…' : 'Save Travelers'}</button>
+        <p className="mt-1 text-xs text-slate-500">Select traveler profiles to attach to this trip, then save.</p>
+        <form onSubmit={saveTravelers} className="mt-3 space-y-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {allTravelers.map((t) => (
+              <label key={t.id} className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedTravelerIds.includes(t.id)}
+                  onChange={(e) => {
+                    setSelectedTravelerIds((prev) => {
+                      if (e.target.checked) return prev.includes(t.id) ? prev : [...prev, t.id];
+                      return prev.filter((id) => id !== t.id);
+                    });
+                  }}
+                />
+                <span>{t.fullName}</span>
+              </label>
+            ))}
+          </div>
+          {allTravelers.length === 0 ? <p className="text-xs text-slate-500">No traveler profiles found. Add them in Travel → Manage Travelers.</p> : null}
+          <div className="flex items-center gap-3">
+            <button disabled={savingTravelers} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingTravelers ? 'Saving…' : 'Save Travelers'}</button>
+            {travelersMessage ? <p className="text-xs text-slate-600">{travelersMessage}</p> : null}
+          </div>
         </form>
       </section>
 
