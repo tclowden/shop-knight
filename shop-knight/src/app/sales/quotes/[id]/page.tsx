@@ -155,7 +155,11 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     });
     setSendingBatchProofs(false);
 
-    if (!res.ok) { push('Failed to send batch proof email', 'error'); return; }
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || 'Failed to send batch proof email', 'error');
+      return;
+    }
     push(`Proof approval email sent for ${selectedProofIds.length} proof(s)`, 'success');
     setSelectedProofIds([]);
   }
