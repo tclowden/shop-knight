@@ -102,25 +102,15 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
 
   const linkedSalesOrders = await prisma.salesOrder.count({ where: withCompany(companyId, { quoteId: id }) });
   if (linkedSalesOrders > 0) {
-    return NextResponse.json({ error: 'Cannot delete quote with linked sales orders' }, { status: 409 });
+    return NextResponse.json({ error: 'Cannot archive quote with linked sales orders' }, { status: 409 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    const quoteLineIds = await tx.quoteLine.findMany({
-      where: { quote: { id, companyId } },
-      select: { id: true },
-    });
-
-    const ids = quoteLineIds.map((line) => line.id);
-    if (ids.length > 0) {
-      await tx.proof.deleteMany({ where: { quoteLineId: { in: ids } } });
-      await tx.quoteLine.deleteMany({ where: { id: { in: ids } } });
-    }
-
-    await tx.task.deleteMany({ where: { quoteId: id, companyId } });
-    await tx.note.deleteMany({ where: { entityType: 'QUOTE', entityId: id } });
-    await tx.quote.delete({ where: { id } });
+  await prisma.quote.update({
+    where: { id },
+    data: {
+      workflowState: 'archived',
+    },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, archived: true });
 }

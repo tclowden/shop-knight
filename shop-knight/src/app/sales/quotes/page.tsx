@@ -52,7 +52,7 @@ export default function QuotesPage() {
 
   async function handleDelete(quoteId: string) {
     if (!isAdmin || deletingId) return;
-    const ok = window.confirm('Delete this quote? This action cannot be undone.');
+    const ok = window.confirm('Archive this quote? You can keep historical data without showing it in the active quotes list.');
     if (!ok) return;
 
     try {
@@ -60,11 +60,11 @@ export default function QuotesPage() {
       const res = await fetch(`/api/quotes/${quoteId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to delete quote');
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to archive quote');
       }
       setItems((prev) => prev.filter((item) => item.id !== quoteId));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete quote';
+      const message = err instanceof Error ? err.message : 'Failed to archive quote';
       window.alert(message);
     } finally {
       setDeletingId(null);
@@ -135,7 +135,7 @@ export default function QuotesPage() {
                       disabled={deletingId === qRow.id}
                       className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {deletingId === qRow.id ? 'Deleting…' : 'Delete'}
+                      {deletingId === qRow.id ? 'Archiving…' : 'Archive'}
                     </button>
                   </td>
                 ) : null}

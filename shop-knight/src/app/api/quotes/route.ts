@@ -59,6 +59,12 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const quotes = await prisma.quote.findMany({
+    where: {
+      OR: [
+        { workflowState: null },
+        { workflowState: { not: 'archived' } },
+      ],
+    },
     include: {
       opportunity: {
         include: {
