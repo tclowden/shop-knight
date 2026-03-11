@@ -31,6 +31,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       companyId,
       name,
       destinations: body?.destinations ? String(body.destinations) : null,
+      destinationCity: body?.destinationCity ? String(body.destinationCity) : null,
+      destinationState: body?.destinationState ? String(body.destinationState).toUpperCase() : null,
       purpose: body?.purpose ? String(body.purpose) : null,
       startDate: toDate(body?.startDate),
       endDate: toDate(body?.endDate),

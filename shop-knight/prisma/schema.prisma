@@ -613,6 +613,8 @@ model Trip {
   name             String
   projectRef       String?
   destinations     String?
+  destinationCity  String?
+  destinationState String?
   purpose          String?
   startDate        DateTime?
   endDate          DateTime?

@@ -8,6 +8,8 @@ type Trip = {
   id: string;
   name: string;
   destinations?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
   purpose?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -26,6 +28,8 @@ export default function TravelPage() {
   const [salesOrders, setSalesOrders] = useState<SalesOrderOption[]>([]);
   const [name, setName] = useState('');
   const [destinations, setDestinations] = useState('');
+  const [destinationCity, setDestinationCity] = useState('');
+  const [destinationState, setDestinationState] = useState('');
   const [purpose, setPurpose] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -53,6 +57,8 @@ export default function TravelPage() {
       body: JSON.stringify({
         name,
         destinations,
+        destinationCity,
+        destinationState,
         purpose,
         startDate: startDate || null,
         endDate: endDate || null,
@@ -65,6 +71,8 @@ export default function TravelPage() {
 
     setName('');
     setDestinations('');
+    setDestinationCity('');
+    setDestinationState('');
     setPurpose('');
     setStartDate('');
     setEndDate('');
@@ -97,6 +105,11 @@ export default function TravelPage() {
         <form onSubmit={createTrip} className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Trip name" className="field" required />
           <input value={destinations} onChange={(e) => setDestinations(e.target.value)} placeholder="Destinations" className="field" />
+          <input value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} placeholder="Destination city" className="field" />
+          <select value={destinationState} onChange={(e) => setDestinationState(e.target.value)} className="field">
+            <option value="">State…</option>
+            {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'].map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
           <input value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Purpose" className="field" />
           <div className="grid grid-cols-2 gap-2">
             <input value={startDate} onChange={(e) => setStartDate(e.target.value)} type="date" className="field" />
@@ -147,7 +160,7 @@ export default function TravelPage() {
             {items.map((trip) => (
               <tr key={trip.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-4 font-medium"><Link href={`/travel/${trip.id}`} className="text-sky-700 hover:underline">{trip.name}</Link></td>
-                <td className="px-4 py-4">{trip.destinations || '—'}</td>
+                <td className="px-4 py-4">{trip.destinationCity && trip.destinationState ? `${trip.destinationCity}, ${trip.destinationState}` : (trip.destinations || '—')}</td>
                 <td className="px-4 py-4 text-slate-600">{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : '—'} → {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : '—'}</td>
                 <td className="px-4 py-4">{trip.status}</td>
                 <td className="px-4 py-4">{trip.travelers.map((t) => t.traveler.fullName).join(', ') || '—'}</td>

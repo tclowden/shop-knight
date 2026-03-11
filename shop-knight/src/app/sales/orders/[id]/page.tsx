@@ -34,6 +34,8 @@ type LinkedTrip = {
   id: string;
   name: string;
   destinations?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   status: string;
@@ -126,6 +128,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [opportunityId, setOpportunityId] = useState('');
   const [tripName, setTripName] = useState('');
   const [tripDestination, setTripDestination] = useState('');
+  const [tripDestinationCity, setTripDestinationCity] = useState('');
+  const [tripDestinationState, setTripDestinationState] = useState('');
   const [tripStartDate, setTripStartDate] = useState('');
   const [tripEndDate, setTripEndDate] = useState('');
   const [tripTravelerIds, setTripTravelerIds] = useState<string[]>([]);
@@ -184,6 +188,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       body: JSON.stringify({
         name: tripName.trim(),
         destinations: tripDestination,
+        destinationCity: tripDestinationCity,
+        destinationState: tripDestinationState,
         startDate: tripStartDate || null,
         endDate: tripEndDate || null,
         travelerIds: tripTravelerIds,
@@ -200,6 +206,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     push('Trip created and linked to this sales order', 'success');
     setTripName('');
     setTripDestination('');
+    setTripDestinationCity('');
+    setTripDestinationState('');
     setTripStartDate('');
     setTripEndDate('');
     setTripTravelerIds([]);
@@ -542,7 +550,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         <form onSubmit={createLinkedTrip} className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <input value={tripName} onChange={(e) => setTripName(e.target.value)} placeholder="Trip name" className="field" required />
-          <input value={tripDestination} onChange={(e) => setTripDestination(e.target.value)} placeholder="Destination" className="field" />
+          <input value={tripDestination} onChange={(e) => setTripDestination(e.target.value)} placeholder="Destination notes" className="field" />
+          <input value={tripDestinationCity} onChange={(e) => setTripDestinationCity(e.target.value)} placeholder="Destination city" className="field" />
+          <select value={tripDestinationState} onChange={(e) => setTripDestinationState(e.target.value)} className="field">
+            <option value="">State…</option>
+            {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'].map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
           <input value={tripStartDate} onChange={(e) => setTripStartDate(e.target.value)} type="date" className="field" />
           <input value={tripEndDate} onChange={(e) => setTripEndDate(e.target.value)} type="date" className="field" />
           <select
@@ -562,7 +575,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               {(order.linkedTrips || []).map((trip) => (
                 <tr key={trip.id} className="border-t border-slate-100">
                   <td className="py-2 font-medium"><a href={`/travel/${trip.id}`} className="text-sky-700 hover:underline">{trip.name}</a></td>
-                  <td className="py-2">{trip.destinations || '—'}</td>
+                  <td className="py-2">{trip.destinationCity && trip.destinationState ? `${trip.destinationCity}, ${trip.destinationState}` : (trip.destinations || '—')}</td>
                   <td className="py-2 text-slate-600">{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : '—'} → {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : '—'}</td>
                   <td className="py-2">{trip.status}</td>
                   <td className="py-2">{trip.billable ? `Billable${trip.salesOrderRef ? ` (${trip.salesOrderRef})` : ''}` : 'Non-billable'}</td>

@@ -9,6 +9,8 @@ type Trip = {
   id: string;
   name: string;
   destinations?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
   purpose?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -39,6 +41,9 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
   const [savingTravelers, setSavingTravelers] = useState(false);
   const [segmentType, setSegmentType] = useState('FLIGHT');
   const [status, setStatus] = useState('PLANNING');
+  const [destinationCity, setDestinationCity] = useState('');
+  const [destinationState, setDestinationState] = useState('');
+  const [savingDestination, setSavingDestination] = useState(false);
   const [loadingPerDiem, setLoadingPerDiem] = useState(false);
   const [perDiemMessage, setPerDiemMessage] = useState('');
   const [travelerId, setTravelerId] = useState('');
@@ -57,6 +62,8 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       const tripData = await tripRes.json();
       setTrip(tripData);
       setStatus(tripData.status || 'PLANNING');
+      setDestinationCity(tripData.destinationCity || '');
+      setDestinationState(tripData.destinationState || '');
       setSelectedTravelerIds((tripData.travelers || []).map((t: { traveler: { id: string } }) => t.traveler.id));
     }
     if (segmentRes.ok) setSegments(await segmentRes.json());
@@ -103,6 +110,21 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: nextStatus }),
     });
+    if (!res.ok) return;
+    await load(trip.id);
+  }
+
+  async function saveDestination(e: FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+
+    setSavingDestination(true);
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinationCity: destinationCity || null, destinationState: destinationState || null }),
+    });
+    setSavingDestination(false);
     if (!res.ok) return;
     await load(trip.id);
   }
@@ -157,6 +179,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
           <div className="text-sm text-slate-600">
             <p>Billing: <span className="font-medium">{trip.billable ? 'Billable' : 'Non-billable'}</span></p>
             <p>SO Ref: <span className="font-medium">{trip.salesOrderRef || '—'}</span></p>
+            <p>Destination: <span className="font-medium">{trip.destinationCity && trip.destinationState ? `${trip.destinationCity}, ${trip.destinationState}` : '—'}</span></p>
           </div>
 
           <div>
@@ -166,6 +189,20 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             {perDiemMessage ? <p className="mt-2 text-xs text-slate-600">{perDiemMessage}</p> : null}
           </div>
         </div>
+      </section>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Destination for Per-Diem</h2>
+        <form onSubmit={saveDestination} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <input value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} placeholder="City" className="field" />
+          <select value={destinationState} onChange={(e) => setDestinationState(e.target.value)} className="field">
+            <option value="">State…</option>
+            {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'].map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
+          <div className="md:col-span-2">
+            <button disabled={savingDestination} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingDestination ? 'Saving…' : 'Save Destination'}</button>
+          </div>
+        </form>
       </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
