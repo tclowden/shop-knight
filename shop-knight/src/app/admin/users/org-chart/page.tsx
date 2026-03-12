@@ -9,6 +9,7 @@ type OrgNode = {
   name: string;
   title: string;
   email: string;
+  phone: string | null;
   reportsToId: string | null;
   division: string;
 };
@@ -62,8 +63,11 @@ function PersonCard({
           <p className="text-xs leading-tight text-slate-500">{node.title}</p>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium" style={{ color }}>{node.division}</p>
+      <div className="mt-1 space-y-0.5">
+        <p className="text-[11px] text-slate-600">{node.email}</p>
+        {node.phone ? <p className="text-[11px] text-slate-600">{node.phone}</p> : null}
+      </div>
+      <div className="mt-1 flex items-center justify-end gap-2">
         {childCount > 0 ? (
           <span className="text-[11px] font-semibold text-slate-500">{collapsed ? `+ ${childCount}` : `− ${childCount}`}</span>
         ) : null}

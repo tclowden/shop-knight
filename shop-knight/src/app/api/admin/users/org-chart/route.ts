@@ -7,6 +7,7 @@ type OrgNode = {
   name: string;
   title: string;
   email: string;
+  phone: string | null;
   reportsToId: string | null;
   division: string;
 };
@@ -30,6 +31,7 @@ export async function GET() {
       id: true,
       name: true,
       email: true,
+      phone: true,
       reportsToId: true,
       title: { select: { name: true } },
       department: { select: { name: true } },
@@ -40,6 +42,7 @@ export async function GET() {
     id: user.id,
     name: user.name,
     email: user.email,
+    phone: user.phone,
     title: user.title?.name || 'No title',
     reportsToId: user.reportsToId,
     division: user.department?.name || 'Unassigned',
