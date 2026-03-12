@@ -30,6 +30,8 @@ type Proof = {
   } | null;
 };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
+type LoadListItem = { id: string; item: string; qty: number; salesOrderLineId?: string | null };
+type LoadList = { id: string; name: string; createdAt: string; items: LoadListItem[] };
 type LinkedTrip = {
   id: string;
   name: string;
@@ -94,6 +96,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
+  const [loadLists, setLoadLists] = useState<LoadList[]>([]);
+  const [showLoadListModal, setShowLoadListModal] = useState(false);
+  const [loadListName, setLoadListName] = useState('Load List');
+  const [loadListLineIds, setLoadListLineIds] = useState<string[]>([]);
+  const [customLoadItems, setCustomLoadItems] = useState<Array<{ item: string; qty: string }>>([]);
+  const [creatingLoadList, setCreatingLoadList] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [bulkParentId, setBulkParentId] = useState('');
@@ -204,6 +212,49 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
+    await loadLoadLists(orderId);
+  }
+
+  async function loadLoadLists(orderId: string) {
+    const res = await fetch(`/api/sales-orders/${orderId}/load-list`);
+    if (!res.ok) {
+      setLoadLists([]);
+      return;
+    }
+    setLoadLists(await res.json());
+  }
+
+  async function createLoadList(e: React.FormEvent) {
+    e.preventDefault();
+    if (loadListLineIds.length === 0 && customLoadItems.every((entry) => !entry.item.trim())) {
+      push('Select line items or add at least one custom item', 'error');
+      return;
+    }
+
+    setCreatingLoadList(true);
+    const res = await fetch(`/api/sales-orders/${id}/load-list`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: loadListName,
+        selectedLineIds: loadListLineIds,
+        customItems: customLoadItems,
+      }),
+    });
+    setCreatingLoadList(false);
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || 'Failed to create load list', 'error');
+      return;
+    }
+
+    push('Load list created', 'success');
+    setShowLoadListModal(false);
+    setLoadListName('Load List');
+    setLoadListLineIds([]);
+    setCustomLoadItems([]);
+    await loadLoadLists(id);
   }
 
   async function createLinkedTrip(e: React.FormEvent) {
@@ -677,9 +728,26 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Add Line Item</h2>
-          <button onClick={() => setShowAddLineModal(true)} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line Item</button>
+          <h2 className="text-base font-semibold">Items & Load Lists</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={() => {
+              setLoadListLineIds((order.lines || []).map((line) => line.id));
+              setCustomLoadItems([]);
+              setShowLoadListModal(true);
+            }} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Load List</button>
+            <button onClick={() => setShowAddLineModal(true)} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line Item</button>
+          </div>
         </div>
+        {loadLists.length > 0 ? (
+          <div className="mt-3 space-y-2">
+            {loadLists.slice(0, 3).map((list) => (
+              <div key={list.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+                <p className="font-semibold">{list.name} • {new Date(list.createdAt).toLocaleString()}</p>
+                <p>{list.items.length} items</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="mb-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -766,6 +834,56 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         </details>
       </section>
+
+      {showLoadListModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Create Load List</h3>
+              <button type="button" onClick={() => setShowLoadListModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
+            </div>
+            <form onSubmit={createLoadList} className="space-y-3">
+              <FormFieldSmall label="List Name"><input value={loadListName} onChange={(e) => setLoadListName(e.target.value)} className="field" /></FormFieldSmall>
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Select sales order line items</p>
+                <div className="max-h-48 space-y-1 overflow-auto rounded border border-slate-200 p-2">
+                  {order.lines.map((line) => (
+                    <label key={line.id} className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={loadListLineIds.includes(line.id)}
+                        onChange={(e) => setLoadListLineIds((prev) => e.target.checked ? [...new Set([...prev, line.id])] : prev.filter((id) => id !== line.id))}
+                      />
+                      <span>{line.description} (Qty: {line.qty})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Custom items</p>
+                  <button type="button" onClick={() => setCustomLoadItems((prev) => [...prev, { item: '', qty: '1' }])} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs">+ Add custom line</button>
+                </div>
+                <div className="space-y-2">
+                  {customLoadItems.map((entry, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2">
+                      <input value={entry.item} onChange={(e) => setCustomLoadItems((prev) => prev.map((row, i) => i === idx ? { ...row, item: e.target.value } : row))} placeholder="Item" className="field col-span-8" />
+                      <input value={entry.qty} onChange={(e) => setCustomLoadItems((prev) => prev.map((row, i) => i === idx ? { ...row, qty: e.target.value } : row))} type="number" min="1" className="field col-span-2" />
+                      <button type="button" onClick={() => setCustomLoadItems((prev) => prev.filter((_, i) => i !== idx))} className="rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 col-span-2">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowLoadListModal(false)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
+                <button disabled={creatingLoadList} className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{creatingLoadList ? 'Creating…' : 'Create Load List'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {showAddLineModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

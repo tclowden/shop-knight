@@ -459,6 +459,7 @@ model SalesOrder {
   projectManager         User?             @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
   designer               User?             @relation("SalesOrderDesigner", fields: [designerId], references: [id])
   lines                  SalesOrderLine[]
+  loadLists              LoadList[]
   tasks                  Task[]
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
@@ -495,6 +496,33 @@ model SalesOrderLine {
   product         Product?            @relation(fields: [productId], references: [id])
   poLines         PurchaseOrderLine[]
   proofs          Proof[]
+  loadListItems   LoadListItem[]
+}
+
+model LoadList {
+  id           String         @id @default(cuid())
+  salesOrderId String
+  name         String         @default("Load List")
+  createdById  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  salesOrder   SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  items        LoadListItem[]
+}
+
+model LoadListItem {
+  id               String          @id @default(cuid())
+  loadListId       String
+  salesOrderLineId String?
+  item             String
+  qty              Int             @default(1)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  loadList         LoadList        @relation(fields: [loadListId], references: [id], onDelete: Cascade)
+  salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
+
+  @@index([loadListId, sortOrder])
 }
 
 model PurchaseOrder {
