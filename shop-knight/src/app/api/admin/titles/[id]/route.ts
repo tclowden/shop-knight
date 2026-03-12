@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
+
+async function authorizeTitles() {
+  const primary = await requirePermissions(['admin.titles.manage']);
+  if (primary.ok) return primary;
+  const fallback = await requirePermissions(['admin.users.manage']);
+  if (fallback.ok) return fallback;
+  return primary;
+}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await authorizeTitles();
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
