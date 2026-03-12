@@ -22,6 +22,7 @@ const adminLinks = [
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/departments', label: 'Departments' },
+  { href: '/admin/titles', label: 'Titles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
   { href: '/tasks/templates', label: 'Task Templates' },
 ];

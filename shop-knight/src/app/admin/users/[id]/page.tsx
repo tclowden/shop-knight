@@ -20,12 +20,18 @@ type User = {
   activeCompanyId?: string | null;
   departmentId?: string | null;
   department?: { id: string; name: string } | null;
+  titleId?: string | null;
+  title?: { id: string; name: string } | null;
+  reportsToId?: string | null;
+  reportsTo?: { id: string; name: string } | null;
+  isEmployee?: boolean;
   customRoles?: Array<{ roleId: string; role: { id: string; name: string } }>;
 };
 
 type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
 type Department = { id: string; name: string; active: boolean };
+type Title = { id: string; name: string; active: boolean };
 
 const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
@@ -54,6 +60,8 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [titles, setTitles] = useState<Title[]>([]);
+  const [employeeOptions, setEmployeeOptions] = useState<Array<{ id: string; name: string }>>([]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -69,6 +77,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [companyIds, setCompanyIds] = useState<string[]>([]);
   const [activeCompanyId, setActiveCompanyId] = useState('');
   const [departmentId, setDepartmentId] = useState('');
+  const [titleId, setTitleId] = useState('');
+  const [isEmployee, setIsEmployee] = useState(true);
+  const [reportsToId, setReportsToId] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const [editing, setEditing] = useState(false);
@@ -79,11 +90,12 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
   async function load(userId: string) {
-    const [usersRes, rolesRes, companiesRes, departmentsRes] = await Promise.all([
+    const [usersRes, rolesRes, companiesRes, departmentsRes, titlesRes] = await Promise.all([
       fetch('/api/admin/users'),
       fetch('/api/admin/custom-roles'),
       fetch('/api/admin/companies'),
       fetch('/api/admin/departments'),
+      fetch('/api/admin/titles'),
     ]);
 
     if (!usersRes.ok) return;
@@ -103,9 +115,14 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     setCustomRoleIds(found?.customRoles?.map((entry) => entry.roleId) || []);
     setActive(Boolean(found?.active));
     setDepartmentId(found?.departmentId || '');
+    setTitleId(found?.titleId || '');
+    setIsEmployee(found?.isEmployee ?? true);
+    setReportsToId(found?.reportsToId || '');
+    setEmployeeOptions(users.filter((u) => u.id !== userId && u.active && (u.isEmployee ?? true)).map((u) => ({ id: u.id, name: u.name })));
 
     if (rolesRes.ok) setRoles(await rolesRes.json());
     if (departmentsRes.ok) setDepartments(await departmentsRes.json());
+    if (titlesRes.ok) setTitles(await titlesRes.json());
 
     if (companiesRes.ok) {
       const payload = await companiesRes.json();
@@ -170,6 +187,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
         companyIds,
         activeCompanyId,
         departmentId: departmentId || null,
+        titleId: titleId || null,
+        isEmployee,
+        reportsToId: isEmployee && reportsToId ? reportsToId : null,
       }),
     });
 
@@ -221,6 +241,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
               <ReadField label="Delta #" value={rewardDeltaNumber || '—'} />
               <ReadField label="American #" value={rewardAmericanNumber || '—'} />
               <ReadField label="Department" value={departments.find((d) => d.id === departmentId)?.name || '—'} />
+              <ReadField label="Title" value={titles.find((t) => t.id === titleId)?.name || '—'} />
+              <ReadField label="Is Employee" value={isEmployee ? 'Yes' : 'No'} />
+              <ReadField label="Reports To" value={employeeOptions.find((u) => u.id === reportsToId)?.name || '—'} />
               <ReadField label="Custom Roles" value={roles.filter((r) => customRoleIds.includes(r.id)).map((r) => r.name).join(', ') || '—'} />
               <ReadField label="Company Membership" value={companies.filter((c) => companyIds.includes(c.id)).map((c) => c.name).join(', ') || '—'} />
               <ReadField label="Active Company" value={companies.find((c) => c.id === activeCompanyId)?.name || '—'} />
@@ -233,6 +256,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
             <FormField label="Type"><select value={type} onChange={(e) => setType(e.target.value)} className="field">{availableUserTypes.map((value) => <option key={value} value={value}>{value}</option>)}</select></FormField>
             <FormField label="Status"><label className="field inline-flex items-center gap-2"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active</label></FormField>
             <FormField label="Department"><select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="field"><option value="">Unassigned</option>{departments.filter((d) => d.active).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></FormField>
+            <FormField label="Title"><select value={titleId} onChange={(e) => setTitleId(e.target.value)} className="field"><option value="">No title</option>{titles.filter((t) => t.active).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></FormField>
+            <FormField label="Is Employee"><label className="field inline-flex items-center gap-2"><input type="checkbox" checked={isEmployee} onChange={(e) => { setIsEmployee(e.target.checked); if (!e.target.checked) setReportsToId(''); }} /> Is Employee</label></FormField>
+            <FormField label="Reports To"><select value={reportsToId} onChange={(e) => setReportsToId(e.target.value)} className="field" disabled={!isEmployee}><option value="">No manager</option>{employeeOptions.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
             <FormField label="Phone"><input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" /></FormField>
             <FormField label="Known Traveler Number"><input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} className="field" /></FormField>
             <FormField label="Marriott #"><input value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} className="field" /></FormField>

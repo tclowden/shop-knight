@@ -11,11 +11,17 @@ type User = {
   email: string;
   type: string;
   active: boolean;
+  isEmployee?: boolean;
+  reportsToId?: string | null;
+  reportsTo?: { id: string; name: string } | null;
+  titleId?: string | null;
+  title?: { id: string; name: string } | null;
   customRoles?: Array<{ roleId: string; role: { id: string; name: string } }>;
 };
 
 type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
+type Title = { id: string; name: string; active: boolean };
 
 const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
@@ -23,12 +29,16 @@ export default function UsersAdminPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
+  const [titles, setTitles] = useState<Title[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [type, setType] = useState('SALES');
   const [companyId, setCompanyId] = useState('');
+  const [titleId, setTitleId] = useState('');
+  const [isEmployee, setIsEmployee] = useState(true);
+  const [reportsToId, setReportsToId] = useState('');
   const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
   const [rowTypes, setRowTypes] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState('');
@@ -40,9 +50,10 @@ export default function UsersAdminPage() {
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
   async function load() {
-    const [usersRes, rolesRes, companiesRes] = await Promise.all([
+    const [usersRes, rolesRes, titlesRes, companiesRes] = await Promise.all([
       fetch('/api/admin/users'),
       fetch('/api/admin/custom-roles'),
+      fetch('/api/admin/titles'),
       fetch('/api/admin/companies'),
     ]);
     if (usersRes.ok) {
@@ -53,6 +64,7 @@ export default function UsersAdminPage() {
       setRowTypes(nextRowTypes);
     }
     if (rolesRes.ok) setRoles(await rolesRes.json());
+    if (titlesRes.ok) setTitles(await titlesRes.json());
     if (companiesRes.ok) {
       const data = await companiesRes.json();
       const list = Array.isArray(data?.companies) ? data.companies : [];
@@ -91,7 +103,17 @@ export default function UsersAdminPage() {
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, type, companyId, customRoleIds }),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        type,
+        companyId,
+        titleId: titleId || null,
+        isEmployee,
+        reportsToId: isEmployee && reportsToId ? reportsToId : null,
+        customRoleIds,
+      }),
     });
 
     if (!res.ok) {
@@ -104,6 +126,9 @@ export default function UsersAdminPage() {
     setEmail('');
     setPassword('');
     setType('SALES');
+    setTitleId('');
+    setIsEmployee(true);
+    setReportsToId('');
     setCustomRoleIds([]);
     await load();
   }
@@ -125,7 +150,7 @@ export default function UsersAdminPage() {
       </div>
 
       <form onSubmit={createUser} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="field" required />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="field" required />
@@ -133,6 +158,15 @@ export default function UsersAdminPage() {
           <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="field" required>
             <option value="" disabled>Select company</option>
             {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+          </select>
+          <select value={titleId} onChange={(e) => setTitleId(e.target.value)} className="field">
+            <option value="">No title</option>
+            {titles.filter((t) => t.active).map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+          </select>
+          <label className="field inline-flex items-center gap-2"><input type="checkbox" checked={isEmployee} onChange={(e) => { setIsEmployee(e.target.checked); if (!e.target.checked) setReportsToId(''); }} /> Is Employee</label>
+          <select value={reportsToId} onChange={(e) => setReportsToId(e.target.value)} className="field" disabled={!isEmployee}>
+            <option value="">No manager</option>
+            {users.filter((u) => u.active && (u.isEmployee ?? true)).map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}
           </select>
           <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600" disabled={!companyId || companies.length === 0}>Create User</button>
         </div>
@@ -157,6 +191,9 @@ export default function UsersAdminPage() {
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Email</th>
               <th className="px-4 py-3 font-semibold">Type</th>
+              <th className="px-4 py-3 font-semibold">Title</th>
+              <th className="px-4 py-3 font-semibold">Employee</th>
+              <th className="px-4 py-3 font-semibold">Reports To</th>
               <th className="px-4 py-3 font-semibold">Custom Roles</th>
               <th className="px-4 py-3 font-semibold">Status</th>
             </tr>
@@ -180,12 +217,15 @@ export default function UsersAdminPage() {
                     </div>
                   )}
                 </td>
+                <td className="px-4 py-4">{u.title?.name || '—'}</td>
+                <td className="px-4 py-4">{u.isEmployee === false ? 'No' : 'Yes'}</td>
+                <td className="px-4 py-4">{u.reportsTo?.name || '—'}</td>
                 <td className="px-4 py-4">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
                 <td className="px-4 py-4">{u.active ? 'Active' : 'Disabled'}</td>
               </tr>
             ))}
             {users.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={5}>No users found.</td></tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={8}>No users found.</td></tr>
             ) : null}
           </tbody>
         </table>

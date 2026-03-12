@@ -110,6 +110,7 @@ model Company {
   trips              Trip[]
   perDiemRequests    PerDiemRequest[]
   departments        Department[]
+  titles             Title[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 }
@@ -129,6 +130,9 @@ model User {
   active                      Boolean            @default(true)
   activeCompanyId             String?
   departmentId                String?
+  titleId                     String?
+  reportsToId                 String?
+  isEmployee                  Boolean            @default(true)
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
   tasks                       Task[]
@@ -136,6 +140,9 @@ model User {
   companyMemberships          UserCompany[]
   activeCompany               Company?           @relation("ActiveCompanyUsers", fields: [activeCompanyId], references: [id])
   department                  Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  title                       Title?             @relation(fields: [titleId], references: [id], onDelete: SetNull)
+  reportsTo                   User?              @relation("UserReporting", fields: [reportsToId], references: [id], onDelete: SetNull)
+  directReports               User[]             @relation("UserReporting")
   customRoles                 UserCustomRole[]
   templateSteps               TaskTemplateStep[] @relation("TemplateSpecificAssignee")
   salesRepOpportunities       Opportunity[]      @relation("OpportunitySalesRep")
@@ -164,6 +171,19 @@ model Department {
   salesOrders  SalesOrder[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model Title {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users     User[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@unique([companyId, name])
 }
