@@ -120,6 +120,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid company' }, { status: 400 });
   }
 
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, active: true },
+  });
+
+  if (existing) {
+    return NextResponse.json(
+      {
+        error: `User already exists: ${existing.name} (${existing.email}). Open their user record and update/reactivate instead.`,
+        userId: existing.id,
+        active: existing.active,
+      },
+      { status: 409 }
+    );
+  }
+
   if (titleId) {
     const title = await prisma.title.findFirst({ where: { id: titleId, companyId } });
     if (!title) {
