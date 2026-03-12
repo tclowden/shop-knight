@@ -118,6 +118,11 @@ export default function UsersAdminPage() {
       <h1 className="text-3xl font-semibold tracking-tight">User Admin</h1>
       <p className="text-sm text-slate-500">Assign base type plus multiple custom roles for page access.</p>
       <Nav />
+      <div className="mb-4">
+        <Link href="/admin/users/org-chart" className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          View Org Chart
+        </Link>
+      </div>
 
       <form onSubmit={createUser} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-7">

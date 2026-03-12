@@ -18,6 +18,7 @@ const links = [
 
 const adminLinks = [
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/users/org-chart', label: 'Org Chart' },
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/departments', label: 'Departments' },
