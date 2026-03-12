@@ -24,7 +24,7 @@ export async function GET() {
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
 
   const users = await prisma.user.findMany({
-    where: { active: true, activeCompanyId: companyId, isEmployee: true },
+    where: { active: true, activeCompanyId: companyId, isEmployee: true, departmentId: { not: null } },
     orderBy: [{ name: 'asc' }],
     select: {
       id: true,
