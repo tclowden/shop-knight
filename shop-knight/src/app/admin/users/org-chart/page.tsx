@@ -29,7 +29,7 @@ function divisionColorMap(divisions: string[]) {
 
 function PersonCard({ node, color }: { node: OrgNode; color: string }) {
   return (
-    <div className="relative min-w-[220px] rounded-lg border bg-white px-3 py-2 shadow-sm" style={{ borderColor: color }}>
+    <div className="min-w-[220px] rounded-lg border bg-white px-3 py-2 text-left shadow-sm" style={{ borderColor: color }}>
       <div className="mb-1 flex items-center gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
           {node.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
@@ -44,20 +44,36 @@ function PersonCard({ node, color }: { node: OrgNode; color: string }) {
   );
 }
 
-function OrgBranch({ node, childrenMap, colors }: { node: OrgNode; childrenMap: Map<string, OrgNode[]>; colors: Record<string, string> }) {
+function TreeNode({
+  node,
+  childrenMap,
+  colors,
+}: {
+  node: OrgNode;
+  childrenMap: Map<string, OrgNode[]>;
+  colors: Record<string, string>;
+}) {
   const children = childrenMap.get(node.id) || [];
 
   return (
-    <li className="org-node">
+    <div className="flex flex-col items-center">
       <PersonCard node={node} color={colors[node.division] || '#94a3b8'} />
+
       {children.length > 0 ? (
-        <ul className="org-children">
-          {children.map((child) => (
-            <OrgBranch key={child.id} node={child} childrenMap={childrenMap} colors={colors} />
-          ))}
-        </ul>
+        <>
+          <div className="h-5 w-px bg-slate-300" />
+          <div className="relative flex items-start gap-6 pt-5">
+            <div className="absolute left-8 right-8 top-0 h-px bg-slate-300" />
+            {children.map((child) => (
+              <div key={child.id} className="relative flex flex-col items-center">
+                <div className="absolute -top-5 h-5 w-px bg-slate-300" />
+                <TreeNode node={child} childrenMap={childrenMap} colors={colors} />
+              </div>
+            ))}
+          </div>
+        </>
       ) : null}
-    </li>
+    </div>
   );
 }
 
@@ -107,7 +123,7 @@ export default function OrgChartPage() {
   }, [data]);
 
   return (
-    <main className="mx-auto max-w-[1600px] bg-[#f5f7fa] p-8 text-slate-800">
+    <main className="mx-auto max-w-[1700px] bg-[#f5f7fa] p-8 text-slate-800">
       <h1 className="text-3xl font-semibold tracking-tight">Company Org Chart</h1>
       <p className="text-sm text-slate-500">Hierarchy view built from Is Employee, Reports To, and Title.</p>
       <Nav />
@@ -135,57 +151,16 @@ export default function OrgChartPage() {
           </aside>
 
           {roots.length > 0 ? (
-            <div className="org-wrap min-w-max pr-64">
-              <ul className="org-root">
+            <div className="min-w-max pr-64">
+              <div className="flex items-start gap-12">
                 {roots.map((root) => (
-                  <OrgBranch key={root.id} node={root} childrenMap={childrenMap} colors={colors} />
+                  <TreeNode key={root.id} node={root} childrenMap={childrenMap} colors={colors} />
                 ))}
-              </ul>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-slate-500">No employee hierarchy found for this company.</p>
           )}
-
-          <style jsx>{`
-            .org-wrap ul { position: relative; padding-top: 20px; display: flex; justify-content: center; }
-            .org-wrap li { list-style-type: none; position: relative; padding: 20px 10px 0 10px; text-align: center; }
-            .org-wrap li::before,
-            .org-wrap li::after {
-              content: '';
-              position: absolute;
-              top: 0;
-              right: 50%;
-              border-top: 1px solid #cbd5e1;
-              width: 50%;
-              height: 20px;
-            }
-            .org-wrap li::after {
-              right: auto;
-              left: 50%;
-              border-left: 1px solid #cbd5e1;
-            }
-            .org-wrap li:only-child::after,
-            .org-wrap li:only-child::before { display: none; }
-            .org-wrap li:only-child { padding-top: 0; }
-            .org-wrap li:first-child::before,
-            .org-wrap li:last-child::after { border: 0 none; }
-            .org-wrap li:last-child::before {
-              border-right: 1px solid #cbd5e1;
-              border-radius: 0 8px 0 0;
-            }
-            .org-wrap li:first-child::after {
-              border-radius: 8px 0 0 0;
-            }
-            .org-wrap ul ul::before {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 50%;
-              border-left: 1px solid #cbd5e1;
-              width: 0;
-              height: 20px;
-            }
-          `}</style>
         </section>
       ) : null}
     </main>
