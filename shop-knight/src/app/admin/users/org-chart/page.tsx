@@ -154,7 +154,7 @@ export default function OrgChartPage() {
     });
   }
 
-  const { roots, childrenMap, colors, divisions } = useMemo(() => {
+  const { roots, childrenMap, colors } = useMemo(() => {
     const nodes = data?.nodes || [];
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const childMap = new Map<string, OrgNode[]>();
@@ -173,7 +173,6 @@ export default function OrgChartPage() {
       roots: top,
       childrenMap: childMap,
       colors: divisionColorMap(allDivisions),
-      divisions: allDivisions,
     };
   }, [data]);
 
@@ -202,21 +201,9 @@ export default function OrgChartPage() {
 
       {!loading && !error ? (
         <section className="relative overflow-auto rounded-xl border border-slate-200 bg-[#f3f4f6] p-6 shadow-sm">
-          <aside className="absolute right-6 top-6 w-56 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">Legend</h3>
-            <ul className="space-y-2 text-xs">
-              {divisions.map((division) => (
-                <li key={division} className="flex items-center gap-2 text-slate-700">
-                  <span className="inline-block h-4 w-8 rounded border-2" style={{ borderColor: colors[division] }} />
-                  <span>{division}</span>
-                </li>
-              ))}
-            </ul>
-          </aside>
-
           {roots.length > 0 ? (
-            <div className="min-w-max pr-64">
-              <div className="flex items-start gap-12">
+            <div className="mx-auto min-w-max">
+              <div className="flex items-start justify-center gap-12">
                 {roots.map((root) => (
                   <TreeNode
                     key={root.id}
