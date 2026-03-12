@@ -56,15 +56,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     let rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> }; county?: string } | null = null;
     let mie = 0;
+    let yearUsed = year;
     let usedFallback = false;
     let fallbackNote: string | null = null;
     try {
       const gsa = await retry(() => fetchGsaPerDiem(city, state, year, apiKey), 3, 400);
       rateEntry = gsa.rateEntry;
       mie = gsa.mie;
+      yearUsed = gsa.yearUsed;
+      if (gsa.fallbackUsed) {
+        usedFallback = true;
+        fallbackNote = `Used ${yearUsed} GSA rates because ${year} is not available yet.`;
+      }
     } catch (error) {
       const cached = await prisma.perDiemRequest.findFirst({
-        where: withCompany(companyId, { destinationCity: city, destinationState: state, year }),
+        where: withCompany(companyId, { destinationCity: city, destinationState: state, year: yearUsed }),
         orderBy: { updatedAt: 'desc' },
       });
       if (!cached?.dailyRate) {
@@ -99,7 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         status: 'NEW',
         destinationCity: city,
         destinationState: state,
-        year,
+        year: yearUsed,
         dailyRate: mie,
         lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
         days,

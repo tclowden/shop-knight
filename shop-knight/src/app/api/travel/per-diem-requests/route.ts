@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   }
 
   const year = getTripYear(trip.startDate, trip.endDate);
-  let gsa: { rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> } | undefined }; mie: number };
+  let gsa: { rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> } | undefined }; mie: number; yearUsed: number; fallbackUsed: boolean };
   try {
     gsa = await fetchGsaPerDiem(trip.destinationCity, trip.destinationState, year, apiKey);
   } catch (error) {
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
       status: 'NEW',
       destinationCity: trip.destinationCity,
       destinationState: trip.destinationState,
-      year,
+      year: gsa.yearUsed,
       dailyRate: gsa.mie,
       lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
       days,

@@ -80,7 +80,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const total = gsa.mie * days * travelerCount;
 
     recomputeData = {
-      year,
+      year: gsa.yearUsed,
       dailyRate: gsa.mie,
       lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
       days,
