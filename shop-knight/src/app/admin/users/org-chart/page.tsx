@@ -27,7 +27,19 @@ function divisionColorMap(divisions: string[]) {
   }, {});
 }
 
-function PersonCard({ node, color }: { node: OrgNode; color: string }) {
+function PersonCard({
+  node,
+  color,
+  childCount,
+  collapsed,
+  onToggle,
+}: {
+  node: OrgNode;
+  color: string;
+  childCount: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="min-w-[220px] rounded-lg border bg-white px-3 py-2 text-left shadow-sm" style={{ borderColor: color }}>
       <div className="mb-1 flex items-center gap-2">
@@ -39,7 +51,18 @@ function PersonCard({ node, color }: { node: OrgNode; color: string }) {
           <p className="text-xs leading-tight text-slate-500">{node.title}</p>
         </div>
       </div>
-      <p className="text-xs font-medium" style={{ color }}>{node.division}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium" style={{ color }}>{node.division}</p>
+        {childCount > 0 ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="rounded border border-slate-300 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            {collapsed ? `Expand (${childCount})` : 'Collapse'}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -48,18 +71,29 @@ function TreeNode({
   node,
   childrenMap,
   colors,
+  collapsed,
+  toggleCollapse,
 }: {
   node: OrgNode;
   childrenMap: Map<string, OrgNode[]>;
   colors: Record<string, string>;
+  collapsed: Set<string>;
+  toggleCollapse: (id: string) => void;
 }) {
   const children = childrenMap.get(node.id) || [];
+  const isCollapsed = collapsed.has(node.id);
 
   return (
     <div className="flex flex-col items-center">
-      <PersonCard node={node} color={colors[node.division] || '#94a3b8'} />
+      <PersonCard
+        node={node}
+        color={colors[node.division] || '#94a3b8'}
+        childCount={children.length}
+        collapsed={isCollapsed}
+        onToggle={() => toggleCollapse(node.id)}
+      />
 
-      {children.length > 0 ? (
+      {children.length > 0 && !isCollapsed ? (
         <>
           <div className="h-5 w-px bg-slate-300" />
           <div className="relative flex items-start gap-6 pt-5">
@@ -67,7 +101,13 @@ function TreeNode({
             {children.map((child) => (
               <div key={child.id} className="relative flex flex-col items-center">
                 <div className="absolute -top-5 h-5 w-px bg-slate-300" />
-                <TreeNode node={child} childrenMap={childrenMap} colors={colors} />
+                <TreeNode
+                  node={child}
+                  childrenMap={childrenMap}
+                  colors={colors}
+                  collapsed={collapsed}
+                  toggleCollapse={toggleCollapse}
+                />
               </div>
             ))}
           </div>
@@ -81,6 +121,7 @@ export default function OrgChartPage() {
   const [data, setData] = useState<OrgResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -98,6 +139,15 @@ export default function OrgChartPage() {
     }
     load();
   }, []);
+
+  function toggleCollapse(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const { roots, childrenMap, colors, divisions } = useMemo(() => {
     const nodes = data?.nodes || [];
@@ -130,7 +180,16 @@ export default function OrgChartPage() {
 
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-slate-600">{data?.company?.name ? `Company: ${data.company.name}` : 'Loading company...'}</p>
-        <Link href="/admin/users" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Back to Users</Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCollapsed(new Set())}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            Expand All
+          </button>
+          <Link href="/admin/users" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Back to Users</Link>
+        </div>
       </div>
 
       {loading ? <p className="text-sm text-slate-500">Loading org chart…</p> : null}
@@ -154,7 +213,14 @@ export default function OrgChartPage() {
             <div className="min-w-max pr-64">
               <div className="flex items-start gap-12">
                 {roots.map((root) => (
-                  <TreeNode key={root.id} node={root} childrenMap={childrenMap} colors={colors} />
+                  <TreeNode
+                    key={root.id}
+                    node={root}
+                    childrenMap={childrenMap}
+                    colors={colors}
+                    collapsed={collapsed}
+                    toggleCollapse={toggleCollapse}
+                  />
                 ))}
               </div>
             </div>
