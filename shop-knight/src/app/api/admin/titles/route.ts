@@ -10,12 +10,26 @@ async function authorizeTitles() {
   return primary;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await authorizeTitles();
   if (!auth.ok) return auth.response;
 
-  const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+  const activeCompanyId = getSessionCompanyId(auth.session);
+  if (!activeCompanyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { searchParams } = new URL(req.url);
+  const requestedCompanyId = String(searchParams.get('companyId') || '').trim();
+  const companyId = requestedCompanyId || activeCompanyId;
+
+  if (companyId !== activeCompanyId) {
+    const userId = String((auth.session.user as { id?: string } | undefined)?.id || '');
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const membership = await prisma.userCompany.findFirst({ where: { userId, companyId }, select: { userId: true } });
+    if (!membership) {
+      return NextResponse.json({ error: 'Forbidden for requested company' }, { status: 403 });
+    }
+  }
 
   const items = await prisma.title.findMany({
     where: withCompany(companyId),

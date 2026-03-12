@@ -51,11 +51,29 @@ export default function UsersAdminPage() {
   const isSuperAdmin = role === 'SUPER_ADMIN' || sessionRoles.includes('SUPER_ADMIN');
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
 
+  async function loadTitles(nextCompanyId: string) {
+    if (!nextCompanyId) {
+      setTitles([]);
+      setTitleId('');
+      return;
+    }
+
+    const res = await fetch(`/api/admin/titles?companyId=${encodeURIComponent(nextCompanyId)}`);
+    if (!res.ok) {
+      setTitles([]);
+      setTitleId('');
+      return;
+    }
+
+    const nextTitles: Title[] = await res.json();
+    setTitles(nextTitles);
+    setTitleId((prev) => (prev && nextTitles.some((t) => t.id === prev) ? prev : ''));
+  }
+
   async function load() {
-    const [usersRes, rolesRes, titlesRes, companiesRes] = await Promise.all([
+    const [usersRes, rolesRes, companiesRes] = await Promise.all([
       fetch('/api/admin/users'),
       fetch('/api/admin/custom-roles'),
-      fetch('/api/admin/titles'),
       fetch('/api/admin/companies'),
     ]);
     if (usersRes.ok) {
@@ -66,12 +84,12 @@ export default function UsersAdminPage() {
       setRowTypes(nextRowTypes);
     }
     if (rolesRes.ok) setRoles(await rolesRes.json());
-    if (titlesRes.ok) setTitles(await titlesRes.json());
     if (companiesRes.ok) {
       const data = await companiesRes.json();
       const list = Array.isArray(data?.companies) ? data.companies : [];
-      setCompanies(list.map((c: { id: string; name: string; slug: string }) => ({ id: c.id, name: c.name, slug: c.slug })));
-      setCompanyId((prev) => prev || list[0]?.id || '');
+      const mapped = list.map((c: { id: string; name: string; slug: string }) => ({ id: c.id, name: c.name, slug: c.slug }));
+      setCompanies(mapped);
+      setCompanyId((prev) => prev || mapped[0]?.id || '');
     }
   }
 
@@ -160,6 +178,11 @@ export default function UsersAdminPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  useEffect(() => {
+    if (!companyId) return;
+    loadTitles(companyId);
+  }, [companyId]);
 
   const totalUsers = users.length;
   const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
