@@ -47,20 +47,25 @@ function PersonCard({
           {node.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
         </div>
         <div>
-          <p className="text-sm font-semibold leading-tight text-slate-800">{node.name}</p>
+          {childCount > 0 ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              className="text-left text-sm font-semibold leading-tight text-slate-800 underline-offset-2 hover:underline"
+              title={collapsed ? `Expand ${node.name}` : `Collapse ${node.name}`}
+            >
+              {node.name}
+            </button>
+          ) : (
+            <p className="text-sm font-semibold leading-tight text-slate-800">{node.name}</p>
+          )}
           <p className="text-xs leading-tight text-slate-500">{node.title}</p>
         </div>
       </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-medium" style={{ color }}>{node.division}</p>
         {childCount > 0 ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            className="rounded border border-slate-300 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-          >
-            {collapsed ? `Expand (${childCount})` : 'Collapse'}
-          </button>
+          <span className="text-[11px] font-semibold text-slate-500">{collapsed ? `+ ${childCount}` : `− ${childCount}`}</span>
         ) : null}
       </div>
     </div>
