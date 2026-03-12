@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requirePermissions, withCompany } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 export async function GET() {
-  const auth = await requirePermissions(['admin.titles.manage']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requirePermissions(['admin.titles.manage']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
