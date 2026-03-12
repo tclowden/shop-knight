@@ -42,6 +42,8 @@ export default function UsersAdminPage() {
   const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
   const [rowTypes, setRowTypes] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState('');
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
   const [error, setError] = useState('');
 
   const role = String(session?.user?.role || '');
@@ -96,6 +98,27 @@ export default function UsersAdminPage() {
     await load();
   }
 
+  async function setUserActive(userId: string, nextActive: boolean) {
+    setError('');
+    setSavingUserId(userId);
+
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: nextActive }),
+    });
+
+    setSavingUserId('');
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data?.error || `Failed to ${nextActive ? 'activate' : 'deactivate'} user`);
+      return;
+    }
+
+    await load();
+  }
+
   async function createUser(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -137,6 +160,12 @@ export default function UsersAdminPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  const totalUsers = users.length;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagedUsers = users.slice(pageStart, pageStart + pageSize);
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
@@ -199,7 +228,7 @@ export default function UsersAdminPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {pagedUsers.map((u) => (
               <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-4"><Link href={`/admin/users/${u.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{u.name}</Link></td>
                 <td className="px-4 py-4">{u.email}</td>
@@ -221,7 +250,21 @@ export default function UsersAdminPage() {
                 <td className="px-4 py-4">{u.isEmployee === false ? 'No' : 'Yes'}</td>
                 <td className="px-4 py-4">{u.reportsTo?.name || '—'}</td>
                 <td className="px-4 py-4">{u.customRoles?.map((entry) => entry.role.name).join(', ') || '—'}</td>
-                <td className="px-4 py-4">{u.active ? 'Active' : 'Disabled'}</td>
+                <td className="px-4 py-4">
+                  <div className="flex items-center gap-2">
+                    <span>{u.active ? 'Active' : 'Disabled'}</span>
+                    {isSuperAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => setUserActive(u.id, !u.active)}
+                        disabled={savingUserId === u.id}
+                        className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {savingUserId === u.id ? 'Saving...' : u.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
               </tr>
             ))}
             {users.length === 0 ? (
@@ -230,6 +273,44 @@ export default function UsersAdminPage() {
           </tbody>
         </table>
       </section>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+        <p>
+          Showing {totalUsers === 0 ? 0 : pageStart + 1}-{Math.min(pageStart + pageSize, totalUsers)} of {totalUsers}
+        </p>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-slate-600">Per page</label>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="h-9 rounded border border-slate-300 bg-white px-2 text-sm"
+          >
+            {[25, 50, 75, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage <= 1}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="px-1">Page {currentPage} / {totalPages}</span>
+          <button
+            type="button"
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage >= totalPages}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
