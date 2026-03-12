@@ -24,38 +24,68 @@ export async function GET() {
   const auth = await requirePermissions(['admin.users.manage']);
   if (!auth.ok) return auth.response;
 
-  const users = await prisma.user.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      type: true,
-      phone: true,
-      knownTravelerNumber: true,
-      rewardMarriottNumber: true,
-      rewardUnitedNumber: true,
-      rewardDeltaNumber: true,
-      rewardAmericanNumber: true,
-      active: true,
-      departmentId: true,
-      department: { select: { id: true, name: true } },
-      titleId: true,
-      title: { select: { id: true, name: true } },
-      reportsToId: true,
-      reportsTo: { select: { id: true, name: true } },
-      isEmployee: true,
-      createdAt: true,
-      customRoles: {
-        select: {
-          roleId: true,
-          role: { select: { id: true, name: true } },
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        phone: true,
+        knownTravelerNumber: true,
+        rewardMarriottNumber: true,
+        rewardUnitedNumber: true,
+        rewardDeltaNumber: true,
+        rewardAmericanNumber: true,
+        active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        titleId: true,
+        title: { select: { id: true, name: true } },
+        reportsToId: true,
+        reportsTo: { select: { id: true, name: true } },
+        isEmployee: true,
+        createdAt: true,
+        customRoles: {
+          select: {
+            roleId: true,
+            role: { select: { id: true, name: true } },
+          },
         },
       },
-    },
-  });
+    });
 
-  return NextResponse.json(users);
+    return NextResponse.json(users);
+  } catch {
+    const users = await prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        phone: true,
+        knownTravelerNumber: true,
+        rewardMarriottNumber: true,
+        rewardUnitedNumber: true,
+        rewardDeltaNumber: true,
+        rewardAmericanNumber: true,
+        active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        createdAt: true,
+        customRoles: {
+          select: {
+            roleId: true,
+            role: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(users);
+  }
 }
 
 export async function POST(req: Request) {
