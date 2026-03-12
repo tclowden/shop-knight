@@ -24,7 +24,7 @@ export async function GET() {
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 404 });
 
   const users = await prisma.user.findMany({
-    where: { active: true, activeCompanyId: companyId, isEmployee: true, departmentId: { not: null } },
+    where: { active: true, activeCompanyId: companyId, isEmployee: true },
     orderBy: [{ name: 'asc' }],
     select: {
       id: true,
@@ -45,5 +45,16 @@ export async function GET() {
     division: user.department?.name || 'Unassigned',
   }));
 
-  return NextResponse.json({ company, nodes });
+  const hasReports = new Set<string>();
+  for (const node of nodes) {
+    if (node.reportsToId) hasReports.add(node.reportsToId);
+  }
+
+  const filteredNodes = nodes.filter((node) => {
+    const unassignedDivision = node.division === 'Unassigned';
+    const isolated = !node.reportsToId && !hasReports.has(node.id);
+    return !(unassignedDivision && isolated);
+  });
+
+  return NextResponse.json({ company, nodes: filteredNodes });
 }
