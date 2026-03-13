@@ -9,10 +9,24 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const lineType = String(searchParams.get('lineType') || '');
   const lineId = String(searchParams.get('lineId') || '');
-  if (!lineType || !lineId) return NextResponse.json({ error: 'lineType and lineId required' }, { status: 400 });
+  const salesOrderId = String(searchParams.get('salesOrderId') || '');
 
-  const where = lineType === 'QUOTE_LINE' ? { quoteLineId: lineId } : lineType === 'SALES_ORDER_LINE' ? { salesOrderLineId: lineId } : null;
-  if (!where) return NextResponse.json({ error: 'Invalid lineType' }, { status: 400 });
+  if (!lineType) return NextResponse.json({ error: 'lineType required' }, { status: 400 });
+
+  const where =
+    lineType === 'QUOTE_LINE'
+      ? (lineId ? { quoteLineId: lineId } : null)
+      : lineType === 'SALES_ORDER_LINE'
+        ? (lineId
+            ? { salesOrderLineId: lineId }
+            : salesOrderId
+              ? { salesOrderLine: { salesOrderId } }
+              : null)
+        : null;
+
+  if (!where) {
+    return NextResponse.json({ error: 'Provide lineId (or salesOrderId for SALES_ORDER_LINE)' }, { status: 400 });
+  }
 
   const proofs = await prisma.proof.findMany({
     where,
@@ -31,6 +45,8 @@ export async function GET(req: Request) {
       approvedAt: p.approvedAt,
       createdAt: p.createdAt,
       hasFile: !!p.fileData,
+      quoteLineId: p.quoteLineId,
+      salesOrderLineId: p.salesOrderLineId,
       lastRequest: p.requests[0]
         ? {
             id: p.requests[0].id,

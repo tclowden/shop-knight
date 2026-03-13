@@ -118,6 +118,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
   const [showProofPicker, setShowProofPicker] = useState(false);
   const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string; statusLabel: string }>>([]);
+  const [proofsByLineId, setProofsByLineId] = useState<Record<string, Proof[]>>({});
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -166,6 +167,24 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [tripEndDate, setTripEndDate] = useState('');
   const [tripTravelerIds, setTripTravelerIds] = useState<string[]>([]);
   const [creatingTrip, setCreatingTrip] = useState(false);
+
+  async function loadProofsForOrder(orderId: string) {
+    const res = await fetch(`/api/proofs?lineType=SALES_ORDER_LINE&salesOrderId=${encodeURIComponent(orderId)}`);
+    if (!res.ok) {
+      setProofsByLineId({});
+      return;
+    }
+
+    const allProofs = (await res.json()) as Array<Proof & { salesOrderLineId?: string | null }>;
+    const grouped: Record<string, Proof[]> = {};
+    for (const proof of allProofs) {
+      const lineKey = (proof as { salesOrderLineId?: string | null }).salesOrderLineId || '';
+      if (!lineKey) continue;
+      if (!grouped[lineKey]) grouped[lineKey] = [];
+      grouped[lineKey].push(proof);
+    }
+    setProofsByLineId(grouped);
+  }
 
   async function load(orderId: string) {
     setLoadError('');
@@ -218,7 +237,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
-    await loadLoadLists(orderId);
+    await Promise.all([loadLoadLists(orderId), loadProofsForOrder(orderId)]);
   }
 
   async function loadLoadLists(orderId: string) {
@@ -378,15 +397,9 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   async function loadUnsentProofOptions() {
     if (!order) return;
-    const proofsByLine = await Promise.all(
-      order.lines.map(async (line) => {
-        const res = await fetch(`/api/proofs?lineType=SALES_ORDER_LINE&lineId=${line.id}`);
-        if (!res.ok) return [] as Proof[];
-        return (await res.json()) as Proof[];
-      })
-    );
 
-    const options = proofsByLine.flatMap((proofs, index) => {
+    const options = order.lines.flatMap((line) => {
+      const proofs = proofsByLineId[line.id] || [];
       const latest = [...proofs].sort((a, b) => b.version - a.version || +new Date(b.createdAt) - +new Date(a.createdAt))[0];
       if (!latest) return [];
       if (latest.status === 'APPROVED' || latest.lastRequest?.decision === 'APPROVED') return [];
@@ -395,7 +408,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         id: latest.id,
         fileName: latest.fileName,
         mimeType: latest.mimeType,
-        lineDescription: order.lines[index]?.description || 'Line item',
+        lineDescription: line.description || 'Line item',
         statusLabel: !latest.lastRequest
           ? 'Never Sent'
           : !latest.lastRequest.respondedAt
@@ -891,6 +904,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                     });
                   }}
                   selectedLineIds={selectedLineIds}
+                  initialProofs={proofsByLineId[line.id] || []}
                   onToggleLineSelection={(lineId, selected) => {
                     setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
                   }}
@@ -1084,7 +1098,7 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, initialProofs, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; initialProofs: Proof[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -1157,9 +1171,21 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   }
 
   useEffect(() => {
-    loadProofs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [line.id]);
+    setProofs(initialProofs || []);
+    const nextProofs = initialProofs || [];
+    if (nextProofs.length === 0) {
+      setProofState('NONE');
+      return;
+    }
+    const latest = [...nextProofs].sort((a, b) => b.version - a.version || +new Date(b.createdAt) - +new Date(a.createdAt))[0];
+    const hasRejectedHistory = nextProofs.some((p) => p.status === 'REVISIONS_REQUESTED');
+    if (!latest.lastRequest && hasRejectedHistory) setProofState('RESEND_NEEDED');
+    else if (latest.status === 'REVISIONS_REQUESTED') setProofState('REJECTED');
+    else if (latest.lastRequest && !latest.lastRequest.respondedAt) setProofState('PENDING');
+    else if (!latest.lastRequest) setProofState('UNSENT');
+    else if (latest.status === 'APPROVED') setProofState('APPROVED');
+    else setProofState('UNSENT');
+  }, [initialProofs]);
 
   useEffect(() => {
     if (!showProofs) return;
