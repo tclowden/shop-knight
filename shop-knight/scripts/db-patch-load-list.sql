@@ -1,4 +1,4 @@
--- Idempotent load-list patch
+-- Idempotent patch for Sales Order Load Lists (dev-safe)
 
 CREATE TABLE IF NOT EXISTS "LoadList" (
   "id" TEXT NOT NULL,
@@ -9,16 +9,6 @@ CREATE TABLE IF NOT EXISTS "LoadList" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "LoadList_pkey" PRIMARY KEY ("id")
 );
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LoadList_salesOrderId_fkey') THEN
-    ALTER TABLE "LoadList"
-      ADD CONSTRAINT "LoadList_salesOrderId_fkey"
-      FOREIGN KEY ("salesOrderId") REFERENCES "SalesOrder"("id")
-      ON DELETE CASCADE ON UPDATE CASCADE;
-  END IF;
-END $$;
 
 CREATE TABLE IF NOT EXISTS "LoadListItem" (
   "id" TEXT NOT NULL,
@@ -31,6 +21,16 @@ CREATE TABLE IF NOT EXISTS "LoadListItem" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "LoadListItem_pkey" PRIMARY KEY ("id")
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LoadList_salesOrderId_fkey') THEN
+    ALTER TABLE "LoadList"
+      ADD CONSTRAINT "LoadList_salesOrderId_fkey"
+      FOREIGN KEY ("salesOrderId") REFERENCES "SalesOrder"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 DO $$
 BEGIN

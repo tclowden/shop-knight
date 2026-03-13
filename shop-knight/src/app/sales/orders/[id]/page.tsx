@@ -743,7 +743,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             {loadLists.slice(0, 3).map((list) => (
               <div key={list.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
                 <p className="font-semibold">{list.name} • {new Date(list.createdAt).toLocaleString()}</p>
-                <p>{list.items.length} items</p>
+                <div className="mt-1 flex items-center justify-between">
+                  <p>{list.items.length} items</p>
+                  <a href={`/sales/orders/${id}/load-lists/${list.id}/print`} target="_blank" rel="noreferrer" className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">Print PDF</a>
+                </div>
               </div>
             ))}
           </div>
