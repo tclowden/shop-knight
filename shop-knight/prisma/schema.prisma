@@ -176,6 +176,7 @@ model User {
   createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
   createdExpenseReports       ExpenseReport[]    @relation("ExpenseReportCreator")
   approvedExpenseReports      ExpenseReport[]    @relation("ExpenseReportApprover")
+  employeeExpenseReports      ExpenseReport[]    @relation("ExpenseReportEmployee")
 }
 
 model Department {
@@ -833,6 +834,7 @@ model ExpenseReport {
   reportNumber     String
   title            String
   employeeName     String
+  employeeUserId   String?
   status           ExpenseReportStatus @default(DRAFT)
   periodStart      DateTime?
   periodEnd        DateTime?
@@ -851,6 +853,7 @@ model ExpenseReport {
   company          Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdByUser    User?               @relation("ExpenseReportCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   approvedByUser   User?               @relation("ExpenseReportApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  employeeUser     User?               @relation("ExpenseReportEmployee", fields: [employeeUserId], references: [id], onDelete: SetNull)
   lines            ExpenseLine[]
 
   @@unique([companyId, reportNumber])

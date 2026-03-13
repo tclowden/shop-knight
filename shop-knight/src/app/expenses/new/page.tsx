@@ -1,19 +1,32 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
+
+type UserOption = { id: string; name: string; email: string; type: string };
 
 export default function NewExpenseReportPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
-  const [employeeName, setEmployeeName] = useState('');
+  const [employeeUserId, setEmployeeUserId] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [notes, setNotes] = useState('');
+  const [employees, setEmployees] = useState<UserOption[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const run = async () => {
+      const res = await fetch('/api/users');
+      if (!res.ok) return;
+      const data = (await res.json()) as UserOption[];
+      setEmployees(data);
+    };
+    run();
+  }, []);
 
   async function createReport(e: FormEvent) {
     e.preventDefault();
@@ -25,7 +38,7 @@ export default function NewExpenseReportPage() {
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, employeeName, periodStart, periodEnd, notes }),
+        body: JSON.stringify({ title, employeeUserId, periodStart, periodEnd, notes }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -58,8 +71,13 @@ export default function NewExpenseReportPage() {
           <label className="text-sm font-medium text-slate-700 md:col-span-2">Report Title
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="field mt-1" placeholder="March client travel + meals" required />
           </label>
-          <label className="text-sm font-medium text-slate-700">Employee Name
-            <input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} className="field mt-1" placeholder="Employee name" required />
+          <label className="text-sm font-medium text-slate-700">Employee
+            <select value={employeeUserId} onChange={(e) => setEmployeeUserId(e.target.value)} className="field mt-1" required>
+              <option value="">Select employee…</option>
+              {employees.map((user) => (
+                <option key={user.id} value={user.id}>{user.name} — {user.email}</option>
+              ))}
+            </select>
           </label>
           <label className="text-sm font-medium text-slate-700">Period Start
             <input value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} type="date" className="field mt-1" />

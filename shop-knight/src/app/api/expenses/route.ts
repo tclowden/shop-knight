@@ -48,9 +48,17 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const title = String(body?.title || '').trim();
-  const employeeName = String(body?.employeeName || '').trim();
-  if (!title || !employeeName) {
-    return NextResponse.json({ error: 'title and employeeName are required' }, { status: 400 });
+  const employeeUserId = String(body?.employeeUserId || '').trim();
+  if (!title || !employeeUserId) {
+    return NextResponse.json({ error: 'title and employee are required' }, { status: 400 });
+  }
+
+  const employee = await prisma.user.findUnique({
+    where: { id: employeeUserId },
+    select: { id: true, name: true, active: true },
+  });
+  if (!employee || !employee.active) {
+    return NextResponse.json({ error: 'Selected employee was not found' }, { status: 404 });
   }
 
   const userId = (auth.session.user as { id?: string } | undefined)?.id || null;
@@ -59,7 +67,8 @@ export async function POST(req: Request) {
       companyId,
       reportNumber: nextReportNumber(),
       title,
-      employeeName,
+      employeeName: employee.name,
+      employeeUserId: employee.id,
       periodStart: body?.periodStart ? new Date(String(body.periodStart)) : null,
       periodEnd: body?.periodEnd ? new Date(String(body.periodEnd)) : null,
       notes: body?.notes ? String(body.notes) : null,
