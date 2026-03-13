@@ -16,6 +16,7 @@ export default function JobWorkflowsAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [items, setItems] = useState<Workflow[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingWorkflowId, setEditingWorkflowId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<StepDraft[]>([
@@ -46,12 +47,36 @@ export default function JobWorkflowsAdminPage() {
     setSteps((prev) => prev.filter((_, idx) => idx !== i));
   }
 
-  async function createWorkflow(e: FormEvent) {
+  function openCreateModal() {
+    setEditingWorkflowId(null);
+    setError('');
+    setName('');
+    setSteps([
+      { name: 'Prepress', assigneeMode: 'PROJECT_COORDINATOR', specificAssigneeId: '' },
+      { name: 'Production', assigneeMode: 'PM', specificAssigneeId: '' },
+      { name: 'Quality Check', assigneeMode: 'UNASSIGNED', specificAssigneeId: '' },
+    ]);
+    setShowCreateModal(true);
+  }
+
+  function openEditModal(workflow: Workflow) {
+    setEditingWorkflowId(workflow.id);
+    setError('');
+    setName(workflow.name);
+    setSteps(workflow.steps.map((step) => ({
+      name: step.name,
+      assigneeMode: step.assigneeMode as StepDraft['assigneeMode'],
+      specificAssigneeId: step.specificAssignee?.id || '',
+    })));
+    setShowCreateModal(true);
+  }
+
+  async function saveWorkflow(e: FormEvent) {
     e.preventDefault();
     setError('');
 
-    const res = await fetch('/api/admin/job-workflows', {
-      method: 'POST',
+    const res = await fetch(editingWorkflowId ? `/api/admin/job-workflows/${editingWorkflowId}` : '/api/admin/job-workflows', {
+      method: editingWorkflowId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
@@ -66,18 +91,12 @@ export default function JobWorkflowsAdminPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      const message = typeof data?.error === 'string' ? data.error : 'Failed to create workflow';
+      const message = typeof data?.error === 'string' ? data.error : `Failed to ${editingWorkflowId ? 'update' : 'create'} workflow`;
       const detail = typeof data?.detail === 'string' ? data.detail : '';
       setError(detail ? `${message} — ${detail}` : message);
       return;
     }
 
-    setName('');
-    setSteps([
-      { name: 'Prepress', assigneeMode: 'PROJECT_COORDINATOR', specificAssigneeId: '' },
-      { name: 'Production', assigneeMode: 'PM', specificAssigneeId: '' },
-      { name: 'Quality Check', assigneeMode: 'UNASSIGNED', specificAssigneeId: '' },
-    ]);
     setShowCreateModal(false);
     await load();
   }
@@ -91,7 +110,7 @@ export default function JobWorkflowsAdminPage() {
       <div className="mb-4 flex justify-end">
         <button
           type="button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={openCreateModal}
           className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
         >
           Create Workflow
@@ -102,11 +121,11 @@ export default function JobWorkflowsAdminPage() {
         <div className="mb-6 rounded-xl border border-slate-300 bg-white p-4 shadow-lg">
           {error ? <p className="mb-2 text-sm text-rose-600">{error}</p> : null}
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800">Create Workflow</h2>
+            <h2 className="text-lg font-semibold text-slate-800">{editingWorkflowId ? 'Edit Workflow' : 'Create Workflow'}</h2>
             <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">Close</button>
           </div>
 
-          <form onSubmit={createWorkflow}>
+          <form onSubmit={saveWorkflow}>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Workflow name" className="field" required />
             </div>
@@ -137,7 +156,7 @@ export default function JobWorkflowsAdminPage() {
 
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={addStep} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">+ Add Step</button>
-              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Save Workflow</button>
+              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">{editingWorkflowId ? 'Update Workflow' : 'Save Workflow'}</button>
             </div>
           </form>
         </div>
@@ -146,7 +165,10 @@ export default function JobWorkflowsAdminPage() {
       <section className="space-y-3">
         {items.map((workflow) => (
           <article key={workflow.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="font-semibold text-slate-800">{workflow.name}</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-semibold text-slate-800">{workflow.name}</h2>
+              <button type="button" onClick={() => openEditModal(workflow)} className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
+            </div>
             <ol className="mt-2 list-decimal pl-5 text-sm text-slate-600">
               {workflow.steps.map((step) => (
                 <li key={step.id}>
