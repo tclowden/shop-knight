@@ -98,6 +98,12 @@ enum ExpenseReportStatus {
   REIMBURSED
 }
 
+enum AmexTransactionStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
 model Company {
   id                 String             @id @default(cuid())
   name               String
@@ -119,6 +125,7 @@ model Company {
   trips              Trip[]
   perDiemRequests    PerDiemRequest[]
   expenseReports     ExpenseReport[]
+  amexTransactions   AmexTransaction[]
   departments        Department[]
   titles             Title[]
   createdAt          DateTime           @default(now())
@@ -851,21 +858,56 @@ model ExpenseReport {
 }
 
 model ExpenseLine {
-  id              String        @id @default(cuid())
-  expenseReportId String
-  expenseDate     DateTime
-  merchant        String
-  category        String
-  description     String?
-  paymentMethod   String?
-  amount          Decimal       @db.Decimal(12, 2)
-  taxAmount       Decimal?      @db.Decimal(12, 2)
-  currency        String        @default("USD")
-  receiptRef      String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                String            @id @default(cuid())
+  expenseReportId   String
+  expenseDate       DateTime
+  merchant          String
+  category          String
+  description       String?
+  paymentMethod     String?
+  amount            Decimal           @db.Decimal(12, 2)
+  taxAmount         Decimal?          @db.Decimal(12, 2)
+  currency          String            @default("USD")
+  receiptRef        String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  expenseReport   ExpenseReport @relation(fields: [expenseReportId], references: [id], onDelete: Cascade)
+  expenseReport     ExpenseReport     @relation(fields: [expenseReportId], references: [id], onDelete: Cascade)
+  receipts          ExpenseReceipt[]
+  matchedAmexTxns   AmexTransaction[] @relation("MatchedExpenseLine")
 
   @@index([expenseReportId, expenseDate])
+}
+
+model ExpenseReceipt {
+  id            String      @id @default(cuid())
+  expenseLineId String
+  fileName      String
+  mimeType      String
+  fileData      Bytes
+  createdAt     DateTime    @default(now())
+
+  expenseLine   ExpenseLine @relation(fields: [expenseLineId], references: [id], onDelete: Cascade)
+
+  @@index([expenseLineId, createdAt])
+}
+
+model AmexTransaction {
+  id               String                @id @default(cuid())
+  companyId        String?
+  postedAt         DateTime
+  merchant         String
+  amount           Decimal               @db.Decimal(12, 2)
+  currency         String                @default("USD")
+  reference        String?
+  source           String?               @default("manual")
+  status           AmexTransactionStatus @default(UNMATCHED)
+  expenseLineId    String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  company          Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenseLine      ExpenseLine?          @relation("MatchedExpenseLine", fields: [expenseLineId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status, postedAt])
 }

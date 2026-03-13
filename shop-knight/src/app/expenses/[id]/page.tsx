@@ -90,6 +90,24 @@ export default function ExpenseReportDetailPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function uploadReceipt(lineId: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+
+    const res = await fetch(`/api/expenses/lines/${lineId}/receipt`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(payload?.error || 'Failed to upload receipt');
+      return;
+    }
+
+    await load(id);
+  }
+
   async function removeLine(lineId: string) {
     const ok = window.confirm('Remove this expense line?');
     if (!ok) return;
@@ -193,8 +211,27 @@ export default function ExpenseReportDetailPage({ params }: { params: Promise<{ 
                 <td className="px-4 py-4">{line.description || '—'}</td>
                 <td className="px-4 py-4">{line.paymentMethod || '—'}</td>
                 <td className="px-4 py-4">${Number(line.amount || 0).toFixed(2)}</td>
-                <td className="px-4 py-4">{line.receiptRef || '—'}</td>
+                <td className="px-4 py-4">
+                  {line.receiptRef ? (
+                    <a href={line.receiptRef} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">View</a>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td className="px-4 py-4 text-right">
+                  <label className="mr-2 inline-flex cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    Upload Receipt
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadReceipt(line.id, file);
+                        e.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
                   <button type="button" onClick={() => removeLine(line.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50">Remove</button>
                 </td>
               </tr>

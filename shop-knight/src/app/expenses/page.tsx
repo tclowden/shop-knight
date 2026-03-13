@@ -34,7 +34,10 @@ export default function ExpensesPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Expense Reports</h1>
           <p className="text-sm text-slate-500">Track draft, submitted, approved, and reimbursed expense reports.</p>
         </div>
-        <Link href="/expenses/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Create Expense Report</Link>
+        <div className="flex items-center gap-2">
+          <Link href="/expenses/amex" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Amex Queue</Link>
+          <Link href="/expenses/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Create Expense Report</Link>
+        </div>
       </div>
 
       <Nav />
