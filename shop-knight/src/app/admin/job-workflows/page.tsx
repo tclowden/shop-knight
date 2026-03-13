@@ -16,6 +16,7 @@ export default function JobWorkflowsAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [items, setItems] = useState<Workflow[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<StepDraft[]>([
     { name: 'Prepress', assigneeMode: 'PROJECT_COORDINATOR', specificAssigneeId: '' },
@@ -47,8 +48,9 @@ export default function JobWorkflowsAdminPage() {
 
   async function createWorkflow(e: FormEvent) {
     e.preventDefault();
+    setError('');
 
-    await fetch('/api/admin/job-workflows', {
+    const res = await fetch('/api/admin/job-workflows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,6 +63,12 @@ export default function JobWorkflowsAdminPage() {
         })),
       }),
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(typeof data?.error === 'string' ? data.error : 'Failed to create workflow');
+      return;
+    }
 
     setName('');
     setSteps([
@@ -90,6 +98,7 @@ export default function JobWorkflowsAdminPage() {
 
       {showCreateModal ? (
         <div className="mb-6 rounded-xl border border-slate-300 bg-white p-4 shadow-lg">
+          {error ? <p className="mb-2 text-sm text-rose-600">{error}</p> : null}
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-800">Create Workflow</h2>
             <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">Close</button>

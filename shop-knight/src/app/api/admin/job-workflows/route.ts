@@ -7,10 +7,9 @@ export async function GET() {
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const items = await prisma.jobWorkflowTemplate.findMany({
-    where: withCompany(companyId),
+    where: companyId ? withCompany(companyId) : { companyId: null },
     include: {
       steps: {
         orderBy: { sortOrder: 'asc' },
@@ -28,7 +27,6 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));
   const name = String(body?.name || '').trim();
@@ -41,7 +39,7 @@ export async function POST(req: Request) {
   try {
     const created = await prisma.jobWorkflowTemplate.create({
       data: {
-        companyId,
+        companyId: companyId ?? null,
         name,
         active: body?.active === undefined ? true : Boolean(body.active),
         steps: {
