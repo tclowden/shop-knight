@@ -64,7 +64,25 @@ export default function LoadListPrintPage({ params }: { params: Promise<{ id: st
       </table>
 
       {data.items.length === 0 ? <p className="mt-3 text-sm text-slate-500">No items.</p> : null}
-      <p className="mt-4 text-xs text-slate-500">Load List ID: {loadListId}</p>
+
+      <section className="mt-8 space-y-4">
+        <div>
+          <p className="mb-1 text-sm font-semibold">Packed By (Name / Signature)</p>
+          <div className="h-8 border-b border-slate-400" />
+        </div>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <p className="mb-1 text-sm font-semibold">Date</p>
+            <div className="h-8 border-b border-slate-400" />
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-semibold">Checked By</p>
+            <div className="h-8 border-b border-slate-400" />
+          </div>
+        </div>
+      </section>
+
+      <p className="mt-6 text-xs text-slate-500">Load List ID: {loadListId}</p>
     </main>
   );
 }

@@ -107,6 +107,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [editingLoadListName, setEditingLoadListName] = useState('Load List');
   const [editingLoadItems, setEditingLoadItems] = useState<Array<{ item: string; qty: string; salesOrderLineId?: string | null }>>([]);
   const [savingEditLoadList, setSavingEditLoadList] = useState(false);
+  const [editAddLineIds, setEditAddLineIds] = useState<string[]>([]);
   const [filterText, setFilterText] = useState('');
   const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
   const [bulkParentId, setBulkParentId] = useState('');
@@ -266,7 +267,23 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     setEditingLoadListId(list.id);
     setEditingLoadListName(list.name || 'Load List');
     setEditingLoadItems(list.items.map((i) => ({ item: i.item, qty: String(i.qty), salesOrderLineId: i.salesOrderLineId || null })));
+    setEditAddLineIds([]);
     setShowEditLoadListModal(true);
+  }
+
+  function addSelectedSoLinesToEdit() {
+    if (editAddLineIds.length === 0) return;
+
+    const selected = (order?.lines || []).filter((line) => editAddLineIds.includes(line.id));
+    setEditingLoadItems((prev) => {
+      const existingLineIds = new Set(prev.map((row) => row.salesOrderLineId).filter(Boolean));
+      const toAdd = selected
+        .filter((line) => !existingLineIds.has(line.id))
+        .map((line) => ({ item: line.description, qty: String(line.qty), salesOrderLineId: line.id }));
+      return [...prev, ...toAdd];
+    });
+
+    setEditAddLineIds([]);
   }
 
   async function saveEditLoadList(e: React.FormEvent) {
@@ -940,10 +957,34 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit Load List</h3>
-              <button type="button" onClick={() => setShowEditLoadListModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
+              <button type="button" onClick={() => { setShowEditLoadListModal(false); setEditAddLineIds([]); }} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
             </div>
             <form onSubmit={saveEditLoadList} className="space-y-3">
               <FormFieldSmall label="List Name"><input value={editingLoadListName} onChange={(e) => setEditingLoadListName(e.target.value)} className="field" /></FormFieldSmall>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Add sales order line items</p>
+                  <button type="button" onClick={addSelectedSoLinesToEdit} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs">Add Selected Lines</button>
+                </div>
+                <div className="max-h-36 space-y-1 overflow-auto rounded border border-slate-200 p-2">
+                  {(order?.lines || []).map((line) => {
+                    const alreadyIncluded = editingLoadItems.some((row) => row.salesOrderLineId === line.id);
+                    return (
+                      <label key={line.id} className={`flex items-center gap-2 text-sm ${alreadyIncluded ? 'text-slate-400' : 'text-slate-700'}`}>
+                        <input
+                          type="checkbox"
+                          disabled={alreadyIncluded}
+                          checked={alreadyIncluded || editAddLineIds.includes(line.id)}
+                          onChange={(e) => setEditAddLineIds((prev) => e.target.checked ? [...new Set([...prev, line.id])] : prev.filter((id) => id !== line.id))}
+                        />
+                        <span>{line.description} (Qty: {line.qty}){alreadyIncluded ? ' — already in list' : ''}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 {editingLoadItems.map((entry, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2">
@@ -956,7 +997,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               <div className="flex items-center justify-between">
                 <button type="button" onClick={() => setEditingLoadItems((prev) => [...prev, { item: '', qty: '1', salesOrderLineId: null }])} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs">+ Add item</button>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowEditLoadListModal(false)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
+                  <button type="button" onClick={() => { setShowEditLoadListModal(false); setEditAddLineIds([]); }} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
                   <button disabled={savingEditLoadList} className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{savingEditLoadList ? 'Saving…' : 'Save Changes'}</button>
                 </div>
               </div>
