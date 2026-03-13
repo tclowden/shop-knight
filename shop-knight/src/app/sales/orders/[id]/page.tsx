@@ -11,6 +11,7 @@ import { useToast } from '@/components/toast-provider';
 type Product = { id: string; sku: string; name: string; salePrice: string | number };
 type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
+type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string };
 type TravelerOption = { id: string; fullName: string };
 type Proof = {
@@ -94,6 +95,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplateOption[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [loadLists, setLoadLists] = useState<LoadList[]>([]);
@@ -188,11 +190,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   async function load(orderId: string) {
     setLoadError('');
-    const [soRes, pRes, usersRes, statusesRes, oppRes, travelerRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
       fetch('/api/admin/sales-order-statuses'),
+      fetch('/api/job-workflows/templates'),
       fetch('/api/opportunities'),
       fetch('/api/travel/travelers'),
     ]);
@@ -235,6 +238,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
     if (statusesRes.ok) setStatuses(await statusesRes.json());
+    if (workflowRes.ok) setWorkflowTemplates(await workflowRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
     await Promise.all([loadLoadLists(orderId), loadProofsForOrder(orderId)]);
@@ -905,6 +909,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   }}
                   selectedLineIds={selectedLineIds}
                   initialProofs={proofsByLineId[line.id] || []}
+                  workflowTemplates={workflowTemplates}
+                  projectCoordinatorUserId={''}
                   onToggleLineSelection={(lineId, selected) => {
                     setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
                   }}
@@ -1098,7 +1104,7 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, initialProofs, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; initialProofs: Proof[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, initialProofs, workflowTemplates, projectCoordinatorUserId, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; initialProofs: Proof[]; workflowTemplates: WorkflowTemplateOption[]; projectCoordinatorUserId?: string; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -1106,6 +1112,8 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofEmail, setProofEmail] = useState('');
   const [sendingProofId, setSendingProofId] = useState('');
+  const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState('');
+  const [creatingJob, setCreatingJob] = useState(false);
   const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
 
   useEffect(() => {
@@ -1168,6 +1176,32 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     if (!res.ok) { toast('Failed to send proof approval', 'error'); return; }
     toast('Proof approval email sent', 'success');
     await loadProofs();
+  }
+
+  async function createJobFromApprovedProof() {
+    if (creatingJob) return;
+    setCreatingJob(true);
+
+    try {
+      const res = await fetch(`/api/sales-order-lines/${line.id}/jobs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workflowTemplateId: selectedWorkflowTemplateId || null,
+          projectCoordinatorUserId: projectCoordinatorUserId || null,
+        }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(typeof payload?.error === 'string' ? payload.error : 'Failed to create job', 'error');
+        return;
+      }
+
+      toast('Job created from approved proof', 'success');
+    } finally {
+      setCreatingJob(false);
+    }
   }
 
   useEffect(() => {
@@ -1259,6 +1293,25 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
               <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field mt-1" />
             </label>
           </div>
+          <div className="mt-3 rounded-md border border-slate-200 bg-white p-2">
+            <p className="text-xs font-semibold text-slate-700">Create Job</p>
+            <p className="text-[11px] text-slate-500">Available after latest proof is approved.</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select value={selectedWorkflowTemplateId} onChange={(e) => setSelectedWorkflowTemplateId(e.target.value)} className="field h-8 w-56 text-xs">
+                <option value="">No workflow</option>
+                {workflowTemplates.map((wf) => <option key={wf.id} value={wf.id}>{wf.name}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={createJobFromApprovedProof}
+                disabled={creatingJob || proofState !== 'APPROVED'}
+                className="rounded-md bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {creatingJob ? 'Creating…' : 'Create Job from Approved Proof'}
+              </button>
+            </div>
+          </div>
+
           <div className="mt-2 space-y-2">
             {proofs.map((proof) => (
               <div key={proof.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white p-2 text-xs">

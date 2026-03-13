@@ -71,7 +71,8 @@ export default function SalesOrdersPage() {
   useEffect(() => {
     const run = async () => {
       const res = await fetch(`/api/sales-orders?archived=${showArchived ? 'only' : 'active'}`);
-      setItems(await res.json());
+      const payload = await res.json().catch(() => null);
+      setItems(Array.isArray(payload) ? payload : []);
     };
     run();
   }, [showArchived]);

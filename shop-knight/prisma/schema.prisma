@@ -117,6 +117,7 @@ model Company {
   opportunities        Opportunity[]
   quotes               Quote[]
   salesOrders          SalesOrder[]
+  jobs                 Job[]
   products             Product[]
   machines             Machine[]
   salesOrderStatuses   SalesOrderStatus[]
@@ -501,6 +502,7 @@ model SalesOrder {
   designer               User?             @relation("SalesOrderDesigner", fields: [designerId], references: [id])
   lines                  SalesOrderLine[]
   loadLists              LoadList[]
+  jobs                   Job[]
   tasks                  Task[]
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
@@ -537,6 +539,7 @@ model SalesOrderLine {
   product         Product?            @relation(fields: [productId], references: [id])
   poLines         PurchaseOrderLine[]
   proofs          Proof[]
+  jobs            Job[]
   loadListItems   LoadListItem[]
 }
 
@@ -600,13 +603,22 @@ model Project {
 }
 
 model Job {
-  id            String      @id @default(cuid())
-  name          String
-  opportunityId String
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
-  tasks         Task[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String         @id @default(cuid())
+  companyId        String?
+  name             String
+  opportunityId    String
+  salesOrderId     String?
+  salesOrderLineId String?
+  opportunity      Opportunity    @relation(fields: [opportunityId], references: [id])
+  company          Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salesOrder       SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
+  tasks            Task[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([companyId, salesOrderId])
+  @@index([salesOrderLineId])
 }
 
 model Task {
