@@ -51,6 +51,7 @@ export default function LoadListPrintPage({ params }: { params: Promise<{ id: st
           <tr>
             <th className="border border-slate-300 px-3 py-2 text-left">Item</th>
             <th className="border border-slate-300 px-3 py-2 text-left">Qty</th>
+            <th className="border border-slate-300 px-3 py-2 text-left">Initials</th>
           </tr>
         </thead>
         <tbody>
@@ -58,6 +59,9 @@ export default function LoadListPrintPage({ params }: { params: Promise<{ id: st
             <tr key={item.id}>
               <td className="border border-slate-300 px-3 py-2">{item.item}</td>
               <td className="border border-slate-300 px-3 py-2">{item.qty}</td>
+              <td className="border border-slate-300 px-3 py-2">
+                <div className="h-5 border-b border-slate-400" />
+              </td>
             </tr>
           ))}
         </tbody>
