@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { canAccessPath } from '@/lib/rbac';
+import { BASE_ROLE_DEFAULTS, canAccessPath } from '@/lib/rbac';
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -37,7 +37,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const permissions = Array.isArray(token.permissions) ? token.permissions.map(String) : [];
+  const tokenPermissions = Array.isArray(token.permissions) ? token.permissions.map(String) : [];
+  const role = String(token.role || '');
+  const roleFallback = BASE_ROLE_DEFAULTS[role] ?? [];
+  const permissions = [...new Set([...tokenPermissions, ...roleFallback])];
+
   if (!canAccessPath(pathname, permissions)) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
