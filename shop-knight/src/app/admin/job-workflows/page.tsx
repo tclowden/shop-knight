@@ -15,6 +15,7 @@ type Workflow = {
 export default function JobWorkflowsAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [items, setItems] = useState<Workflow[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<StepDraft[]>([
     { name: 'Prepress', assigneeMode: 'PROJECT_COORDINATOR', specificAssigneeId: '' },
@@ -62,6 +63,12 @@ export default function JobWorkflowsAdminPage() {
     });
 
     setName('');
+    setSteps([
+      { name: 'Prepress', assigneeMode: 'PROJECT_COORDINATOR', specificAssigneeId: '' },
+      { name: 'Production', assigneeMode: 'PM', specificAssigneeId: '' },
+      { name: 'Quality Check', assigneeMode: 'UNASSIGNED', specificAssigneeId: '' },
+    ]);
+    setShowCreateModal(false);
     await load();
   }
 
@@ -71,40 +78,59 @@ export default function JobWorkflowsAdminPage() {
       <p className="text-sm text-slate-500">Create custom multi-step workflows with automatic assignment rules.</p>
       <Nav />
 
-      <form onSubmit={createWorkflow} className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Workflow name" className="field" required />
-        </div>
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
+        >
+          Create Workflow
+        </button>
+      </div>
 
-        <div className="mt-3 space-y-2">
-          {steps.map((step, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 md:grid-cols-5">
-              <input value={step.name} onChange={(e) => updateStep(i, { name: e.target.value })} placeholder={`Step ${i + 1} name`} className="field" required />
-              <select value={step.assigneeMode} onChange={(e) => updateStep(i, { assigneeMode: e.target.value as StepDraft['assigneeMode'] })} className="field">
-                <option value="UNASSIGNED">Unassigned</option>
-                <option value="PM">Project Manager</option>
-                <option value="PROJECT_COORDINATOR">Project Coordinator</option>
-                <option value="SPECIFIC_USER">Specific User</option>
-              </select>
-              {step.assigneeMode === 'SPECIFIC_USER' ? (
-                <select value={step.specificAssigneeId} onChange={(e) => updateStep(i, { specificAssigneeId: e.target.value })} className="field">
-                  <option value="">Select user</option>
-                  {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                </select>
-              ) : (
-                <div className="field flex items-center text-sm text-slate-500">Auto by role when run starts</div>
-              )}
-              <div className="field flex items-center text-sm text-slate-500">Step #{i + 1}</div>
-              <button type="button" onClick={() => removeStep(i)} className="inline-flex h-11 items-center justify-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50">Remove</button>
+      {showCreateModal ? (
+        <div className="mb-6 rounded-xl border border-slate-300 bg-white p-4 shadow-lg">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800">Create Workflow</h2>
+            <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">Close</button>
+          </div>
+
+          <form onSubmit={createWorkflow}>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Workflow name" className="field" required />
             </div>
-          ))}
-        </div>
 
-        <div className="mt-3 flex gap-2">
-          <button type="button" onClick={addStep} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">+ Add Step</button>
-          <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Workflow</button>
+            <div className="mt-3 space-y-2">
+              {steps.map((step, i) => (
+                <div key={i} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 md:grid-cols-5">
+                  <input value={step.name} onChange={(e) => updateStep(i, { name: e.target.value })} placeholder={`Step ${i + 1} name`} className="field" required />
+                  <select value={step.assigneeMode} onChange={(e) => updateStep(i, { assigneeMode: e.target.value as StepDraft['assigneeMode'] })} className="field">
+                    <option value="UNASSIGNED">Unassigned</option>
+                    <option value="PM">Project Manager</option>
+                    <option value="PROJECT_COORDINATOR">Project Coordinator</option>
+                    <option value="SPECIFIC_USER">Specific User</option>
+                  </select>
+                  {step.assigneeMode === 'SPECIFIC_USER' ? (
+                    <select value={step.specificAssigneeId} onChange={(e) => updateStep(i, { specificAssigneeId: e.target.value })} className="field">
+                      <option value="">Select user</option>
+                      {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                    </select>
+                  ) : (
+                    <div className="field flex items-center text-sm text-slate-500">Auto by role when run starts</div>
+                  )}
+                  <div className="field flex items-center text-sm text-slate-500">Step #{i + 1}</div>
+                  <button type="button" onClick={() => removeStep(i)} className="inline-flex h-11 items-center justify-center rounded-lg border border-rose-200 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50">Remove</button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={addStep} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">+ Add Step</button>
+              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Workflow</button>
+            </div>
+          </form>
         </div>
-      </form>
+      ) : null}
 
       <section className="space-y-3">
         {items.map((workflow) => (
