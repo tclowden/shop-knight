@@ -29,8 +29,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        const normalizedEmail = String(credentials.email).trim().toLowerCase();
+        if (!normalizedEmail) return null;
+
+        const user = await prisma.user.findFirst({
+          where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
           include: {
             customRoles: {
               include: { role: true },
