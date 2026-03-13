@@ -60,15 +60,6 @@ export async function POST(req: Request, ctx: Ctx) {
   });
   if (!line) return NextResponse.json({ error: 'Sales order line not found' }, { status: 404 });
 
-  const latestProof = await prisma.proof.findFirst({
-    where: { salesOrderLineId: id },
-    orderBy: [{ version: 'desc' }, { createdAt: 'desc' }],
-  });
-
-  if (!latestProof || latestProof.status !== 'APPROVED') {
-    return NextResponse.json({ error: 'Latest proof must be approved before creating a job.' }, { status: 400 });
-  }
-
   const body = await req.json().catch(() => ({}));
   const workflowTemplateId = body?.workflowTemplateId ? String(body.workflowTemplateId) : '';
   const projectCoordinatorUserId = body?.projectCoordinatorUserId ? String(body.projectCoordinatorUserId) : null;

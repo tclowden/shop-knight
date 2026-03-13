@@ -47,6 +47,7 @@ export const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: AppPermissio
   { prefix: '/customers', permission: 'customers.view' },
   { prefix: '/vendors', permission: 'vendors.view' },
   { prefix: '/expenses', permission: 'expenses.view' },
+  { prefix: '/jobs', permission: 'tasks.calendar.view' },
   { prefix: '/jobs/workflows', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/calendar', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/templates', permission: 'tasks.templates.view' },

@@ -12,6 +12,7 @@ const links = [
   { href: '/customers', label: 'Customers' },
   { href: '/vendors', label: 'Vendors' },
   { href: '/expenses', label: 'Expenses' },
+  { href: '/jobs', label: 'Jobs' },
   { href: '/jobs/workflows', label: 'Job Workflows' },
   { href: '/tasks', label: 'Tasks' },
   { href: '/travel', label: 'Travel' },

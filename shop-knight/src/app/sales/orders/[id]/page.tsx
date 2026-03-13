@@ -1114,6 +1114,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   const [sendingProofId, setSendingProofId] = useState('');
   const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState('');
   const [creatingJob, setCreatingJob] = useState(false);
+  const [jobId, setJobId] = useState('');
   const [jobState, setJobState] = useState<'NONE' | 'IN_PROGRESS' | 'DONE'>('NONE');
   const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
 
@@ -1185,16 +1186,24 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     const payload = await res.json().catch(() => ({}));
 
     if (!payload?.hasJob) {
+      setJobId('');
       setJobState('NONE');
       return;
     }
 
+    setJobId(typeof payload?.jobId === 'string' ? payload.jobId : '');
     if (payload?.workflowStatus === 'DONE') setJobState('DONE');
     else setJobState('IN_PROGRESS');
   }
 
   async function createJobFromApprovedProof() {
     if (creatingJob) return;
+
+    if (jobState !== 'NONE' && jobId) {
+      window.location.href = `/jobs/${jobId}`;
+      return;
+    }
+
     setCreatingJob(true);
 
     try {
@@ -1296,7 +1305,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
           <button
             type="button"
             onClick={createJobFromApprovedProof}
-            disabled={creatingJob || proofState !== 'APPROVED' || jobState !== 'NONE'}
+            disabled={creatingJob}
             className={`rounded-md border px-2 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
               jobState === 'DONE'
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
@@ -1305,16 +1314,14 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
                   : 'border-slate-300 bg-slate-50 text-slate-700'
             }`}
             title={
-              proofState !== 'APPROVED'
-                ? 'Latest proof must be approved first'
-                : jobState === 'NONE'
-                  ? 'Create a job from this line'
-                  : jobState === 'IN_PROGRESS'
-                    ? 'Job workflow in progress'
-                    : 'Job workflow completed'
+              jobState === 'NONE'
+                ? 'Create a job from this line'
+                : jobState === 'IN_PROGRESS'
+                  ? 'Open job (workflow in progress)'
+                  : 'Open job (workflow completed)'
             }
           >
-            {creatingJob ? 'Creating…' : jobState === 'NONE' ? 'Create Job' : jobState === 'IN_PROGRESS' ? 'Job In Progress' : 'Job Complete'}
+            {creatingJob ? 'Creating…' : jobState === 'NONE' ? 'Create Job' : 'Job'}
           </button>
           <select value={selectedWorkflowTemplateId} onChange={(e) => setSelectedWorkflowTemplateId(e.target.value)} className="field h-8 w-44 text-xs">
             <option value="">No workflow</option>

@@ -41,7 +41,7 @@ async function ensureUnassignedOpportunity(companyId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
