@@ -90,6 +90,14 @@ enum PerDiemRequestStatus {
   CANCELED
 }
 
+enum ExpenseReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
 model Company {
   id                 String             @id @default(cuid())
   name               String
@@ -110,6 +118,7 @@ model Company {
   travelers          Traveler[]
   trips              Trip[]
   perDiemRequests    PerDiemRequest[]
+  expenseReports     ExpenseReport[]
   departments        Department[]
   titles             Title[]
   createdAt          DateTime           @default(now())
@@ -158,6 +167,8 @@ model User {
   createdTrips                Trip[]             @relation("TripCreator")
   approvedTrips               Trip[]             @relation("TripApprover")
   createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
+  createdExpenseReports       ExpenseReport[]    @relation("ExpenseReportCreator")
+  approvedExpenseReports      ExpenseReport[]    @relation("ExpenseReportApprover")
 }
 
 model Department {
@@ -807,4 +818,54 @@ model PerDiemRequest {
 
   @@index([companyId, status, createdAt])
   @@index([tripId, createdAt])
+}
+
+model ExpenseReport {
+  id               String              @id @default(cuid())
+  companyId        String?
+  reportNumber     String
+  title            String
+  employeeName     String
+  status           ExpenseReportStatus @default(DRAFT)
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  notes            String?
+  amexLinked       Boolean             @default(false)
+  amexLastSyncAt   DateTime?
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  reimbursedAt     DateTime?
+  rejectedAt       DateTime?
+  createdByUserId  String?
+  approvedByUserId String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  company          Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser    User?               @relation("ExpenseReportCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUser   User?               @relation("ExpenseReportApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  lines            ExpenseLine[]
+
+  @@unique([companyId, reportNumber])
+  @@index([companyId, status, createdAt])
+}
+
+model ExpenseLine {
+  id              String        @id @default(cuid())
+  expenseReportId String
+  expenseDate     DateTime
+  merchant        String
+  category        String
+  description     String?
+  paymentMethod   String?
+  amount          Decimal       @db.Decimal(12, 2)
+  taxAmount       Decimal?      @db.Decimal(12, 2)
+  currency        String        @default("USD")
+  receiptRef      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  expenseReport   ExpenseReport @relation(fields: [expenseReportId], references: [id], onDelete: Cascade)
+
+  @@index([expenseReportId, expenseDate])
 }
