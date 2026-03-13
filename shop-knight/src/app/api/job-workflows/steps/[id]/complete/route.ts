@@ -33,10 +33,22 @@ export async function POST(_: Request, ctx: Ctx) {
     });
 
     if (next) {
-      await tx.jobWorkflowStepRun.update({
+      const activatedAt = next.activatedAt || new Date();
+      const nextStep = await tx.jobWorkflowStepRun.update({
         where: { id: next.id },
-        data: { status: 'IN_PROGRESS', activatedAt: next.activatedAt || new Date() },
+        data: { status: 'IN_PROGRESS', activatedAt },
       });
+
+      await tx.task.create({
+        data: {
+          title: `[Workflow] ${nextStep.stepName}`,
+          status: 'TODO',
+          assigneeId: nextStep.assigneeId,
+          entityType: step.workflowRun.entityType,
+          entityId: step.workflowRun.entityId,
+        },
+      });
+
       await tx.jobWorkflowRun.update({ where: { id: step.workflowRunId }, data: { currentStepSortOrder: next.sortOrder, status: 'IN_PROGRESS' } });
     } else {
       await tx.jobWorkflowRun.update({ where: { id: step.workflowRunId }, data: { status: 'DONE', currentStepSortOrder: null } });

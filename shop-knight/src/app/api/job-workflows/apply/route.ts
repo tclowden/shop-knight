@@ -34,28 +34,45 @@ export async function POST(req: Request) {
   if (!template) return NextResponse.json({ error: 'Workflow template not found' }, { status: 404 });
   if (template.steps.length === 0) return NextResponse.json({ error: 'Workflow has no steps' }, { status: 400 });
 
-  const run = await prisma.jobWorkflowRun.create({
-    data: {
-      companyId,
-      workflowTemplateId: template.id,
-      entityType: entityType as 'OPPORTUNITY' | 'QUOTE' | 'SALES_ORDER' | 'SALES_ORDER_LINE' | 'PURCHASE_ORDER' | 'PROJECT' | 'JOB' | 'CUSTOMER' | 'VENDOR' | 'PRODUCT' | 'USER',
-      entityId,
-      status: 'IN_PROGRESS',
-      currentStepSortOrder: template.steps[0].sortOrder,
-      projectManagerUserId: pmUserId,
-      projectCoordinatorUserId,
-      steps: {
-        create: template.steps.map((step, idx) => ({
-          stepName: step.name,
-          sortOrder: step.sortOrder,
-          assigneeMode: step.assigneeMode,
-          assigneeId: assigneeForMode(step, pmUserId, projectCoordinatorUserId),
-          status: idx === 0 ? 'IN_PROGRESS' : 'TODO',
-          activatedAt: idx === 0 ? new Date() : null,
-        })),
+  const run = await prisma.$transaction(async (tx) => {
+    const createdRun = await tx.jobWorkflowRun.create({
+      data: {
+        companyId,
+        workflowTemplateId: template.id,
+        entityType: entityType as 'OPPORTUNITY' | 'QUOTE' | 'SALES_ORDER' | 'SALES_ORDER_LINE' | 'PURCHASE_ORDER' | 'PROJECT' | 'JOB' | 'CUSTOMER' | 'VENDOR' | 'PRODUCT' | 'USER',
+        entityId,
+        status: 'IN_PROGRESS',
+        currentStepSortOrder: template.steps[0].sortOrder,
+        projectManagerUserId: pmUserId,
+        projectCoordinatorUserId,
+        steps: {
+          create: template.steps.map((step, idx) => ({
+            stepName: step.name,
+            sortOrder: step.sortOrder,
+            assigneeMode: step.assigneeMode,
+            assigneeId: assigneeForMode(step, pmUserId, projectCoordinatorUserId),
+            status: idx === 0 ? 'IN_PROGRESS' : 'TODO',
+            activatedAt: idx === 0 ? new Date() : null,
+          })),
+        },
       },
-    },
-    include: { steps: { orderBy: { sortOrder: 'asc' } } },
+      include: { steps: { orderBy: { sortOrder: 'asc' } } },
+    });
+
+    const firstStep = createdRun.steps[0];
+    if (firstStep) {
+      await tx.task.create({
+        data: {
+          title: `[Workflow] ${firstStep.stepName}`,
+          status: 'TODO',
+          assigneeId: firstStep.assigneeId,
+          entityType: createdRun.entityType,
+          entityId: createdRun.entityId,
+        },
+      });
+    }
+
+    return createdRun;
   });
 
   return NextResponse.json(run, { status: 201 });
