@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         active: body?.active === undefined ? true : Boolean(body.active),
         steps: {
           create: steps.map((s: Record<string, unknown>, idx: number) => ({
-            name: String(s.name || `Step ${idx + 1}`),
+            name: String(s.name || `Step ${idx + 1}`).trim(),
             sortOrder: Number(s.sortOrder ?? idx + 1),
             assigneeMode: (String(s.assigneeMode || 'UNASSIGNED') as 'UNASSIGNED' | 'SPECIFIC_USER' | 'PM' | 'PROJECT_COORDINATOR'),
             specificAssigneeId: s.specificAssigneeId ? String(s.specificAssigneeId) : null,
@@ -60,7 +60,14 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(created, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Workflow already exists or could not be created' }, { status: 409 });
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'P2002') {
+      return NextResponse.json({ error: `A workflow named "${name}" already exists. Please use a different name.` }, { status: 409 });
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to create workflow', detail: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
