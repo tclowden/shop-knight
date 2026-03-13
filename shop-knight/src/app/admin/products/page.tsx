@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Product = {
@@ -18,47 +18,8 @@ type Product = {
 
 export default function ProductsAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [sku, setSku] = useState('');
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('General');
-  const [uom, setUom] = useState('EA');
-  const [description, setDescription] = useState('');
-  const [salePrice, setSalePrice] = useState('0.00');
-  const [costPrice, setCostPrice] = useState('0.00');
-  const [taxable, setTaxable] = useState(true);
-  const [error, setError] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [archivingId, setArchivingId] = useState<string | null>(null);
-
-
-  async function createProduct(e: FormEvent) {
-    e.preventDefault();
-    setError('');
-
-    const res = await fetch('/api/admin/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sku, name, category, uom, description, salePrice, costPrice, taxable }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data?.error || 'Failed to create product');
-      return;
-    }
-
-    setSku('');
-    setName('');
-    setCategory('General');
-    setUom('EA');
-    setDescription('');
-    const created = await res.json();
-
-    setSalePrice('0.00');
-    setCostPrice('0.00');
-    setTaxable(true);
-    setProducts((prev) => [created, ...prev]);
-  }
 
   async function handleArchive(productId: string) {
     if (archivingId) return;
@@ -96,8 +57,21 @@ export default function ProductsAdminPage() {
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-800">
-      <h1 className="text-3xl font-semibold tracking-tight">Product Admin</h1>
-      <p className="text-sm text-slate-500">Create products that appear as options in Quotes and Sales Orders.</p>
+      <div className="mb-2 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Product Admin</h1>
+          <p className="text-sm text-slate-500">Manage products used in Quotes and Sales Orders.</p>
+        </div>
+        {!showArchived ? (
+          <Link
+            href="/admin/products/new"
+            className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
+          >
+            Create Product
+          </Link>
+        ) : null}
+      </div>
+
       <Nav />
 
       <div className="mb-3 flex justify-end">
@@ -109,22 +83,6 @@ export default function ProductsAdminPage() {
           {showArchived ? 'Show Active' : 'Show Archived'}
         </button>
       </div>
-
-      {!showArchived ? (
-      <form onSubmit={createProduct} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-8">
-        <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" className="field" required />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" className="field" required />
-        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="field" />
-        <input value={uom} onChange={(e) => setUom(e.target.value)} placeholder="UOM (EA, sqft, ft)" className="field" />
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="field" />
-        <input value={salePrice} onChange={(e) => setSalePrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Sale price" className="field" required />
-        <input value={costPrice} onChange={(e) => setCostPrice(e.target.value)} type="number" step="0.01" min="0" placeholder="Cost" className="field" />
-        <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700"><input checked={taxable} onChange={(e) => setTaxable(e.target.checked)} type="checkbox" /> Taxable</label>
-        <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 md:col-span-8">Create Product</button>
-      </form>
-      ) : null}
-
-      {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
