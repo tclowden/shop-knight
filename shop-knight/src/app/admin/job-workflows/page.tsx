@@ -66,7 +66,9 @@ export default function JobWorkflowsAdminPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(typeof data?.error === 'string' ? data.error : 'Failed to create workflow');
+      const message = typeof data?.error === 'string' ? data.error : 'Failed to create workflow';
+      const detail = typeof data?.detail === 'string' ? data.detail : '';
+      setError(detail ? `${message} — ${detail}` : message);
       return;
     }
 
@@ -135,7 +137,7 @@ export default function JobWorkflowsAdminPage() {
 
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={addStep} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50">+ Add Step</button>
-              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Workflow</button>
+              <button className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Save Workflow</button>
             </div>
           </form>
         </div>
