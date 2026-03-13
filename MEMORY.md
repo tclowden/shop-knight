@@ -10,6 +10,7 @@ Long-term memory for important context.
 - BCC tclowden@gmail.com on every outbound email unless explicitly told otherwise.
 - In shop-knight, when Tommy asks for "delete" functionality, he means soft-delete/archive behavior (retain data), not hard delete.
 - Tommy strongly prefers create flows behind a button leading to a dedicated create screen/modal; avoid inline always-visible entry fields on list/admin pages.
+- Before saying a feature is ready to test, run an independent sub-agent validation pass. Validate behavior under Tommy's effective role context (SUPER_ADMIN) for access/permission-sensitive flows, not just build/static checks.
 
 ## Decisions
 - Use role-based task template assignment (PM / Project Coordinator / specific user / unassigned).
