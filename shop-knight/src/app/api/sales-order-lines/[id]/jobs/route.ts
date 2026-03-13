@@ -11,6 +11,40 @@ function assigneeForMode(step: { assigneeMode: string; specificAssigneeId: strin
 
 type Ctx = { params: Promise<{ id: string }> };
 
+export async function GET(_: Request, ctx: Ctx) {
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await ctx.params;
+  const line = await prisma.salesOrderLine.findFirst({
+    where: { id, salesOrder: withCompany(companyId) },
+    select: { id: true },
+  });
+  if (!line) return NextResponse.json({ error: 'Sales order line not found' }, { status: 404 });
+
+  const job = await prisma.job.findFirst({
+    where: { companyId, salesOrderLineId: id },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!job) return NextResponse.json({ hasJob: false, workflowStatus: null });
+
+  const latestRun = await prisma.jobWorkflowRun.findFirst({
+    where: { companyId, entityType: 'JOB', entityId: job.id },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, status: true },
+  });
+
+  return NextResponse.json({
+    hasJob: true,
+    jobId: job.id,
+    workflowStatus: latestRun?.status ?? null,
+  });
+}
+
 export async function POST(req: Request, ctx: Ctx) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;

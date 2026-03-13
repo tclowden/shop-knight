@@ -1114,6 +1114,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   const [sendingProofId, setSendingProofId] = useState('');
   const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState('');
   const [creatingJob, setCreatingJob] = useState(false);
+  const [jobState, setJobState] = useState<'NONE' | 'IN_PROGRESS' | 'DONE'>('NONE');
   const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
 
   useEffect(() => {
@@ -1178,6 +1179,20 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     await loadProofs();
   }
 
+  async function loadJobState() {
+    const res = await fetch(`/api/sales-order-lines/${line.id}/jobs`);
+    if (!res.ok) return;
+    const payload = await res.json().catch(() => ({}));
+
+    if (!payload?.hasJob) {
+      setJobState('NONE');
+      return;
+    }
+
+    if (payload?.workflowStatus === 'DONE') setJobState('DONE');
+    else setJobState('IN_PROGRESS');
+  }
+
   async function createJobFromApprovedProof() {
     if (creatingJob) return;
     setCreatingJob(true);
@@ -1199,6 +1214,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
       }
 
       toast('Job created from approved proof', 'success');
+      await loadJobState();
     } finally {
       setCreatingJob(false);
     }
@@ -1220,6 +1236,11 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     else if (latest.status === 'APPROVED') setProofState('APPROVED');
     else setProofState('UNSENT');
   }, [initialProofs]);
+
+  useEffect(() => {
+    loadJobState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line.id]);
 
   useEffect(() => {
     if (!showProofs) return;
@@ -1272,6 +1293,33 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
           >
             {showProofs ? 'Hide Proofs' : 'Proofs'}
           </button>
+          <button
+            type="button"
+            onClick={createJobFromApprovedProof}
+            disabled={creatingJob || proofState !== 'APPROVED' || jobState !== 'NONE'}
+            className={`rounded-md border px-2 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
+              jobState === 'DONE'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                : jobState === 'IN_PROGRESS'
+                  ? 'border-orange-300 bg-orange-50 text-orange-700'
+                  : 'border-slate-300 bg-slate-50 text-slate-700'
+            }`}
+            title={
+              proofState !== 'APPROVED'
+                ? 'Latest proof must be approved first'
+                : jobState === 'NONE'
+                  ? 'Create a job from this line'
+                  : jobState === 'IN_PROGRESS'
+                    ? 'Job workflow in progress'
+                    : 'Job workflow completed'
+            }
+          >
+            {creatingJob ? 'Creating…' : jobState === 'NONE' ? 'Create Job' : jobState === 'IN_PROGRESS' ? 'Job In Progress' : 'Job Complete'}
+          </button>
+          <select value={selectedWorkflowTemplateId} onChange={(e) => setSelectedWorkflowTemplateId(e.target.value)} className="field h-8 w-44 text-xs">
+            <option value="">No workflow</option>
+            {workflowTemplates.map((wf) => <option key={wf.id} value={wf.id}>{wf.name}</option>)}
+          </select>
           <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="field h-8 w-40 text-xs">
             <option value="">Top level</option>
             {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
@@ -1293,25 +1341,6 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
               <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field mt-1" />
             </label>
           </div>
-          <div className="mt-3 rounded-md border border-slate-200 bg-white p-2">
-            <p className="text-xs font-semibold text-slate-700">Create Job</p>
-            <p className="text-[11px] text-slate-500">Available after latest proof is approved.</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select value={selectedWorkflowTemplateId} onChange={(e) => setSelectedWorkflowTemplateId(e.target.value)} className="field h-8 w-56 text-xs">
-                <option value="">No workflow</option>
-                {workflowTemplates.map((wf) => <option key={wf.id} value={wf.id}>{wf.name}</option>)}
-              </select>
-              <button
-                type="button"
-                onClick={createJobFromApprovedProof}
-                disabled={creatingJob || proofState !== 'APPROVED'}
-                className="rounded-md bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creatingJob ? 'Creating…' : 'Create Job from Approved Proof'}
-              </button>
-            </div>
-          </div>
-
           <div className="mt-2 space-y-2">
             {proofs.map((proof) => (
               <div key={proof.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white p-2 text-xs">
