@@ -36,6 +36,7 @@ export const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: AppPermissio
   { prefix: '/dashboard', permission: 'dashboard.view' },
   { prefix: '/admin/users', permission: 'admin.users.manage' },
   { prefix: '/admin/products', permission: 'admin.products.manage' },
+  { prefix: '/admin/job-workflows', permission: 'admin.users.manage' },
   { prefix: '/admin/companies', permission: 'admin.companies.manage' },
   { prefix: '/admin/custom-roles', permission: 'admin.customRoles.manage' },
   { prefix: '/admin/sales-order-statuses', permission: 'admin.salesOrderStatuses.manage' },
@@ -46,6 +47,7 @@ export const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: AppPermissio
   { prefix: '/customers', permission: 'customers.view' },
   { prefix: '/vendors', permission: 'vendors.view' },
   { prefix: '/expenses', permission: 'expenses.view' },
+  { prefix: '/jobs/workflows', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/calendar', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/templates', permission: 'tasks.templates.view' },
 ];

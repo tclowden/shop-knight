@@ -105,31 +105,33 @@ enum AmexTransactionStatus {
 }
 
 model Company {
-  id                 String             @id @default(cuid())
-  name               String
-  slug               String             @unique
-  active             Boolean            @default(true)
-  users              UserCompany[]
-  activeUsers        User[]             @relation("ActiveCompanyUsers")
-  customRoles        CustomRole[]
-  customers          Customer[]
-  vendors            Vendor[]
-  opportunities      Opportunity[]
-  quotes             Quote[]
-  salesOrders        SalesOrder[]
-  products           Product[]
-  machines           Machine[]
-  salesOrderStatuses SalesOrderStatus[]
-  taskTemplates      TaskTemplate[]
-  travelers          Traveler[]
-  trips              Trip[]
-  perDiemRequests    PerDiemRequest[]
-  expenseReports     ExpenseReport[]
-  amexTransactions   AmexTransaction[]
-  departments        Department[]
-  titles             Title[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  active               Boolean               @default(true)
+  users                UserCompany[]
+  activeUsers          User[]                @relation("ActiveCompanyUsers")
+  customRoles          CustomRole[]
+  customers            Customer[]
+  vendors              Vendor[]
+  opportunities        Opportunity[]
+  quotes               Quote[]
+  salesOrders          SalesOrder[]
+  products             Product[]
+  machines             Machine[]
+  salesOrderStatuses   SalesOrderStatus[]
+  taskTemplates        TaskTemplate[]
+  jobWorkflowTemplates JobWorkflowTemplate[]
+  jobWorkflowRuns      JobWorkflowRun[]
+  travelers            Traveler[]
+  trips                Trip[]
+  perDiemRequests      PerDiemRequest[]
+  expenseReports       ExpenseReport[]
+  amexTransactions     AmexTransaction[]
+  departments          Department[]
+  titles               Title[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model User {
@@ -162,6 +164,7 @@ model User {
   directReports               User[]             @relation("UserReporting")
   customRoles                 UserCustomRole[]
   templateSteps               TaskTemplateStep[] @relation("TemplateSpecificAssignee")
+  workflowTemplateSteps       JobWorkflowStep[]  @relation("WorkflowTemplateSpecificAssignee")
   salesRepOpportunities       Opportunity[]      @relation("OpportunitySalesRep")
   projectManagerOpportunities Opportunity[]      @relation("OpportunityProjectManager")
   salesRepQuotes              Quote[]            @relation("QuoteSalesRep")
@@ -176,7 +179,8 @@ model User {
   createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
   createdExpenseReports       ExpenseReport[]    @relation("ExpenseReportCreator")
   approvedExpenseReports      ExpenseReport[]    @relation("ExpenseReportApprover")
-  employeeExpenseReports      ExpenseReport[]    @relation("ExpenseReportEmployee")
+  employeeExpenseReports      ExpenseReport[]      @relation("ExpenseReportEmployee")
+  assignedWorkflowSteps       JobWorkflowStepRun[] @relation("WorkflowStepAssignee")
 }
 
 model Department {
@@ -697,6 +701,73 @@ model TaskTemplateStep {
   specificAssigneeId String?
   template           TaskTemplate         @relation(fields: [templateId], references: [id])
   specificAssignee   User?                @relation("TemplateSpecificAssignee", fields: [specificAssigneeId], references: [id])
+}
+
+model JobWorkflowTemplate {
+  id        String               @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean              @default(true)
+  company   Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  steps     JobWorkflowStep[]
+  runs      JobWorkflowRun[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model JobWorkflowStep {
+  id               String               @id @default(cuid())
+  workflowId       String
+  name             String
+  sortOrder        Int                  @default(0)
+  assigneeMode     TemplateAssigneeMode @default(UNASSIGNED)
+  specificAssigneeId String?
+  workflow         JobWorkflowTemplate  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  specificAssignee User?                @relation("WorkflowTemplateSpecificAssignee", fields: [specificAssigneeId], references: [id], onDelete: SetNull)
+
+  @@index([workflowId, sortOrder])
+}
+
+model JobWorkflowRun {
+  id                        String             @id @default(cuid())
+  companyId                 String?
+  workflowTemplateId        String
+  entityType                EntityType
+  entityId                  String
+  status                    TaskStatus         @default(TODO)
+  currentStepSortOrder      Int?
+  projectManagerUserId      String?
+  projectCoordinatorUserId  String?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+
+  company                   Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  workflowTemplate          JobWorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  steps                     JobWorkflowStepRun[]
+
+  @@index([companyId, entityType, entityId])
+}
+
+model JobWorkflowStepRun {
+  id              String      @id @default(cuid())
+  workflowRunId   String
+  stepName        String
+  sortOrder       Int
+  assigneeMode    TemplateAssigneeMode @default(UNASSIGNED)
+  assigneeId      String?
+  status          TaskStatus  @default(TODO)
+  activatedAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  workflowRun     JobWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  assignee        User?          @relation("WorkflowStepAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@unique([workflowRunId, sortOrder])
+  @@index([workflowRunId, status, sortOrder])
 }
 
 model Traveler {
