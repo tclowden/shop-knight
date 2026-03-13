@@ -954,12 +954,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
       {showEditLoadListModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4">
               <h3 className="text-lg font-semibold">Edit Load List</h3>
               <button type="button" onClick={() => { setShowEditLoadListModal(false); setEditAddLineIds([]); }} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
             </div>
-            <form onSubmit={saveEditLoadList} className="space-y-3">
+            <form onSubmit={saveEditLoadList} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               <FormFieldSmall label="List Name"><input value={editingLoadListName} onChange={(e) => setEditingLoadListName(e.target.value)} className="field" /></FormFieldSmall>
 
               <div>
@@ -994,12 +995,14 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between">
-                <button type="button" onClick={() => setEditingLoadItems((prev) => [...prev, { item: '', qty: '1', salesOrderLineId: null }])} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs">+ Add item</button>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => { setShowEditLoadListModal(false); setEditAddLineIds([]); }} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
-                  <button disabled={savingEditLoadList} className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{savingEditLoadList ? 'Saving…' : 'Save Changes'}</button>
+                <div className="flex items-center justify-between">
+                  <button type="button" onClick={() => setEditingLoadItems((prev) => [...prev, { item: '', qty: '1', salesOrderLineId: null }])} className="rounded border border-slate-300 bg-white px-2 py-1 text-xs">+ Add item</button>
                 </div>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-200 bg-white p-4">
+                <button type="button" onClick={() => { setShowEditLoadListModal(false); setEditAddLineIds([]); }} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
+                <button disabled={savingEditLoadList} className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{savingEditLoadList ? 'Saving…' : 'Save Changes'}</button>
               </div>
             </form>
           </div>
