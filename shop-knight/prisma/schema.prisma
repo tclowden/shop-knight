@@ -104,6 +104,7 @@ model Company {
   quotes             Quote[]
   salesOrders        SalesOrder[]
   products           Product[]
+  machines           Machine[]
   salesOrderStatuses SalesOrderStatus[]
   taskTemplates      TaskTemplate[]
   travelers          Traveler[]
@@ -413,6 +414,23 @@ model ProductAttribute {
   product      Product            @relation(fields: [productId], references: [id])
 
   @@unique([productId, code])
+}
+
+model Machine {
+  id               String    @id @default(cuid())
+  companyId        String?
+  name             String
+  costPerMinute    Decimal   @db.Decimal(12, 4)
+  setupMinutes     Int?
+  hourlyCapacity   Int?
+  notes            String?
+  active           Boolean   @default(true)
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
 }
 
 model SalesOrder {

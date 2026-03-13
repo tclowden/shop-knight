@@ -9,6 +9,7 @@ Long-term memory for important context.
 - Tommy prefers clean language (no cuss words).
 - BCC tclowden@gmail.com on every outbound email unless explicitly told otherwise.
 - In shop-knight, when Tommy asks for "delete" functionality, he means soft-delete/archive behavior (retain data), not hard delete.
+- Tommy strongly prefers create flows behind a button leading to a dedicated create screen/modal; avoid inline always-visible entry fields on list/admin pages.
 
 ## Decisions
 - Use role-based task template assignment (PM / Project Coordinator / specific user / unassigned).
@@ -17,3 +18,8 @@ Long-term memory for important context.
 ## Follow-ups
 - Verify task-template save/apply UX in production-like flow.
 - Continue improving grid UX (sorting/filtering/drag-drop polish and template editing).
+
+## Engineering Notes
+- Repeated Vercel deployment failures have come from strict TypeScript checks passing locally but failing in production build.
+- Before push/deploy, run full `npm run build` (not only lint/dev) to catch TS issues early.
+- Common hotspot: Prisma update payload typing (`null` vs `undefined`) in API routes; prefer explicit typed assignments compatible with generated Prisma types.

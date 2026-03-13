@@ -20,6 +20,7 @@ const adminLinks = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/users/org-chart', label: 'Org Chart' },
   { href: '/admin/products', label: 'Products' },
+  { href: '/admin/machines', label: 'Machines' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/departments', label: 'Departments' },
   { href: '/admin/titles', label: 'Titles' },
