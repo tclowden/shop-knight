@@ -134,7 +134,39 @@ export default function SalesOrdersPage() {
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <div className="md:hidden">
+          {visibleItems.length === 0 ? <p className="px-4 py-8 text-center text-slate-500">No sales orders found.</p> : null}
+          <div className="divide-y divide-slate-100">
+            {visibleItems.map((so) => (
+              <article key={so.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/sales/orders/${so.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
+                    {so.orderNumber}
+                  </Link>
+                  <StatusChip value={so.status || 'Unknown'} />
+                </div>
+                <p className="text-sm font-semibold text-slate-800">{so.title || '—'}</p>
+                <p className="text-xs text-slate-600">{so.customer}</p>
+                <p className="text-xs text-slate-500">{so.opportunity}</p>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-slate-500">{new Date(so.createdAt).toLocaleDateString()}</p>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => handleArchive(so.id)}
+                      disabled={archivingId === so.id}
+                      className="rounded-lg border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-60"
+                    >
+                      {archivingId === so.id ? (showArchived ? 'Restoring…' : 'Archiving…') : (showArchived ? 'Restore' : 'Archive')}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <table className="hidden w-full text-left text-sm md:table">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
               <th className="px-4 py-3 font-semibold">Order #</th>

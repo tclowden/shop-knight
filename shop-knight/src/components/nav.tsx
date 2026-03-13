@@ -35,59 +35,55 @@ export function Nav() {
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
 
   return (
-    <nav className="sticky top-0 z-40 mb-6 flex flex-wrap gap-2 border-b border-slate-200 bg-[#f5f7fa]/95 pb-4 pt-2 text-sm backdrop-blur">
-      {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+    <nav className="sticky top-0 z-40 mb-6 border-b border-slate-200 bg-[#f5f7fa]/95 pb-3 pt-2 text-sm backdrop-blur">
+      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {links.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="whitespace-nowrap rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+          >
+            {link.label}
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {isAdmin ? (
+          <details className="relative">
+            <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
+              Admin ▾
+            </summary>
+            <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              {adminLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                  {link.label}
+                </Link>
+              ))}
+              {isSuperAdmin ? (
+                <>
+                  <div className="my-1 border-t border-slate-200" />
+                  {superAdminLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                      {link.label}
+                    </Link>
+                  ))}
+                </>
+              ) : null}
+            </div>
+          </details>
+        ) : null}
+
+        <CompanySwitcher />
+
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-rose-700 hover:bg-rose-100"
         >
-          {link.label}
-        </Link>
-      ))}
-
-      {isAdmin ? (
-        <details className="relative">
-          <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
-            Admin ▾
-          </summary>
-          <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-            {adminLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isSuperAdmin ? (
-              <>
-                <div className="my-1 border-t border-slate-200" />
-                {superAdminLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
-
-      <CompanySwitcher />
-
-      <button
-        type="button"
-        onClick={() => signOut({ callbackUrl: '/login' })}
-        className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-rose-700 hover:bg-rose-100"
-      >
-        Logout
-      </button>
+          Logout
+        </button>
+      </div>
     </nav>
   );
 }
