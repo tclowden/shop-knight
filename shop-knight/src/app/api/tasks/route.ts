@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { requirePermissions } from '@/lib/api-auth';
 
 const TYPES = ['OPPORTUNITY', 'QUOTE', 'SALES_ORDER', 'SALES_ORDER_LINE', 'PURCHASE_ORDER', 'PROJECT', 'JOB', 'CUSTOMER', 'VENDOR', 'PRODUCT', 'USER'] as const;
 type EntityTypeValue = (typeof TYPES)[number];
@@ -12,7 +12,7 @@ function toDate(value: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requirePermissions(['tasks.calendar.view']);
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requirePermissions(['tasks.calendar.view']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 import { sendMail } from '@/lib/mailer';
 
 const TYPES = ['OPPORTUNITY', 'QUOTE', 'SALES_ORDER', 'SALES_ORDER_LINE', 'PURCHASE_ORDER', 'PROJECT', 'JOB', 'CUSTOMER', 'VENDOR', 'PRODUCT', 'USER'] as const;
 type EntityTypeValue = (typeof TYPES)[number];
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requirePermissions(['tasks.calendar.view']);
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requirePermissions(['tasks.calendar.view']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
