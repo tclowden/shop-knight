@@ -104,6 +104,14 @@ enum AmexTransactionStatus {
   IGNORED
 }
 
+enum NotificationEvent {
+  NOTE_MENTION
+  TASK_ASSIGNED
+  OPPORTUNITY_ROLE_ASSIGNED
+  QUOTE_ROLE_ASSIGNED
+  SALES_ORDER_ROLE_ASSIGNED
+}
+
 model Company {
   id                   String                @id @default(cuid())
   name                 String
@@ -129,6 +137,7 @@ model Company {
   perDiemRequests      PerDiemRequest[]
   expenseReports       ExpenseReport[]
   amexTransactions     AmexTransaction[]
+  notificationPreferences NotificationPreference[]
   departments          Department[]
   titles               Title[]
   createdAt            DateTime              @default(now())
@@ -182,6 +191,8 @@ model User {
   approvedExpenseReports      ExpenseReport[]    @relation("ExpenseReportApprover")
   employeeExpenseReports      ExpenseReport[]      @relation("ExpenseReportEmployee")
   assignedWorkflowSteps       JobWorkflowStepRun[] @relation("WorkflowStepAssignee")
+  noteMentions                NoteMention[]
+  notificationPreferences     NotificationPreference[]
 }
 
 model Department {
@@ -656,7 +667,38 @@ model Note {
   entityId    String
   createdById String?
   createdBy   User?      @relation(fields: [createdById], references: [id])
+  mentions    NoteMention[]
   createdAt   DateTime   @default(now())
+}
+
+model NoteMention {
+  id              String   @id @default(cuid())
+  noteId          String
+  mentionedUserId String
+  createdAt       DateTime @default(now())
+
+  note            Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  mentionedUser   User     @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, mentionedUserId])
+  @@index([mentionedUserId, createdAt])
+}
+
+model NotificationPreference {
+  id                           String            @id @default(cuid())
+  companyId                    String?
+  userId                       String
+  event                        NotificationEvent
+  emailEnabled                 Boolean           @default(true)
+  inAppEnabled                 Boolean           @default(true)
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+
+  company                      Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, event])
+  @@index([userId, event])
 }
 
 model Proof {
