@@ -5,6 +5,20 @@ import { authOptions } from '@/lib/auth';
 import { getSessionCompanyId } from '@/lib/api-auth';
 import { sendMail } from '@/lib/mailer';
 
+function buildEntityPath(entityType: EntityTypeValue, entityId: string) {
+  switch (entityType) {
+    case 'OPPORTUNITY': return `/sales/opportunities/${entityId}`;
+    case 'QUOTE': return `/sales/quotes/${entityId}`;
+    case 'SALES_ORDER': return `/sales/orders/${entityId}`;
+    case 'SALES_ORDER_LINE': return `/sales/orders?lineId=${entityId}`;
+    case 'JOB': return `/jobs/${entityId}`;
+    case 'CUSTOMER': return `/customers/${entityId}`;
+    case 'VENDOR': return `/vendors/${entityId}`;
+    case 'USER': return `/admin/users/${entityId}`;
+    default: return '';
+  }
+}
+
 const TYPES = ['OPPORTUNITY', 'QUOTE', 'SALES_ORDER', 'SALES_ORDER_LINE', 'PURCHASE_ORDER', 'PROJECT', 'JOB', 'CUSTOMER', 'VENDOR', 'PRODUCT', 'USER'] as const;
 type EntityTypeValue = (typeof TYPES)[number];
 
@@ -80,9 +94,13 @@ export async function POST(req: Request) {
         if (!user.email) return;
 
         const subject = `You were mentioned in a note (${entityType})`;
-        const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>`;
+        const appBaseUrl = process.env.NEXTAUTH_URL || process.env.APP_URL || '';
+        const entityPath = buildEntityPath(entityType, entityId);
+        const noteLink = appBaseUrl && entityPath ? `${appBaseUrl}${entityPath}#note-${note.id}` : '';
+        const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>${noteLink ? `<p><a href="${noteLink}">Open note</a></p>` : ''}`;
+        const textBody = `You were mentioned in a note: ${text}${noteLink ? `\n\nOpen note: ${noteLink}` : ''}`;
         try {
-          await sendMail({ to: user.email, subject, html, text: `You were mentioned in a note: ${text}` });
+          await sendMail({ to: user.email, subject, html, text: textBody });
         } catch {
           // ignore email errors for now; note creation should still succeed
         }

@@ -150,13 +150,22 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
-    if (!hash.startsWith('#task-')) return;
-    const taskId = hash.replace('#task-', '');
-    if (!tasks.some((t) => t.id === taskId)) return;
 
-    const el = document.getElementById(`task-${taskId}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [tasks]);
+    if (hash.startsWith('#task-')) {
+      const taskId = hash.replace('#task-', '');
+      if (!tasks.some((t) => t.id === taskId)) return;
+      const el = document.getElementById(`task-${taskId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (hash.startsWith('#note-')) {
+      const noteId = hash.replace('#note-', '');
+      if (!notes.some((n) => n.id === noteId)) return;
+      const el = document.getElementById(`note-${noteId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [tasks, notes]);
 
   return (
     <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -177,7 +186,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
         </form>
         <div className="space-y-2">
           {notes.map((n) => (
-            <div key={n.id} className="rounded border border-zinc-700 p-2 text-sm">
+            <div id={`note-${n.id}`} key={n.id} className="rounded border border-zinc-700 p-2 text-sm target:border-blue-500 target:bg-blue-950/20">
               <p>{n.body}</p>
               {n.mentions?.length ? (
                 <p className="mt-1 text-xs text-zinc-500">Mentions: {n.mentions.map((m) => m.mentionedUser?.name).filter(Boolean).join(', ')}</p>
