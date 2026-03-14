@@ -94,7 +94,7 @@ type SalesOrder = {
   salesRep?: { name: string } | null;
   projectManager?: { name: string } | null;
   designer?: { name: string } | null;
-  opportunity: { name: string; customer: { name: string } };
+  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null } };
   lines: Line[];
   linkedTrips?: LinkedTrip[];
 };
@@ -512,9 +512,11 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
     const cost = Number(unitCost || 0);
-    const gpm = Number(gpmPercent || 0) / 100;
-    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
-    return (cost / (1 - gpm)).toFixed(2);
+    const baseGpm = Number(gpmPercent || 0);
+    const additionalFee = Number(order?.opportunity?.customer?.additionalFeePercent || 0);
+    const effectiveGpm = (baseGpm + additionalFee) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(effectiveGpm) || effectiveGpm >= 1) return '0.00';
+    return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
   async function addLine(e: React.FormEvent) {
@@ -1115,7 +1117,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <FormFieldSmall label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
-                <FormFieldSmall label="GPM %"><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
+                <FormFieldSmall label={`GPM % (+ Fee ${Number(order?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%)`}><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
                 <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
               </div>
             </form>

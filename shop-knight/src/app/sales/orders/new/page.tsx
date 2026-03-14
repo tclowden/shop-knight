@@ -11,6 +11,7 @@ type Opportunity = {
   name: string;
   customer: string;
   customerId: string;
+  customerAdditionalFeePercent?: string | number | null;
   salesRepId?: string | null;
   projectManagerId?: string | null;
 };
@@ -145,9 +146,12 @@ export default function NewSalesOrderPage() {
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
     const cost = Number(unitCost || 0);
-    const gpm = Number(gpmPercent || 0) / 100;
-    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
-    return (cost / (1 - gpm)).toFixed(2);
+    const baseGpm = Number(gpmPercent || 0);
+    const selectedOpp = opportunities.find((o) => o.id === opportunityId);
+    const additionalFee = Number(selectedOpp?.customerAdditionalFeePercent || 0);
+    const effectiveGpm = (baseGpm + additionalFee) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(effectiveGpm) || effectiveGpm >= 1) return '0.00';
+    return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
   async function createOrder(e: FormEvent) {
@@ -208,6 +212,11 @@ export default function NewSalesOrderPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  useEffect(() => {
+    setLineUnitPrice(calculateUnitPriceFromCostGpm(lineUnitCost, lineGpmPercent));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opportunityId]);
 
   return (
     <main className="mx-auto max-w-5xl p-8">
@@ -324,6 +333,7 @@ export default function NewSalesOrderPage() {
             </label>
             <label className="text-xs text-zinc-300">GPM %
               <input value={lineGpmPercent} onChange={(e) => { const v = e.target.value; setLineGpmPercent(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(lineUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+              <span className="mt-1 block text-[11px] text-zinc-500">+ Fee {(Number(opportunities.find((o) => o.id === opportunityId)?.customerAdditionalFeePercent || 0)).toFixed(2)}%</span>
             </label>
             <label className="text-xs text-zinc-300">Extended Price
               <input value={(Number(lineQty || 0) * Number(lineUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />

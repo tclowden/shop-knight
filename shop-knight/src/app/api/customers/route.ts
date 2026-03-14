@@ -24,6 +24,10 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
+  const additionalFeePercent = body?.additionalFeePercent === undefined || body?.additionalFeePercent === null || body?.additionalFeePercent === ''
+    ? 0
+    : Number(body.additionalFeePercent);
+
   const customer = await prisma.customer.create({
     data: {
       companyId,
@@ -31,6 +35,7 @@ export async function POST(req: Request) {
       email: body?.email ? String(body.email) : null,
       phone: body?.phone ? String(body.phone) : null,
       paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : null,
+      additionalFeePercent: Number.isFinite(additionalFeePercent) ? additionalFeePercent : 0,
     },
   });
   return NextResponse.json(customer, { status: 201 });

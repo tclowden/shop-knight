@@ -47,7 +47,7 @@ type Quote = {
   quoteNumber: string;
   status?: string | null;
   workflowState?: string | null;
-  opportunity: { name: string; customer: { name: string } };
+  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null } };
   customerContactRole?: string | null;
   billingAddress?: string | null;
   billingAttentionTo?: string | null;
@@ -229,9 +229,11 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
     const cost = Number(unitCost || 0);
-    const gpm = Number(gpmPercent || 0) / 100;
-    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
-    return (cost / (1 - gpm)).toFixed(2);
+    const baseGpm = Number(gpmPercent || 0);
+    const additionalFee = Number(quote?.opportunity?.customer?.additionalFeePercent || 0);
+    const effectiveGpm = (baseGpm + additionalFee) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(effectiveGpm) || effectiveGpm >= 1) return '0.00';
+    return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
   async function addLine(e: React.FormEvent) {
@@ -472,6 +474,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           </label>
           <label className="text-xs text-zinc-300">GPM %
             <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <span className="mt-1 block text-[11px] text-zinc-500">+ Fee {Number(quote?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%</span>
           </label>
           <label className="text-xs text-zinc-300">Extended Price
             <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
