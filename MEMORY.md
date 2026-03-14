@@ -13,6 +13,7 @@ Long-term memory for important context.
 - Before saying a feature is ready to test, run an independent sub-agent validation pass. Validate behavior under Tommy's effective role context (SUPER_ADMIN) for access/permission-sensitive flows, not just build/static checks.
 - Before asking Tommy to test any feature that includes schema/model changes, run DB migrations in the active environment first (at minimum `prisma migrate deploy` + `prisma generate`) so testing is not blocked by migration drift.
 - Prisma/schema changes are not done until deployment/database steps are handled too: whenever schema changes are pushed, explicitly ensure production migration + Prisma Client generation are run, and confirm deploy health after push.
+- Tommy operates as SUPER_ADMIN and expects full access; when implementing or updating permissions, include SUPER_ADMIN by default so admin-level flows do not block him.
 
 ## Decisions
 - Use role-based task template assignment (PM / Project Coordinator / specific user / unassigned).
