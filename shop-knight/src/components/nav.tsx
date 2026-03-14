@@ -6,18 +6,21 @@ import { CompanySwitcher } from '@/components/company-switcher';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/sales/opportunities', label: 'Opportunities' },
-  { href: '/sales/quotes', label: 'Quotes' },
-  { href: '/sales/orders', label: 'Sales Orders' },
   { href: '/customers', label: 'Customers' },
   { href: '/vendors', label: 'Vendors' },
   { href: '/expenses', label: 'Expenses' },
   { href: '/notifications', label: 'Notifications' },
-  { href: '/jobs', label: 'Jobs' },
   { href: '/jobs/workflows', label: 'Job Workflows' },
   { href: '/tasks', label: 'Tasks' },
   { href: '/travel', label: 'Travel' },
   { href: '/tasks/calendar', label: 'Task Calendar' },
+];
+
+const transactionLinks = [
+  { href: '/sales/opportunities', label: 'Opportunities' },
+  { href: '/sales/quotes', label: 'Quotes' },
+  { href: '/sales/orders', label: 'Sales Orders' },
+  { href: '/jobs', label: 'Jobs' },
 ];
 
 const adminLinks = [
@@ -55,6 +58,19 @@ export function Nav() {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        <details className="relative">
+          <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
+            Transactions ▾
+          </summary>
+          <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+            {transactionLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </details>
+
         {isAdmin ? (
           <details className="relative">
             <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
