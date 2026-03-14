@@ -59,33 +59,37 @@ export async function POST(req: Request) {
   });
 
   if (mentionedUserIds.length > 0) {
-    const mentionUsers = await prisma.user.findMany({
-      where: { id: { in: mentionedUserIds }, active: true },
-      select: { id: true, name: true, email: true },
-    });
+    try {
+      const mentionUsers = await prisma.user.findMany({
+        where: { id: { in: mentionedUserIds }, active: true },
+        select: { id: true, name: true, email: true },
+      });
 
-    const prefs = await prisma.notificationPreference.findMany({
-      where: {
-        companyId: companyId ?? null,
-        event: 'NOTE_MENTION',
-        userId: { in: mentionUsers.map((u) => u.id) },
-      },
-    });
-    const prefByUser = new Map(prefs.map((p) => [p.userId, p]));
+      const prefs = await prisma.notificationPreference.findMany({
+        where: {
+          companyId: companyId ?? null,
+          event: 'NOTE_MENTION',
+          userId: { in: mentionUsers.map((u) => u.id) },
+        },
+      });
+      const prefByUser = new Map(prefs.map((p) => [p.userId, p]));
 
-    await Promise.all(mentionUsers.map(async (user) => {
-      const pref = prefByUser.get(user.id);
-      if (pref && !pref.emailEnabled) return;
-      if (!user.email) return;
+      await Promise.all(mentionUsers.map(async (user) => {
+        const pref = prefByUser.get(user.id);
+        if (pref && !pref.emailEnabled) return;
+        if (!user.email) return;
 
-      const subject = `You were mentioned in a note (${entityType})`;
-      const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>`;
-      try {
-        await sendMail({ to: user.email, subject, html, text: `You were mentioned in a note: ${text}` });
-      } catch {
-        // ignore email errors for now; note creation should still succeed
-      }
-    }));
+        const subject = `You were mentioned in a note (${entityType})`;
+        const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>`;
+        try {
+          await sendMail({ to: user.email, subject, html, text: `You were mentioned in a note: ${text}` });
+        } catch {
+          // ignore email errors for now; note creation should still succeed
+        }
+      }));
+    } catch {
+      // mention-notification path should never block note save
+    }
   }
 
   return NextResponse.json(note, { status: 201 });
