@@ -192,6 +192,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [tripStartDate, setTripStartDate] = useState('');
   const [tripEndDate, setTripEndDate] = useState('');
   const [tripTravelerIds, setTripTravelerIds] = useState<string[]>([]);
+  const [tripTravelerQuery, setTripTravelerQuery] = useState('');
   const [creatingTrip, setCreatingTrip] = useState(false);
 
   async function loadProofsForOrder(orderId: string) {
@@ -440,6 +441,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     setTripStartDate('');
     setTripEndDate('');
     setTripTravelerIds([]);
+    setTripTravelerQuery('');
     await load(id);
   }
 
@@ -703,6 +705,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const selectedTripTravelers = useMemo(() => travelers.filter((t) => tripTravelerIds.includes(t.id)), [travelers, tripTravelerIds]);
+  const travelerLookupResults = useMemo(() => {
+    const q = tripTravelerQuery.trim().toLowerCase();
+    const pool = travelers.filter((t) => !tripTravelerIds.includes(t.id));
+    if (!q) return pool.slice(0, 8);
+    return pool.filter((t) => t.fullName.toLowerCase().includes(q)).slice(0, 8);
+  }, [travelers, tripTravelerIds, tripTravelerQuery]);
 
   useEffect(() => {
     if (!opportunityId) return;
@@ -888,14 +897,46 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           </select>
           <input value={tripStartDate} onChange={(e) => setTripStartDate(e.target.value)} type="date" className="field" />
           <input value={tripEndDate} onChange={(e) => setTripEndDate(e.target.value)} type="date" className="field" />
-          <select
-            multiple
-            value={tripTravelerIds}
-            onChange={(e) => setTripTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
-            className="field h-24 md:col-span-2"
-          >
-            {travelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
-          </select>
+          <div className="md:col-span-2 rounded-lg border border-slate-200 p-2">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Travelers</label>
+            <input
+              value={tripTravelerQuery}
+              onChange={(e) => setTripTravelerQuery(e.target.value)}
+              placeholder="Type a name, then click to add"
+              className="field"
+            />
+            <div className="mt-2 flex flex-wrap gap-1">
+              {selectedTripTravelers.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTripTravelerIds((prev) => prev.filter((id) => id !== t.id))}
+                  className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-700"
+                  title="Remove"
+                >
+                  {t.fullName} ×
+                </button>
+              ))}
+              {selectedTripTravelers.length === 0 ? <span className="text-xs text-slate-500">No travelers selected</span> : null}
+            </div>
+            {travelerLookupResults.length > 0 ? (
+              <div className="mt-2 max-h-28 overflow-auto rounded border border-slate-200 bg-white">
+                {travelerLookupResults.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTripTravelerIds((prev) => (prev.includes(t.id) ? prev : [...prev, t.id]));
+                      setTripTravelerQuery('');
+                    }}
+                    className="block w-full px-2 py-1 text-left text-sm hover:bg-slate-50"
+                  >
+                    {t.fullName}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <button disabled={creatingTrip} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{creatingTrip ? 'Creating…' : 'Create Trip'}</button>
         </form>
         <div className="mt-3 overflow-x-auto">
