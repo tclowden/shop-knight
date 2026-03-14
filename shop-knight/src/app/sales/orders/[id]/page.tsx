@@ -12,7 +12,7 @@ type Product = { id: string; sku: string; name: string; salePrice: string | numb
 type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
-type OpportunityOption = { id: string; name: string; customer: string };
+type OpportunityOption = { id: string; name: string; customer: string; customerId: string };
 type TravelerOption = { id: string; fullName: string };
 type VendorOption = { id: string; name: string };
 type ExpenseReportOption = { id: string; reportNumber: string; title: string };
@@ -94,7 +94,7 @@ type SalesOrder = {
   salesRep?: { name: string } | null;
   projectManager?: { name: string } | null;
   designer?: { name: string } | null;
-  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null } };
+  opportunity: { name: string; customer: { id: string; name: string; additionalFeePercent?: string | number | null } };
   lines: Line[];
   linkedTrips?: LinkedTrip[];
 };
@@ -179,6 +179,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [salesRepId, setSalesRepId] = useState('');
   const [projectManagerId, setProjectManagerId] = useState('');
   const [designerId, setDesignerId] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [opportunityId, setOpportunityId] = useState('');
   const [tripName, setTripName] = useState('');
   const [tripDestination, setTripDestination] = useState('');
@@ -251,6 +252,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       setSalesRepId(so.salesRepId || '');
       setProjectManagerId(so.projectManagerId || '');
       setDesignerId(so.designerId || '');
+      setCustomerId(so?.opportunity?.customer?.id || '');
       setOpportunityId(so.opportunityId || '');
     } else {
       const payload = await soRes.json().catch(() => ({}));
@@ -665,9 +667,27 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
   const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
+  const customerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of opportunities) {
+      if (!map.has(o.customerId)) map.set(o.customerId, o.customer);
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [opportunities]);
+  const filteredOpportunities = useMemo(() => {
+    if (!customerId) return opportunities;
+    return opportunities.filter((o) => o.customerId === customerId);
+  }, [opportunities, customerId]);
+
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+
+  useEffect(() => {
+    if (!opportunityId) return;
+    const selected = opportunities.find((o) => o.id === opportunityId);
+    if (selected && selected.customerId !== customerId) setCustomerId(selected.customerId);
+  }, [opportunityId, opportunities, customerId]);
 
   useUnsavedGuard(headerDirty);
 
@@ -755,7 +775,13 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         ) : (
           <form onSubmit={saveHeader} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <FormField label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="field" /></FormField>
-            <FormField label="Opportunity"><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="field"><option value="">Select opportunity</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></FormField>
+            <FormField label="Customer"><select value={customerId} onChange={(e) => {
+              const nextCustomerId = e.target.value;
+              setCustomerId(nextCustomerId);
+              const currentOpp = opportunities.find((o) => o.id === opportunityId);
+              if (!currentOpp || currentOpp.customerId !== nextCustomerId) setOpportunityId('');
+            }} className="field"><option value="">Select customer</option>{customerOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></FormField>
+            <FormField label="Opportunity"><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="field"><option value="">Select opportunity</option>{filteredOpportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></FormField>
             <FormField label="Status"><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="field"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></FormField>
             <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
             <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
