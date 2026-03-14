@@ -82,11 +82,26 @@ export default function CustomersPage() {
               <button type="button" onClick={() => { setShowCreateModal(false); resetForm(); }} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
             </div>
             <form onSubmit={createCustomer} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
-              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
-              <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="field" />
-              <input value={additionalFeePercent} onChange={(e) => setAdditionalFeePercent(e.target.value)} type="number" min="0" step="0.01" placeholder="Additional Fee %" className="field" />
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</span>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</span>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Terms</span>
+                <input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Payment Terms" className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Additional Fee %</span>
+                <input value={additionalFeePercent} onChange={(e) => setAdditionalFeePercent(e.target.value)} type="number" min="0" step="0.01" placeholder="Additional Fee %" className="field" />
+              </label>
               <div className="md:col-span-2 flex justify-end gap-2">
                 <button type="button" onClick={() => { setShowCreateModal(false); resetForm(); }} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm">Cancel</button>
                 <button className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600">Create Customer</button>
