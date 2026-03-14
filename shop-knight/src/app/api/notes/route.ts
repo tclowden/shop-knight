@@ -23,7 +23,6 @@ export async function GET(req: Request) {
     where: { entityType, entityId },
     include: {
       createdBy: { select: { id: true, name: true } },
-      mentions: { include: { mentionedUser: { select: { id: true, name: true } } } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -53,35 +52,36 @@ export async function POST(req: Request) {
       entityId,
       body: text,
       createdById: userId,
-      mentions: {
-        create: mentionedUserIds.map((id: string) => ({ mentionedUserId: id })),
-      },
     },
     include: {
       createdBy: { select: { id: true, name: true } },
-      mentions: { include: { mentionedUser: { select: { id: true, name: true, email: true } } } },
     },
   });
 
-  if (note.mentions.length > 0) {
+  if (mentionedUserIds.length > 0) {
+    const mentionUsers = await prisma.user.findMany({
+      where: { id: { in: mentionedUserIds }, active: true },
+      select: { id: true, name: true, email: true },
+    });
+
     const prefs = await prisma.notificationPreference.findMany({
       where: {
         companyId: companyId ?? null,
         event: 'NOTE_MENTION',
-        userId: { in: note.mentions.map((m) => m.mentionedUserId) },
+        userId: { in: mentionUsers.map((u) => u.id) },
       },
     });
     const prefByUser = new Map(prefs.map((p) => [p.userId, p]));
 
-    await Promise.all(note.mentions.map(async (mention) => {
-      const pref = prefByUser.get(mention.mentionedUserId);
+    await Promise.all(mentionUsers.map(async (user) => {
+      const pref = prefByUser.get(user.id);
       if (pref && !pref.emailEnabled) return;
-      if (!mention.mentionedUser?.email) return;
+      if (!user.email) return;
 
       const subject = `You were mentioned in a note (${entityType})`;
       const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>`;
       try {
-        await sendMail({ to: mention.mentionedUser.email, subject, html, text: `You were mentioned in a note: ${text}` });
+        await sendMail({ to: user.email, subject, html, text: `You were mentioned in a note: ${text}` });
       } catch {
         // ignore email errors for now; note creation should still succeed
       }
