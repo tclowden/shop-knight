@@ -54,7 +54,7 @@ export function Nav() {
     timerRef.current = setTimeout(() => {
       if (menu === 'transactions') setTransactionsOpen(false);
       else setAdminOpen(false);
-    }, 500);
+    }, 150);
   }
 
   function cancelClose(menu: 'transactions' | 'admin') {
