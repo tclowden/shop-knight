@@ -320,16 +320,16 @@ export default function NewSalesOrderPage() {
             <label className="text-xs text-zinc-300">Quantity
               <input value={lineQty} onChange={(e) => { const q = e.target.value; setLineQty(q); recalcLinePrice(lineProductId, q, lineAttributeValues); }} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             </label>
-            <label className="text-xs text-zinc-300">Unit Price
-              <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <label className="text-xs text-zinc-300">Unit Cost
+              <input value={lineUnitCost} onChange={(e) => { const v = e.target.value; setLineUnitCost(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(v, lineGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             </label>
             <label className="text-xs text-zinc-300">Taxable
               <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900"><input type="checkbox" checked={lineTaxable} onChange={(e) => setLineTaxable(e.target.checked)} /></span>
             </label>
           </div>
           <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
-            <label className="text-xs text-zinc-300">Unit Cost
-              <input value={lineUnitCost} onChange={(e) => { const v = e.target.value; setLineUnitCost(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(v, lineGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <label className="text-xs text-zinc-300">Unit Price
+              <input value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             </label>
             <label className="text-xs text-zinc-300">GPM %
               <input value={lineGpmPercent} onChange={(e) => { const v = e.target.value; setLineGpmPercent(v); setLineUnitPrice(calculateUnitPriceFromCostGpm(lineUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />

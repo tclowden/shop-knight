@@ -362,8 +362,8 @@ export default function NewQuotePage() {
                     <label className="text-xs text-zinc-300">Quantity
                       <input value={line.quantity} onChange={(e) => updateLine(i, 'quantity', e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
                     </label>
-                    <label className="text-xs text-zinc-300">Unit Price
-                      <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+                    <label className="text-xs text-zinc-300">Unit Cost
+                      <input value={line.unitCost} onChange={(e) => updateLineCostGpm(i, 'unitCost', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
                     </label>
                     <label className="text-xs text-zinc-300">Taxable
                       <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
@@ -373,8 +373,8 @@ export default function NewQuotePage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-                    <label className="text-xs text-zinc-300">Unit Cost
-                      <input value={line.unitCost} onChange={(e) => updateLineCostGpm(i, 'unitCost', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+                    <label className="text-xs text-zinc-300">Unit Price
+                      <input value={line.priceInDollars} onChange={(e) => updateLine(i, 'priceInDollars', e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
                     </label>
                     <label className="text-xs text-zinc-300">GPM %
                       <input value={line.gpmPercent} onChange={(e) => updateLineCostGpm(i, 'gpmPercent', e.target.value)} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
