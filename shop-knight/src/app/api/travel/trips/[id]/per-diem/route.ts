@@ -70,8 +70,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     } catch (error) {
       const cached = await prisma.perDiemRequest.findFirst({
-        where: withCompany(companyId, { destinationCity: city, destinationState: state, year: yearUsed }),
-        orderBy: { updatedAt: 'desc' },
+        where: withCompany(companyId, { destinationCity: city, destinationState: state }),
+        orderBy: [{ year: 'desc' }, { updatedAt: 'desc' }],
       });
       if (!cached?.dailyRate) {
         const message = error instanceof Error ? error.message : 'Failed per-diem lookup';

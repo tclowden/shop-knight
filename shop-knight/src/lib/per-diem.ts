@@ -47,7 +47,22 @@ export async function fetchGsaPerDiem(city: string, state: string, year: number,
     }
 
     const gsaData = await gsaRes.json().catch(() => null);
-    if (!gsaRes.ok || !gsaData?.rates || !Array.isArray(gsaData.rates) || gsaData.rates.length === 0) {
+    if (!gsaRes.ok) {
+      const errorCode = String(gsaData?.error?.code || '').toUpperCase();
+      const errorMessage = String(gsaData?.error?.message || '');
+      if (errorCode === 'API_KEY_INVALID') {
+        throw new Error('GSA API key is invalid. Please update GSA_API_KEY.');
+      }
+      if (gsaRes.status === 401 || gsaRes.status === 403) {
+        throw new Error(errorMessage || 'GSA API authorization failed.');
+      }
+      if (gsaRes.status >= 500) {
+        throw new Error('GSA service is temporarily unavailable. Please try again.');
+      }
+      continue;
+    }
+
+    if (!gsaData?.rates || !Array.isArray(gsaData.rates) || gsaData.rates.length === 0) {
       continue;
     }
 
