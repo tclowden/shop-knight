@@ -7,6 +7,11 @@ function toNum(v: unknown) {
   return Number.isFinite(n) ? n : null;
 }
 
+function toMoney(v: number | null) {
+  if (v === null) return null;
+  return Math.round(v * 100) / 100;
+}
+
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_: Request, ctx: Ctx) {
@@ -44,28 +49,29 @@ export async function POST(req: Request, ctx: Ctx) {
     const body = await req.json().catch(() => ({}));
     const item = String(body?.item || '').trim();
     const description = body?.description ? String(body.description).trim() : null;
-    const qty = toNum(body?.qty);
+    const qtyRaw = toNum(body?.qty);
     const itemCostInput = toNum(body?.itemCost);
     const totalCostInput = toNum(body?.totalCost);
     const purchasedBy = String(body?.purchasedBy || 'CREDIT_CARD') === 'ON_ACCOUNT' ? 'ON_ACCOUNT' : 'CREDIT_CARD';
     const vendorName = body?.vendorName ? String(body.vendorName).trim() : '';
 
-    if (!item || qty === null || qty <= 0) {
-      return NextResponse.json({ error: 'item and qty are required' }, { status: 400 });
+    const qty = qtyRaw === null ? null : Math.trunc(qtyRaw);
+    if (!item || qty === null || qty <= 0 || qty !== qtyRaw) {
+      return NextResponse.json({ error: 'item and qty are required (qty must be a whole number)' }, { status: 400 });
     }
 
-    let itemCost = itemCostInput;
-    let totalCost = totalCostInput;
+    let itemCost = toMoney(itemCostInput);
+    let totalCost = toMoney(totalCostInput);
 
     if ((itemCost === null || itemCost <= 0) && (totalCost === null || totalCost <= 0)) {
       return NextResponse.json({ error: 'enter item cost or total cost' }, { status: 400 });
     }
 
     if ((itemCost === null || itemCost <= 0) && totalCost !== null) {
-      itemCost = totalCost / qty;
+      itemCost = toMoney(totalCost / qty);
     }
     if ((totalCost === null || totalCost <= 0) && itemCost !== null) {
-      totalCost = itemCost * qty;
+      totalCost = toMoney(itemCost * qty);
     }
 
     let vendorId: string | null = null;
@@ -114,8 +120,9 @@ export async function POST(req: Request, ctx: Ctx) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to save purchase row', detail: error instanceof Error ? error.message : 'Unknown error' },
+      { error: detail || 'Failed to save purchase row', detail },
       { status: 500 }
     );
   }
