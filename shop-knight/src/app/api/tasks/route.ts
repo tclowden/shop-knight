@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
+import { sendTaskAssignedEmail, shouldSendEmailNotification } from '@/lib/notifications';
 
 const TYPES = ['OPPORTUNITY', 'QUOTE', 'SALES_ORDER', 'SALES_ORDER_LINE', 'PURCHASE_ORDER', 'PROJECT', 'JOB', 'CUSTOMER', 'VENDOR', 'PRODUCT', 'USER'] as const;
 type EntityTypeValue = (typeof TYPES)[number];
@@ -12,7 +13,7 @@ function toDate(value: unknown) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'DESIGNER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'DESIGNER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'title, entityType, entityId required' }, { status: 400 });
   }
 
+  const companyId = getSessionCompanyId(auth.session);
+
   const task = await prisma.task.create({
     data: {
       title,
@@ -52,7 +55,29 @@ export async function POST(req: Request) {
       assigneeId: body?.assigneeId ? String(body.assigneeId) : null,
       dueAt: toDate(body?.dueAt),
     },
-    include: { assignee: { select: { id: true, name: true } } },
+    include: { assignee: { select: { id: true, name: true, email: true } } },
   });
+
+  if (task.assigneeId && task.assignee?.email) {
+    const canEmail = await shouldSendEmailNotification({
+      companyId: companyId ?? null,
+      userId: task.assigneeId,
+      event: 'TASK_ASSIGNED',
+    });
+
+    if (canEmail) {
+      try {
+        await sendTaskAssignedEmail({
+          to: task.assignee.email,
+          assigneeName: task.assignee.name,
+          taskTitle: task.title,
+          taskId: task.id,
+        });
+      } catch {
+        // do not fail task creation on email send issues
+      }
+    }
+  }
+
   return NextResponse.json(task, { status: 201 });
 }
