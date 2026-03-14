@@ -1278,6 +1278,17 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
     toast('Added to expense report', 'success');
   }
 
+  async function convertToLineItem(id: string) {
+    const res = await fetch(`/api/sales-orders/purchasing-items/${id}/convert`, { method: 'POST' });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to convert purchase row', 'error');
+      return;
+    }
+    toast('Converted to line item', 'success');
+    await onReload();
+  }
+
   async function removeExisting(id: string) {
     const res = await fetch(`/api/sales-orders/purchasing-items/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -1371,7 +1382,10 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
                     <button type="button" onClick={() => addToExpenseReport(row.id)} className="rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Add</button>
                   </div>
                 </td>
-                <td className="px-3 py-2 text-right"><button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button></td>
+                <td className="px-3 py-2 text-right">
+                  <button type="button" onClick={() => convertToLineItem(row.id)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Convert to Line Item</button>
+                  <button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button>
+                </td>
               </tr>
             ))}
 
