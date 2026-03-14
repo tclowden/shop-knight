@@ -4,7 +4,7 @@ import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 type Ctx = { params: Promise<{ itemId: string }> };
 
-export async function POST(_: Request, ctx: Ctx) {
+export async function POST(req: Request, ctx: Ctx) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'PURCHASING', 'OPERATIONS', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
@@ -28,35 +28,31 @@ export async function POST(_: Request, ctx: Ctx) {
 
   if (!existing) return NextResponse.json({ error: 'Purchase item not found' }, { status: 404 });
 
-  const lineDescription = (existing.description || '').trim() || existing.item;
-  const qty = Number(existing.qty);
-  const itemCost = Number(existing.itemCost);
-  const totalCost = Number(existing.totalCost);
-  const unitPrice = itemCost > 0 ? itemCost : (qty > 0 ? totalCost / qty : 0);
+  const body = await req.json().catch(() => ({}));
 
-  if (!lineDescription || qty <= 0 || unitPrice <= 0) {
-    return NextResponse.json({ error: 'Purchase row must have description, qty, and cost before converting' }, { status: 400 });
+  const defaultDescription = (existing.description || '').trim() || existing.item;
+  const qty = body?.qty !== undefined ? Number(body.qty) : Number(existing.qty);
+  const unitPrice = body?.unitPrice !== undefined ? Number(body.unitPrice) : Number(existing.itemCost);
+  const description = String(body?.description || defaultDescription).trim();
+
+  if (!description || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return NextResponse.json({ error: 'description, qty, and unit price are required to convert' }, { status: 400 });
   }
 
-  const createdLine = await prisma.$transaction(async (tx) => {
-    const lastLine = await tx.salesOrderLine.findFirst({
-      where: { salesOrderId: existing.salesOrderId },
-      orderBy: { sortOrder: 'desc' },
-      select: { sortOrder: true },
-    });
+  const lastLine = await prisma.salesOrderLine.findFirst({
+    where: { salesOrderId: existing.salesOrderId },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  });
 
-    const line = await tx.salesOrderLine.create({
-      data: {
-        salesOrderId: existing.salesOrderId,
-        description: lineDescription,
-        qty,
-        unitPrice,
-        sortOrder: (lastLine?.sortOrder || 0) + 1,
-      },
-    });
-
-    await tx.salesOrderPurchaseItem.delete({ where: { id: existing.id } });
-    return line;
+  const createdLine = await prisma.salesOrderLine.create({
+    data: {
+      salesOrderId: existing.salesOrderId,
+      description,
+      qty: Math.trunc(qty),
+      unitPrice,
+      sortOrder: (lastLine?.sortOrder || 0) + 1,
+    },
   });
 
   return NextResponse.json({ ok: true, line: createdLine }, { status: 201 });

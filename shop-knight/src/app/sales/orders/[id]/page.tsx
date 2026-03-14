@@ -1172,10 +1172,49 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
     { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' },
   ]);
   const [expenseReportByItemId, setExpenseReportByItemId] = useState<Record<string, string>>({});
+  const [convertTarget, setConvertTarget] = useState<PurchaseItem | null>(null);
+  const [convertDescription, setConvertDescription] = useState('');
+  const [convertQty, setConvertQty] = useState('1');
+  const [convertUnitPrice, setConvertUnitPrice] = useState('0');
+  const [convertGpm, setConvertGpm] = useState('');
+  const [converting, setConverting] = useState(false);
   const purchasingTotal = items.reduce((sum, row) => sum + (Number(row.totalCost) || 0), 0);
 
   function setDraft(idx: number, patch: Partial<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>) {
     setDrafts((prev) => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
+  }
+
+  function openConvertDialog(row: PurchaseItem) {
+    const cost = Number(row.itemCost) || ((Number(row.qty) || 0) > 0 ? (Number(row.totalCost) || 0) / Number(row.qty) : 0);
+    const defaultDescription = (row.description || '').trim() || row.item;
+    setConvertTarget(row);
+    setConvertDescription(defaultDescription);
+    setConvertQty(String(row.qty || 1));
+    setConvertUnitPrice(cost > 0 ? cost.toFixed(2) : '0.00');
+    setConvertGpm('');
+  }
+
+  function onConvertGpmChange(v: string) {
+    setConvertGpm(v);
+    if (!convertTarget) return;
+    const gpm = Number(v);
+    const cost = Number(convertTarget.itemCost) || 0;
+    if (!Number.isFinite(gpm) || gpm <= 0 || gpm >= 100 || cost <= 0) return;
+    const revenue = cost / (1 - gpm / 100);
+    setConvertUnitPrice(revenue.toFixed(2));
+  }
+
+  function onConvertRevenueChange(v: string) {
+    setConvertUnitPrice(v);
+    if (!convertTarget) return;
+    const revenue = Number(v);
+    const cost = Number(convertTarget.itemCost) || 0;
+    if (!Number.isFinite(revenue) || revenue <= 0 || cost <= 0 || revenue <= cost) {
+      setConvertGpm('');
+      return;
+    }
+    const gpm = ((revenue - cost) / revenue) * 100;
+    setConvertGpm(gpm.toFixed(2));
   }
 
   async function addRow() {
@@ -1278,14 +1317,46 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
     toast('Added to expense report', 'success');
   }
 
-  async function convertToLineItem(id: string) {
-    const res = await fetch(`/api/sales-orders/purchasing-items/${id}/convert`, { method: 'POST' });
+  async function convertToLineItem() {
+    if (!convertTarget) return;
+
+    const qty = Number(convertQty || 0);
+    const unitPrice = Number(convertUnitPrice || 0);
+    const description = convertDescription.trim();
+
+    if (!description) {
+      toast('Line item name is required', 'error');
+      return;
+    }
+    if (!Number.isFinite(qty) || qty <= 0) {
+      toast('Quantity must be greater than 0', 'error');
+      return;
+    }
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      toast('Revenue/unit price must be greater than 0', 'error');
+      return;
+    }
+
+    setConverting(true);
+    const res = await fetch(`/api/sales-orders/purchasing-items/${convertTarget.id}/convert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description,
+        qty: Math.trunc(qty),
+        unitPrice,
+      }),
+    });
     const payload = await res.json().catch(() => ({}));
+    setConverting(false);
+
     if (!res.ok) {
       toast(typeof payload?.error === 'string' ? payload.error : 'Failed to convert purchase row', 'error');
       return;
     }
-    toast('Converted to line item', 'success');
+
+    setConvertTarget(null);
+    toast('Revenue line item created (purchase row kept)', 'success');
     await onReload();
   }
 
@@ -1383,7 +1454,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button type="button" onClick={() => convertToLineItem(row.id)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Convert to Line Item</button>
+                  <button type="button" onClick={() => openConvertDialog(row)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Convert to Line Item</button>
                   <button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button>
                 </td>
               </tr>
@@ -1447,6 +1518,38 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
       <div className="mt-3 flex justify-end border-t border-slate-200 pt-3">
         <p className="text-sm font-semibold text-slate-800">Purchasing Total: ${purchasingTotal.toFixed(2)}</p>
       </div>
+
+      {convertTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Convert to Revenue Line Item</h3>
+              <button type="button" onClick={() => setConvertTarget(null)} className="rounded-md border border-slate-300 px-2 py-1 text-xs">Close</button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <FormFieldSmall label="Line Item Name">
+                <input value={convertDescription} onChange={(e) => setConvertDescription(e.target.value)} className="field" />
+              </FormFieldSmall>
+              <FormFieldSmall label="Quantity">
+                <input value={convertQty} onChange={(e) => setConvertQty(e.target.value)} type="number" min="1" step="1" className="field" />
+              </FormFieldSmall>
+              <FormFieldSmall label="Cost / Unit (from Purchasing)">
+                <input value={(Number(convertTarget.itemCost) || 0).toFixed(2)} disabled className="field bg-slate-100" />
+              </FormFieldSmall>
+              <FormFieldSmall label="Revenue / Unit">
+                <input value={convertUnitPrice} onChange={(e) => onConvertRevenueChange(e.target.value)} type="number" min="0" step="0.01" className="field" />
+              </FormFieldSmall>
+              <FormFieldSmall label="GPM % (optional)">
+                <input value={convertGpm} onChange={(e) => onConvertGpmChange(e.target.value)} type="number" min="0" max="99.99" step="0.01" className="field" placeholder="e.g. 42" />
+              </FormFieldSmall>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setConvertTarget(null)} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm">Cancel</button>
+              <button type="button" onClick={convertToLineItem} disabled={converting} className="rounded bg-sky-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">{converting ? 'Converting…' : 'Create Revenue Line Item'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
