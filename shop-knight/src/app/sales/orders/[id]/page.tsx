@@ -975,6 +975,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                   onToggleLineSelection={(lineId, selected) => {
                     setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
                   }}
+                  onPurchaseCreated={() => loadPurchaseItems(id)}
                 />
               ))}
             </tbody>
@@ -1554,7 +1555,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
   );
 }
 
-function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, initialProofs, workflowTemplates, projectCoordinatorUserId, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; initialProofs: Proof[]; workflowTemplates: WorkflowTemplateOption[]; projectCoordinatorUserId?: string; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
+function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, initialProofs, workflowTemplates, projectCoordinatorUserId, onToggleLineSelection, onPurchaseCreated }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; initialProofs: Proof[]; workflowTemplates: WorkflowTemplateOption[]; projectCoordinatorUserId?: string; onToggleLineSelection: (lineId: string, selected: boolean) => void; onPurchaseCreated: () => Promise<void> }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -1564,6 +1565,15 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
   const [sendingProofId, setSendingProofId] = useState('');
   const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState('');
   const [creatingJob, setCreatingJob] = useState(false);
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
+  const [purchaseItemName, setPurchaseItemName] = useState(line.description || '');
+  const [purchaseQty, setPurchaseQty] = useState(String(line.qty || 1));
+  const [purchaseItemCost, setPurchaseItemCost] = useState('');
+  const [purchaseTotalCost, setPurchaseTotalCost] = useState('');
+  const [purchaseGpm, setPurchaseGpm] = useState('');
+  const [purchaseMethod, setPurchaseMethod] = useState<'CREDIT_CARD' | 'ON_ACCOUNT'>('CREDIT_CARD');
+  const [purchaseVendorName, setPurchaseVendorName] = useState('');
+  const [creatingPurchase, setCreatingPurchase] = useState(false);
   const [jobId, setJobId] = useState('');
   const [jobState, setJobState] = useState<'NONE' | 'IN_PROGRESS' | 'DONE'>('NONE');
   const [proofState, setProofState] = useState<'NONE' | 'UNSENT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESEND_NEEDED'>('NONE');
@@ -1620,6 +1630,90 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
     setProofFile(null);
     toast('Proof uploaded', 'success');
     await loadProofs();
+  }
+
+  function openCreatePurchaseDialog() {
+    const revenue = Number(draft.unitPrice || 0);
+    const qty = Number(draft.qty || 1);
+    const defaultCost = revenue > 0 ? (revenue * 0.6) : 0;
+    setPurchaseItemName((draft.description || '').trim() || line.description || '');
+    setPurchaseQty(String(qty > 0 ? qty : 1));
+    setPurchaseItemCost(defaultCost > 0 ? defaultCost.toFixed(2) : '');
+    setPurchaseTotalCost(defaultCost > 0 ? (defaultCost * (qty > 0 ? qty : 1)).toFixed(2) : '');
+    setPurchaseGpm(revenue > 0 && defaultCost > 0 ? (((revenue - defaultCost) / revenue) * 100).toFixed(2) : '');
+    setPurchaseMethod('CREDIT_CARD');
+    setPurchaseVendorName('');
+    setShowPurchaseDialog(true);
+  }
+
+  function onPurchaseCostChange(v: string) {
+    setPurchaseItemCost(v);
+    const qty = Number(purchaseQty || 0);
+    const cost = Number(v || 0);
+    if (qty > 0 && Number.isFinite(cost)) setPurchaseTotalCost((cost * qty).toFixed(2));
+    const revenue = Number(draft.unitPrice || 0);
+    if (revenue > 0 && cost > 0 && revenue > cost) setPurchaseGpm((((revenue - cost) / revenue) * 100).toFixed(2));
+    else setPurchaseGpm('');
+  }
+
+  function onPurchaseGpmChange(v: string) {
+    setPurchaseGpm(v);
+    const revenue = Number(draft.unitPrice || 0);
+    const gpm = Number(v || 0);
+    if (!Number.isFinite(revenue) || revenue <= 0 || !Number.isFinite(gpm) || gpm <= 0 || gpm >= 100) return;
+    const cost = revenue * (1 - gpm / 100);
+    setPurchaseItemCost(cost.toFixed(2));
+    const qty = Number(purchaseQty || 0);
+    if (qty > 0) setPurchaseTotalCost((cost * qty).toFixed(2));
+  }
+
+  async function createPurchaseFromLine() {
+    const qty = Number(purchaseQty || 0);
+    const itemCost = Number(purchaseItemCost || 0);
+    const totalCost = Number(purchaseTotalCost || 0);
+
+    if (!purchaseItemName.trim()) {
+      toast('Purchase item name is required', 'error');
+      return;
+    }
+    if (!Number.isFinite(qty) || qty <= 0) {
+      toast('Quantity must be greater than 0', 'error');
+      return;
+    }
+    if ((!Number.isFinite(itemCost) || itemCost <= 0) && (!Number.isFinite(totalCost) || totalCost <= 0)) {
+      toast('Enter item cost or total cost', 'error');
+      return;
+    }
+    if (purchaseMethod === 'ON_ACCOUNT' && !purchaseVendorName.trim()) {
+      toast('Vendor is required for Purchase Order', 'error');
+      return;
+    }
+
+    setCreatingPurchase(true);
+    const res = await fetch(`/api/sales-order-lines/${line.id}/convert-to-purchase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item: purchaseItemName.trim(),
+        description: purchaseItemName.trim(),
+        qty: Math.trunc(qty),
+        itemCost: Number.isFinite(itemCost) && itemCost > 0 ? itemCost : null,
+        totalCost: Number.isFinite(totalCost) && totalCost > 0 ? totalCost : null,
+        purchasedBy: purchaseMethod,
+        vendorName: purchaseVendorName,
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setCreatingPurchase(false);
+
+    if (!res.ok) {
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to create purchase row', 'error');
+      return;
+    }
+
+    setShowPurchaseDialog(false);
+    toast('Purchase row created (line item kept)', 'success');
+    await onPurchaseCreated();
   }
 
   async function sendProofApproval(proofId: string) {
@@ -1740,6 +1834,7 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
       <td className="px-4 py-4">
         <div className="flex flex-wrap items-center gap-1">
           <button onClick={() => onSave(draft)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50">Save</button>
+          <button type="button" onClick={openCreatePurchaseDialog} className="rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-100">Convert to Purchase</button>
           <button onClick={() => onDelete(line.id)} className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 hover:bg-rose-100">Delete</button>
           <button onClick={() => onMove(line.id, -1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↑</button>
           <button onClick={() => onMove(line.id, 1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↓</button>
@@ -1820,6 +1915,41 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
               </div>
             ))}
             {proofs.length === 0 ? <p className="text-xs text-slate-500">No proofs uploaded yet for this line.</p> : null}
+          </div>
+        </td>
+      </tr>
+    ) : null}
+
+    {showPurchaseDialog ? (
+      <tr className="border-t border-slate-100 bg-slate-50/60">
+        <td className="px-4 py-3" colSpan={7}>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="mb-2 text-sm font-semibold">Convert Line to Purchase Row</p>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+              <FormFieldSmall label="Purchase Item Name"><input value={purchaseItemName} onChange={(e) => setPurchaseItemName(e.target.value)} className="field" /></FormFieldSmall>
+              <FormFieldSmall label="Quantity"><input value={purchaseQty} onChange={(e) => {
+                const q = e.target.value;
+                setPurchaseQty(q);
+                const qn = Number(q || 0);
+                const ic = Number(purchaseItemCost || 0);
+                if (qn > 0 && Number.isFinite(ic)) setPurchaseTotalCost((ic * qn).toFixed(2));
+              }} type="number" min="1" step="1" className="field" /></FormFieldSmall>
+              <FormFieldSmall label="Revenue / Unit (from line)"><input value={Number(draft.unitPrice || 0).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
+              <FormFieldSmall label="Cost / Unit"><input value={purchaseItemCost} onChange={(e) => onPurchaseCostChange(e.target.value)} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
+              <FormFieldSmall label="Total Cost"><input value={purchaseTotalCost} onChange={(e) => setPurchaseTotalCost(e.target.value)} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
+              <FormFieldSmall label="GPM % (optional)"><input value={purchaseGpm} onChange={(e) => onPurchaseGpmChange(e.target.value)} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
+              <FormFieldSmall label="Purchased By">
+                <select value={purchaseMethod} onChange={(e) => setPurchaseMethod(e.target.value as 'CREDIT_CARD' | 'ON_ACCOUNT')} className="field">
+                  <option value="CREDIT_CARD">Credit Card</option>
+                  <option value="ON_ACCOUNT">Purchase Order</option>
+                </select>
+              </FormFieldSmall>
+              <FormFieldSmall label="Vendor (required for PO)"><input value={purchaseVendorName} onChange={(e) => setPurchaseVendorName(e.target.value)} className="field" /></FormFieldSmall>
+            </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowPurchaseDialog(false)} className="rounded border border-slate-300 bg-white px-3 py-2 text-xs">Cancel</button>
+              <button type="button" onClick={createPurchaseFromLine} disabled={creatingPurchase} className="rounded bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{creatingPurchase ? 'Creating…' : 'Create Purchase Row'}</button>
+            </div>
           </div>
         </td>
       </tr>
