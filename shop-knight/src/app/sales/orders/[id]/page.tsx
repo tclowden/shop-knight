@@ -100,7 +100,7 @@ type SalesOrder = {
 };
 
 const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medium';
-type SoTab = 'ITEMS' | 'PURCHASING' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
+type SoTab = 'ITEMS' | 'PURCHASING' | 'TRAVEL' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { push } = useToast();
@@ -697,6 +697,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <div className="flex flex-wrap gap-4 text-slate-500">
           <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
           <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
+          <button onClick={() => setActiveTab('TRAVEL')} className={`${tabBase} ${activeTab === 'TRAVEL' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Travel</button>
           <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
           <button onClick={() => setActiveTab('ASSETS')} className={`${tabBase} ${activeTab === 'ASSETS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Assets</button>
           <button onClick={() => setActiveTab('NOTES')} className={`${tabBase} ${activeTab === 'NOTES' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Notes</button>
@@ -704,7 +705,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
       </section>
 
-      {activeTab !== 'PURCHASING' ? (
+      {activeTab === 'ITEMS' ? (
       <>
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <details open>
@@ -795,7 +796,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         )}
         </details>
       </section>
+      </>
+      ) : null}
 
+      {activeTab === 'TRAVEL' ? (
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <details open>
           <summary className="cursor-pointer list-none text-base font-semibold">Travel</summary>
@@ -841,7 +845,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         </details>
       </section>
-      </>
       ) : null}
 
       {activeTab === 'PURCHASING' ? (
@@ -1119,7 +1122,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <p className="flex justify-between text-lg font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p>
       </div>
 
-      <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} />
+      {activeTab === 'TASKS' ? <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} /> : null}
     </main>
   );
 }
