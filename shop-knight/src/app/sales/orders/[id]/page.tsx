@@ -921,19 +921,24 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             </div>
             {travelerLookupResults.length > 0 ? (
               <div className="mt-2 max-h-28 overflow-auto rounded border border-slate-200 bg-white">
-                {travelerLookupResults.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTripTravelerIds((prev) => (prev.includes(t.id) ? prev : [...prev, t.id]));
-                      setTripTravelerQuery('');
-                    }}
-                    className="block w-full px-2 py-1 text-left text-sm hover:bg-slate-50"
-                  >
-                    {t.fullName}
-                  </button>
-                ))}
+                {travelerLookupResults.map((t) => {
+                  const addTraveler = () => {
+                    setTripTravelerIds((prev) => (prev.includes(t.id) ? prev : [...prev, t.id]));
+                    setTripTravelerQuery('');
+                  };
+
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={addTraveler}
+                      onDoubleClick={addTraveler}
+                      className="block w-full px-2 py-1 text-left text-sm hover:bg-slate-50"
+                    >
+                      {t.fullName}
+                    </button>
+                  );
+                })}
               </div>
             ) : null}
           </div>
