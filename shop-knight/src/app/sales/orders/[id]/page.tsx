@@ -1172,6 +1172,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
     { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' },
   ]);
   const [expenseReportByItemId, setExpenseReportByItemId] = useState<Record<string, string>>({});
+  const purchasingTotal = items.reduce((sum, row) => sum + (Number(row.totalCost) || 0), 0);
 
   function setDraft(idx: number, patch: Partial<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>) {
     setDrafts((prev) => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
@@ -1428,6 +1429,9 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, e
             {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={11}>No purchasing rows yet.</td></tr> : null}
           </tbody>
         </table>
+      </div>
+      <div className="mt-3 flex justify-end border-t border-slate-200 pt-3">
+        <p className="text-sm font-semibold text-slate-800">Purchasing Total: ${purchasingTotal.toFixed(2)}</p>
       </div>
     </section>
   );
