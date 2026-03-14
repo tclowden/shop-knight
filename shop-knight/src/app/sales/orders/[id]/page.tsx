@@ -13,6 +13,7 @@ type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string; customerId: string };
+type CustomerOption = { id: string; name: string };
 type TravelerOption = { id: string; fullName: string };
 type VendorOption = { id: string; name: string };
 type ExpenseReportOption = { id: string; reportNumber: string; title: string };
@@ -112,6 +113,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [statuses, setStatuses] = useState<SalesOrderStatus[]>([]);
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplateOption[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [expenseReports, setExpenseReports] = useState<ExpenseReportOption[]>([]);
@@ -210,13 +212,14 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   async function load(orderId: string) {
     setLoadError('');
-    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes, vendorsRes, expenseRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, customerRes, travelerRes, vendorsRes, expenseRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
       fetch('/api/admin/sales-order-statuses'),
       fetch('/api/job-workflows/templates'),
       fetch('/api/opportunities'),
+      fetch('/api/customers'),
       fetch('/api/travel/travelers'),
       fetch('/api/vendors'),
       fetch('/api/expenses'),
@@ -263,6 +266,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (statusesRes.ok) setStatuses(await statusesRes.json());
     if (workflowRes.ok) setWorkflowTemplates(await workflowRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
+    if (customerRes.ok) {
+      const payload = await customerRes.json().catch(() => []);
+      setCustomers(Array.isArray(payload) ? payload.map((c) => ({ id: String(c.id || ''), name: String(c.name || '') })) : []);
+    }
     if (travelerRes.ok) setTravelers(await travelerRes.json());
     if (vendorsRes.ok) setVendors(await vendorsRes.json());
     if (expenseRes.ok) {
@@ -667,13 +674,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.name.localeCompare(b.name)), [statuses]);
   const sortedProducts = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name)), [products]);
-  const customerOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const o of opportunities) {
-      if (!map.has(o.customerId)) map.set(o.customerId, o.customer);
-    }
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [opportunities]);
+  const customerOptions = useMemo(() => [...customers].sort((a, b) => a.name.localeCompare(b.name)), [customers]);
   const filteredOpportunities = useMemo(() => {
     if (!customerId) return opportunities;
     return opportunities.filter((o) => o.customerId === customerId);
