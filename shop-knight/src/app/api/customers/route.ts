@@ -30,7 +30,7 @@ export async function POST(req: Request) {
 
   const customer = await prisma.customer.create({
     data: {
-      companyId,
+      company: { connect: { id: companyId } },
       name,
       email: body?.email ? String(body.email) : null,
       phone: body?.phone ? String(body.phone) : null,
