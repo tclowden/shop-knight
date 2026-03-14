@@ -22,6 +22,7 @@ export async function GET(_: Request, ctx: Ctx) {
 
   const items = await prisma.salesOrderPurchaseItem.findMany({
     where: { salesOrderId: id },
+    include: { vendor: { select: { id: true, name: true } } },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   });
 
@@ -46,6 +47,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const itemCostInput = toNum(body?.itemCost);
   const totalCostInput = toNum(body?.totalCost);
   const purchasedBy = String(body?.purchasedBy || 'CREDIT_CARD') === 'ON_ACCOUNT' ? 'ON_ACCOUNT' : 'CREDIT_CARD';
+  const vendorName = body?.vendorName ? String(body.vendorName).trim() : '';
 
   if (!item || qty === null || qty <= 0) {
     return NextResponse.json({ error: 'item and qty are required' }, { status: 400 });
@@ -65,6 +67,17 @@ export async function POST(req: Request, ctx: Ctx) {
     totalCost = itemCost * qty;
   }
 
+  let vendorId: string | null = null;
+  if (vendorName) {
+    const existingVendor = await prisma.vendor.findFirst({ where: { name: vendorName, companyId } });
+    const vendor = existingVendor ?? await prisma.vendor.create({ data: { name: vendorName, companyId } });
+    vendorId = vendor.id;
+  }
+
+  if (purchasedBy === 'ON_ACCOUNT' && !vendorId) {
+    return NextResponse.json({ error: 'vendor is required for Purchase Order' }, { status: 400 });
+  }
+
   const count = await prisma.salesOrderPurchaseItem.count({ where: { salesOrderId: id } });
 
   let poNumber: string | null = null;
@@ -76,6 +89,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const created = await prisma.salesOrderPurchaseItem.create({
     data: {
       salesOrderId: id,
+      vendorId,
       item,
       description,
       qty,
@@ -85,6 +99,7 @@ export async function POST(req: Request, ctx: Ctx) {
       poNumber,
       sortOrder: count + 1,
     },
+    include: { vendor: { select: { id: true, name: true } } },
   });
 
   return NextResponse.json(created, { status: 201 });

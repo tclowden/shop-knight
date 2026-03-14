@@ -40,6 +40,7 @@ type PurchaseItem = {
   totalCost: string | number;
   purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT';
   poNumber: string | null;
+  vendor?: { id: string; name: string } | null;
 };
 type LoadListItem = { id: string; item: string; qty: number; salesOrderLineId?: string | null };
 type LoadList = { id: string; name: string; createdAt: string; items: LoadListItem[] };
@@ -1146,16 +1147,16 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
 }
 
 function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
-  const [drafts, setDrafts] = useState<Array<{ item: string; description: string; qty: string; itemCost: string; totalCost: string; purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT' }>>([
-    { item: '', description: '', qty: '1', itemCost: '', totalCost: '', purchasedBy: 'CREDIT_CARD' },
+  const [drafts, setDrafts] = useState<Array<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>>([
+    { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' },
   ]);
 
-  function setDraft(idx: number, patch: Partial<{ item: string; description: string; qty: string; itemCost: string; totalCost: string; purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT' }>) {
+  function setDraft(idx: number, patch: Partial<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>) {
     setDrafts((prev) => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
   }
 
   async function addRow() {
-    setDrafts((prev) => [...prev, { item: '', description: '', qty: '1', itemCost: '', totalCost: '', purchasedBy: 'CREDIT_CARD' }]);
+    setDrafts((prev) => [...prev, { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' }]);
   }
 
   async function saveRow(idx: number) {
@@ -1168,12 +1169,13 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        purchasedBy: d.purchasedBy,
+        vendorName: d.vendorName,
         item: d.item,
         description: d.description,
         qty,
         itemCost,
         totalCost,
-        purchasedBy: d.purchasedBy,
       }),
     });
 
@@ -1188,11 +1190,14 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
     await onReload();
   }
 
-  async function updateExisting(item: PurchaseItem, patch: Partial<PurchaseItem>) {
+  async function updateExisting(item: PurchaseItem, patch: Partial<PurchaseItem> & { vendorName?: string }) {
     const res = await fetch(`/api/sales-orders/purchasing-items/${item.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify({
+        ...patch,
+        vendorName: patch.vendorName,
+      }),
     });
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
@@ -1222,12 +1227,13 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
+              <th className="px-3 py-2">Purchased By</th>
+              <th className="px-3 py-2">Vendor</th>
               <th className="px-3 py-2">Item</th>
               <th className="px-3 py-2">Description</th>
               <th className="px-3 py-2">Quantity</th>
               <th className="px-3 py-2">Item Cost</th>
               <th className="px-3 py-2">Total Cost</th>
-              <th className="px-3 py-2">Purchased By</th>
               <th className="px-3 py-2">PO Number</th>
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
@@ -1235,17 +1241,25 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
           <tbody>
             {items.map((row) => (
               <tr key={row.id} className="border-t border-slate-100">
+                <td className="px-3 py-2">
+                  <select value={row.purchasedBy} onChange={(e) => updateExisting(row, { purchasedBy: e.target.value as PurchaseItem['purchasedBy'] })} className="field h-8 w-40 text-xs">
+                    <option value="CREDIT_CARD">Credit Card</option>
+                    <option value="ON_ACCOUNT">Purchase Order</option>
+                  </select>
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    defaultValue={row.vendor?.name || ''}
+                    onBlur={(e) => updateExisting(row, { vendorName: e.target.value })}
+                    className="field h-8"
+                    placeholder={row.purchasedBy === 'ON_ACCOUNT' ? 'Required vendor' : 'Optional vendor'}
+                  />
+                </td>
                 <td className="px-3 py-2">{row.item}</td>
                 <td className="px-3 py-2">{row.description || '—'}</td>
                 <td className="px-3 py-2">{row.qty}</td>
                 <td className="px-3 py-2">{Number(row.itemCost).toFixed(2)}</td>
                 <td className="px-3 py-2">{Number(row.totalCost).toFixed(2)}</td>
-                <td className="px-3 py-2">
-                  <select value={row.purchasedBy} onChange={(e) => updateExisting(row, { purchasedBy: e.target.value as PurchaseItem['purchasedBy'] })} className="field h-8 w-36 text-xs">
-                    <option value="CREDIT_CARD">Credit Card</option>
-                    <option value="ON_ACCOUNT">On Account</option>
-                  </select>
-                </td>
                 <td className="px-3 py-2">{row.poNumber || '—'}</td>
                 <td className="px-3 py-2 text-right"><button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button></td>
               </tr>
@@ -1257,6 +1271,13 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
               const totalCost = d.totalCost === '' ? null : Number(d.totalCost);
               return (
                 <tr key={`draft-${idx}`} className="border-t border-slate-100 bg-slate-50">
+                  <td className="px-3 py-2">
+                    <select value={d.purchasedBy} onChange={(e) => setDraft(idx, { purchasedBy: e.target.value as 'CREDIT_CARD' | 'ON_ACCOUNT' })} className="field">
+                      <option value="CREDIT_CARD">Credit Card</option>
+                      <option value="ON_ACCOUNT">Purchase Order</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2"><input value={d.vendorName} onChange={(e) => setDraft(idx, { vendorName: e.target.value })} className="field" placeholder={d.purchasedBy === 'ON_ACCOUNT' ? 'Required vendor' : 'Optional vendor'} /></td>
                   <td className="px-3 py-2"><input value={d.item} onChange={(e) => setDraft(idx, { item: e.target.value })} className="field" /></td>
                   <td className="px-3 py-2"><input value={d.description} onChange={(e) => setDraft(idx, { description: e.target.value })} className="field" /></td>
                   <td className="px-3 py-2"><input value={d.qty} onChange={(e) => {
@@ -1284,12 +1305,6 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
                     const tcn = Number(tc || 0);
                     setDraft(idx, { totalCost: tc, itemCost: qn > 0 && Number.isFinite(tcn) ? (tcn / qn).toFixed(2) : '' });
                   }} type="number" min="0" step="0.01" className="field" /></td>
-                  <td className="px-3 py-2">
-                    <select value={d.purchasedBy} onChange={(e) => setDraft(idx, { purchasedBy: e.target.value as 'CREDIT_CARD' | 'ON_ACCOUNT' })} className="field">
-                      <option value="CREDIT_CARD">Credit Card</option>
-                      <option value="ON_ACCOUNT">On Account</option>
-                    </select>
-                  </td>
                   <td className="px-3 py-2 text-xs text-slate-500">{d.purchasedBy === 'ON_ACCOUNT' ? `${orderNumber}-#` : '—'}</td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" onClick={() => saveRow(idx)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Save</button>
@@ -1299,7 +1314,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
               );
             })}
 
-            {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={8}>No purchasing rows yet.</td></tr> : null}
+            {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={9}>No purchasing rows yet.</td></tr> : null}
           </tbody>
         </table>
       </div>

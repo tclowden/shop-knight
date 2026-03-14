@@ -47,6 +47,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ? (String(body.purchasedBy) === 'ON_ACCOUNT' ? 'ON_ACCOUNT' : 'CREDIT_CARD')
     : existing.purchasedBy;
 
+  const vendorName = body?.vendorName !== undefined ? String(body.vendorName || '').trim() : undefined;
+  let vendorId = existing.vendorId;
+  if (vendorName !== undefined) {
+    if (!vendorName) vendorId = null;
+    else {
+      const existingVendor = await prisma.vendor.findFirst({ where: { name: vendorName, companyId } });
+      const vendor = existingVendor ?? await prisma.vendor.create({ data: { name: vendorName, companyId } });
+      vendorId = vendor.id;
+    }
+  }
+
+  if (nextPurchasedBy === 'ON_ACCOUNT' && !vendorId) {
+    return NextResponse.json({ error: 'vendor is required for Purchase Order' }, { status: 400 });
+  }
+
   let poNumber = existing.poNumber;
   if (nextPurchasedBy === 'ON_ACCOUNT' && !poNumber) {
     const onAccountCount = await prisma.salesOrderPurchaseItem.count({
@@ -63,12 +78,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
     data: {
       item: body?.item !== undefined ? String(body.item) : undefined,
       description: body?.description !== undefined ? (body.description ? String(body.description) : null) : undefined,
+      vendorId,
       qty: nextQty,
       itemCost: nextItemCost ?? 0,
       totalCost: nextTotalCost ?? 0,
       purchasedBy: nextPurchasedBy,
       poNumber,
     },
+    include: { vendor: { select: { id: true, name: true } } },
   });
 
   return NextResponse.json(updated);

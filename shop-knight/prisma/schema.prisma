@@ -282,6 +282,7 @@ model Vendor {
   phone     String?
   company   Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   poLines   PurchaseOrderLine[]
+  salesOrderPurchaseItems SalesOrderPurchaseItem[]
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
 }
@@ -563,6 +564,7 @@ model SalesOrderLine {
 model SalesOrderPurchaseItem {
   id            String         @id @default(cuid())
   salesOrderId  String
+  vendorId      String?
   item          String
   description   String?
   qty           Int            @default(1)
@@ -575,6 +577,7 @@ model SalesOrderPurchaseItem {
   updatedAt     DateTime       @updatedAt
 
   salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@index([salesOrderId, sortOrder])
   @@index([salesOrderId, purchasedBy])
