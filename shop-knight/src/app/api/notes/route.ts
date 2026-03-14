@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
+import { authOptions } from '@/lib/auth';
+import { getSessionCompanyId } from '@/lib/api-auth';
 import { sendMail } from '@/lib/mailer';
 
 const TYPES = ['OPPORTUNITY', 'QUOTE', 'SALES_ORDER', 'SALES_ORDER_LINE', 'PURCHASE_ORDER', 'PROJECT', 'JOB', 'CUSTOMER', 'VENDOR', 'PRODUCT', 'USER'] as const;
 type EntityTypeValue = (typeof TYPES)[number];
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'DESIGNER', 'FINANCE']);
-  if (!auth.ok) return auth.response;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const entityType = searchParams.get('entityType') as EntityTypeValue | null;
@@ -29,11 +31,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'DESIGNER', 'FINANCE']);
-  if (!auth.ok) return auth.response;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const companyId = getSessionCompanyId(auth.session);
-  const userId = (auth.session.user as { id?: string } | undefined)?.id || null;
+  const companyId = getSessionCompanyId(session as { user?: { companyId?: string } });
+  const userId = (session.user as { id?: string } | undefined)?.id || null;
 
   const body = await req.json();
   const entityType = body?.entityType as EntityTypeValue;

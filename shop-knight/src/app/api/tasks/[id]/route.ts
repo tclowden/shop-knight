@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
+import { authOptions } from '@/lib/auth';
+import { getSessionCompanyId } from '@/lib/api-auth';
 import { sendTaskAssignedEmail, shouldSendEmailNotification } from '@/lib/notifications';
 
 function toDate(value: unknown) {
@@ -10,8 +12,8 @@ function toDate(value: unknown) {
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'DESIGNER', 'FINANCE']);
-  if (!auth.ok) return auth.response;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
@@ -34,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   });
 
   if (updated.assigneeId && updated.assigneeId !== before.assigneeId && updated.assignee?.email) {
-    const companyId = getSessionCompanyId(auth.session);
+    const companyId = getSessionCompanyId(session as { user?: { companyId?: string } });
     const canEmail = await shouldSendEmailNotification({
       companyId: companyId ?? null,
       userId: updated.assigneeId,
