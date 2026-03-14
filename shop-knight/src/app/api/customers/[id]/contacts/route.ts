@@ -5,7 +5,7 @@ import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -24,7 +24,7 @@ export async function GET(_: Request, ctx: Ctx) {
 }
 
 export async function POST(req: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
