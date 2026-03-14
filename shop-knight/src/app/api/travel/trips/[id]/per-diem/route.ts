@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
 
-    const apiKey = process.env.GSA_API_KEY;
+    const apiKey = String(process.env.GSA_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
     if (!apiKey) {
       return NextResponse.json({ error: 'GSA API key missing. Set GSA_API_KEY in environment.' }, { status: 400 });
     }
