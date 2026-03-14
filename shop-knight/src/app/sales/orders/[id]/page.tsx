@@ -14,6 +14,7 @@ type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string };
 type TravelerOption = { id: string; fullName: string };
+type VendorOption = { id: string; name: string };
 type Proof = {
   id: string;
   version: number;
@@ -110,6 +111,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplateOption[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [loadLists, setLoadLists] = useState<LoadList[]>([]);
   const [showLoadListModal, setShowLoadListModal] = useState(false);
   const [loadListName, setLoadListName] = useState('Load List');
@@ -204,7 +206,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   async function load(orderId: string) {
     setLoadError('');
-    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes, vendorsRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
@@ -212,6 +214,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       fetch('/api/job-workflows/templates'),
       fetch('/api/opportunities'),
       fetch('/api/travel/travelers'),
+      fetch('/api/vendors'),
     ]);
     if (soRes.ok) {
       const so = await soRes.json();
@@ -255,6 +258,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (workflowRes.ok) setWorkflowTemplates(await workflowRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
+    if (vendorsRes.ok) setVendors(await vendorsRes.json());
     await Promise.all([loadLoadLists(orderId), loadPurchaseItems(orderId), loadProofsForOrder(orderId)]);
   }
 
@@ -837,6 +841,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           salesOrderId={id}
           orderNumber={order.orderNumber}
           items={purchaseItems}
+          vendors={vendors}
           onReload={() => loadPurchaseItems(id)}
           toast={push}
         />
@@ -1146,7 +1151,7 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
+function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; vendors: VendorOption[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
   const [drafts, setDrafts] = useState<Array<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>>([
     { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' },
   ]);
@@ -1165,6 +1170,11 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
     const itemCost = d.itemCost === '' ? null : Number(d.itemCost);
     const totalCost = d.totalCost === '' ? null : Number(d.totalCost);
 
+    if (d.purchasedBy === 'ON_ACCOUNT' && !d.vendorName.trim()) {
+      toast('Vendor is required for Purchase Order', 'error');
+      return;
+    }
+
     const res = await fetch(`/api/sales-orders/${salesOrderId}/purchasing-items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1181,7 +1191,10 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
 
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to save purchase row', 'error');
+      const msg = typeof payload?.error === 'string'
+        ? payload.error
+        : (typeof payload?.detail === 'string' ? payload.detail : 'Failed to save purchase row');
+      toast(msg, 'error');
       return;
     }
 
@@ -1224,6 +1237,9 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
         <button type="button" onClick={addRow} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Row</button>
       </div>
       <div className="overflow-x-auto">
+        <datalist id="vendor-lookup-options">
+          {vendors.map((v) => <option key={v.id} value={v.name} />)}
+        </datalist>
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
@@ -1252,6 +1268,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
                     defaultValue={row.vendor?.name || ''}
                     onBlur={(e) => updateExisting(row, { vendorName: e.target.value })}
                     className="field h-8"
+                    list="vendor-lookup-options"
                     placeholder={row.purchasedBy === 'ON_ACCOUNT' ? 'Required vendor' : 'Optional vendor'}
                   />
                 </td>
@@ -1277,7 +1294,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, 
                       <option value="ON_ACCOUNT">Purchase Order</option>
                     </select>
                   </td>
-                  <td className="px-3 py-2"><input value={d.vendorName} onChange={(e) => setDraft(idx, { vendorName: e.target.value })} className="field" placeholder={d.purchasedBy === 'ON_ACCOUNT' ? 'Required vendor' : 'Optional vendor'} /></td>
+                  <td className="px-3 py-2"><input value={d.vendorName} onChange={(e) => setDraft(idx, { vendorName: e.target.value })} list="vendor-lookup-options" className="field" placeholder={d.purchasedBy === 'ON_ACCOUNT' ? 'Required vendor' : 'Optional vendor'} /></td>
                   <td className="px-3 py-2"><input value={d.item} onChange={(e) => setDraft(idx, { item: e.target.value })} className="field" /></td>
                   <td className="px-3 py-2"><input value={d.description} onChange={(e) => setDraft(idx, { description: e.target.value })} className="field" /></td>
                   <td className="px-3 py-2"><input value={d.qty} onChange={(e) => {
