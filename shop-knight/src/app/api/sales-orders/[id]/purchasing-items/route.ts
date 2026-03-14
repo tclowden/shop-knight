@@ -47,8 +47,9 @@ export async function POST(req: Request, ctx: Ctx) {
     if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
 
     const body = await req.json().catch(() => ({}));
-    const item = String(body?.item || '').trim();
+    const itemInput = String(body?.item || '').trim();
     const description = body?.description ? String(body.description).trim() : null;
+    const item = itemInput || description || 'Purchase Item';
     const qtyRaw = toNum(body?.qty);
     const itemCostInput = toNum(body?.itemCost);
     const totalCostInput = toNum(body?.totalCost);
@@ -56,8 +57,8 @@ export async function POST(req: Request, ctx: Ctx) {
     const vendorName = body?.vendorName ? String(body.vendorName).trim() : '';
 
     const qty = qtyRaw === null ? null : Math.trunc(qtyRaw);
-    if (!item || qty === null || qty <= 0 || qty !== qtyRaw) {
-      return NextResponse.json({ error: 'item and qty are required (qty must be a whole number)' }, { status: 400 });
+    if (qty === null || qty <= 0 || qty !== qtyRaw) {
+      return NextResponse.json({ error: 'qty is required (must be a whole number)' }, { status: 400 });
     }
 
     let itemCost = toMoney(itemCostInput);
