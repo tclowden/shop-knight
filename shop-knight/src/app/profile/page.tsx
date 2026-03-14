@@ -14,13 +14,14 @@ type Profile = {
 };
 
 export default function ProfilePage() {
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -34,16 +35,19 @@ export default function ProfilePage() {
   }, [name, session?.user?.name]);
 
   async function load() {
+    setLoading(true);
     const res = await fetch('/api/users/me');
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       setError(typeof payload?.error === 'string' ? payload.error : 'Failed to load profile');
+      setLoading(false);
       return;
     }
     setProfile(payload);
-    setName(payload.name || '');
+    setName(payload.name || session?.user?.name || '');
     setPhone(payload.phone || '');
-    setAvatarUrl(payload.avatarUrl || '');
+    setAvatarUrl(payload.avatarUrl || session?.user?.image || '');
+    setLoading(false);
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -105,8 +109,14 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    if (status === 'authenticated') void load();
+    if (status === 'unauthenticated') setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  if (loading) {
+    return <main className="mx-auto max-w-5xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">Loading profile...</main>;
+  }
 
   return (
     <main className="mx-auto max-w-5xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
@@ -135,7 +145,7 @@ export default function ProfilePage() {
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</span>
-            <input value={profile?.email || ''} disabled className="field bg-slate-100" />
+            <input value={profile?.email || session?.user?.email || ''} disabled className="field bg-slate-100" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</span>
