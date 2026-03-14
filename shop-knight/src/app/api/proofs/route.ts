@@ -76,8 +76,8 @@ export async function POST(req: Request) {
   }
 
   const fileBuffer = Buffer.from(base64Data, 'base64');
-  if (fileBuffer.byteLength > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'Proof file too large. Max 10MB.' }, { status: 400 });
+  if (fileBuffer.byteLength > 25 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Proof file too large. Max 25MB.' }, { status: 400 });
   }
 
   let quoteLineId: string | null = null;

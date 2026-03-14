@@ -1162,7 +1162,11 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lineType: 'SALES_ORDER_LINE', lineId: line.id, fileName: proofFile.name, mimeType: proofFile.type || 'application/octet-stream', base64Data }),
     });
-    if (!res.ok) { toast('Failed to upload proof', 'error'); return; }
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to upload proof', 'error');
+      return;
+    }
     setProofFile(null);
     toast('Proof uploaded', 'success');
     await loadProofs();
