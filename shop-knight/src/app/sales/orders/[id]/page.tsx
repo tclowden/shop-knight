@@ -15,6 +15,7 @@ type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string };
 type TravelerOption = { id: string; fullName: string };
 type VendorOption = { id: string; name: string };
+type ExpenseReportOption = { id: string; reportNumber: string; title: string };
 type Proof = {
   id: string;
   version: number;
@@ -41,6 +42,7 @@ type PurchaseItem = {
   totalCost: string | number;
   purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT';
   poNumber: string | null;
+  receiptRef?: string | null;
   vendor?: { id: string; name: string } | null;
 };
 type LoadListItem = { id: string; item: string; qty: number; salesOrderLineId?: string | null };
@@ -112,6 +114,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [expenseReports, setExpenseReports] = useState<ExpenseReportOption[]>([]);
   const [loadLists, setLoadLists] = useState<LoadList[]>([]);
   const [showLoadListModal, setShowLoadListModal] = useState(false);
   const [loadListName, setLoadListName] = useState('Load List');
@@ -206,7 +209,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   async function load(orderId: string) {
     setLoadError('');
-    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes, vendorsRes] = await Promise.all([
+    const [soRes, pRes, usersRes, statusesRes, workflowRes, oppRes, travelerRes, vendorsRes, expenseRes] = await Promise.all([
       fetch(`/api/sales-orders/${orderId}`),
       fetch('/api/admin/products'),
       fetch('/api/users'),
@@ -215,6 +218,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       fetch('/api/opportunities'),
       fetch('/api/travel/travelers'),
       fetch('/api/vendors'),
+      fetch('/api/expenses'),
     ]);
     if (soRes.ok) {
       const so = await soRes.json();
@@ -259,6 +263,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
     if (vendorsRes.ok) setVendors(await vendorsRes.json());
+    if (expenseRes.ok) {
+      const payload = await expenseRes.json().catch(() => []);
+      setExpenseReports(Array.isArray(payload) ? payload : []);
+    }
     await Promise.all([loadLoadLists(orderId), loadPurchaseItems(orderId), loadProofsForOrder(orderId)]);
   }
 
@@ -842,6 +850,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           orderNumber={order.orderNumber}
           items={purchaseItems}
           vendors={vendors}
+          expenseReports={expenseReports}
           onReload={() => loadPurchaseItems(id)}
           toast={push}
         />
@@ -1151,10 +1160,11 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
   );
 }
 
-function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; vendors: VendorOption[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
+function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, expenseReports, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; vendors: VendorOption[]; expenseReports: ExpenseReportOption[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
   const [drafts, setDrafts] = useState<Array<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>>([
     { purchasedBy: 'CREDIT_CARD', vendorName: '', item: '', description: '', qty: '1', itemCost: '', totalCost: '' },
   ]);
+  const [expenseReportByItemId, setExpenseReportByItemId] = useState<Record<string, string>>({});
 
   function setDraft(idx: number, patch: Partial<{ purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT'; vendorName: string; item: string; description: string; qty: string; itemCost: string; totalCost: string }>) {
     setDrafts((prev) => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
@@ -1220,6 +1230,46 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, o
     await onReload();
   }
 
+  async function uploadReceipt(itemId: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`/api/sales-orders/purchasing-items/${itemId}/receipt`, {
+      method: 'POST',
+      body: form,
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to upload receipt', 'error');
+      return;
+    }
+
+    toast('Receipt uploaded', 'success');
+    await onReload();
+  }
+
+  async function addToExpenseReport(itemId: string) {
+    const expenseReportId = expenseReportByItemId[itemId] || '';
+    if (!expenseReportId) {
+      toast('Select an expense report first', 'error');
+      return;
+    }
+
+    const res = await fetch(`/api/sales-orders/purchasing-items/${itemId}/expense-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expenseReportId }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to add to expense report', 'error');
+      return;
+    }
+
+    toast('Added to expense report', 'success');
+  }
+
   async function removeExisting(id: string) {
     const res = await fetch(`/api/sales-orders/purchasing-items/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -1251,6 +1301,8 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, o
               <th className="px-3 py-2">Item Cost</th>
               <th className="px-3 py-2">Total Cost</th>
               <th className="px-3 py-2">PO Number</th>
+              <th className="px-3 py-2">Receipt</th>
+              <th className="px-3 py-2">Expense Report</th>
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
@@ -1278,6 +1330,39 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, o
                 <td className="px-3 py-2">{Number(row.itemCost).toFixed(2)}</td>
                 <td className="px-3 py-2">{Number(row.totalCost).toFixed(2)}</td>
                 <td className="px-3 py-2">{row.poNumber || '—'}</td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {row.receiptRef ? <a href={row.receiptRef} target="_blank" rel="noreferrer" className="text-sky-700 hover:underline">View</a> : <span className="text-slate-400">—</span>}
+                    <label className="cursor-pointer rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                      Upload
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadReceipt(row.id, file);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={expenseReportByItemId[row.id] || ''}
+                      onChange={(e) => setExpenseReportByItemId((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      className="field h-8 w-48 text-xs"
+                    >
+                      <option value="">Select report…</option>
+                      {expenseReports.map((r) => (
+                        <option key={r.id} value={r.id}>{r.reportNumber} — {r.title}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => addToExpenseReport(row.id)} className="rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Add</button>
+                  </div>
+                </td>
                 <td className="px-3 py-2 text-right"><button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button></td>
               </tr>
             ))}
@@ -1323,6 +1408,8 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, o
                     setDraft(idx, { totalCost: tc, itemCost: qn > 0 && Number.isFinite(tcn) ? (tcn / qn).toFixed(2) : '' });
                   }} type="number" min="0" step="0.01" className="field" /></td>
                   <td className="px-3 py-2 text-xs text-slate-500">{d.purchasedBy === 'ON_ACCOUNT' ? `${orderNumber}-#` : '—'}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">Save row first</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">Save row first</td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" onClick={() => saveRow(idx)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Save</button>
                     <button type="button" onClick={() => setDrafts((prev) => prev.filter((_, i) => i !== idx))} className="rounded border border-slate-300 px-2 py-1 text-xs">Cancel</button>
@@ -1331,7 +1418,7 @@ function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, vendors, o
               );
             })}
 
-            {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={9}>No purchasing rows yet.</td></tr> : null}
+            {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={11}>No purchasing rows yet.</td></tr> : null}
           </tbody>
         </table>
       </div>
