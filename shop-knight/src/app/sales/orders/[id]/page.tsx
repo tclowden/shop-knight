@@ -691,6 +691,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
       </section>
 
+      {activeTab !== 'PURCHASING' ? (
+      <>
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <details open>
           <summary className="cursor-pointer list-none text-base font-semibold">Sales Order Info</summary>
@@ -826,6 +828,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         </details>
       </section>
+      </>
+      ) : null}
 
       {activeTab === 'PURCHASING' ? (
         <SalesOrderPurchasingGrid
