@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);

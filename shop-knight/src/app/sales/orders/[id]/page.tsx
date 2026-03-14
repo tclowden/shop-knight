@@ -694,14 +694,16 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="mb-4 border-b border-slate-200">
-        <div className="flex flex-wrap gap-4 text-slate-500">
-          <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
-          <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
-          <button onClick={() => setActiveTab('TRAVEL')} className={`${tabBase} ${activeTab === 'TRAVEL' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Travel</button>
-          <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
-          <button onClick={() => setActiveTab('ASSETS')} className={`${tabBase} ${activeTab === 'ASSETS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Assets</button>
-          <button onClick={() => setActiveTab('NOTES')} className={`${tabBase} ${activeTab === 'NOTES' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Notes</button>
-          <button onClick={() => setActiveTab('EMAILS')} className={`${tabBase} ${activeTab === 'EMAILS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Emails</button>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-slate-500">
+          <div className="flex flex-wrap gap-4">
+            <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
+            <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
+            <button onClick={() => setActiveTab('TRAVEL')} className={`${tabBase} ${activeTab === 'TRAVEL' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Travel</button>
+            <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
+            <button onClick={() => setActiveTab('ASSETS')} className={`${tabBase} ${activeTab === 'ASSETS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Assets</button>
+            <button onClick={() => setActiveTab('NOTES')} className={`${tabBase} ${activeTab === 'NOTES' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Notes</button>
+            <button onClick={() => setActiveTab('EMAILS')} className={`${tabBase} ${activeTab === 'EMAILS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Emails</button>
+          </div>
         </div>
       </section>
 
@@ -870,7 +872,6 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
               setCustomLoadItems([]);
               setShowLoadListModal(true);
             }} className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Load List</button>
-            <button onClick={() => setShowAddLineModal(true)} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line Item</button>
           </div>
         </div>
         {loadLists.length > 0 ? (
@@ -927,7 +928,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <details open>
           <summary className="cursor-pointer list-none p-4 text-base font-semibold">Line Items</summary>
         <div className="border-b border-slate-200 p-4 space-y-2">
-          <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field max-w-md" />
+            <button onClick={() => setShowAddLineModal(true)} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Line Item</button>
+          </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-slate-500">Selected: {selectedLineIds.length}</span>
             <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="field h-8 w-56 text-xs">
