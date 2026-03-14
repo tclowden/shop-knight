@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 
@@ -43,8 +43,27 @@ export function Nav() {
   const { data: session } = useSession();
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
+
+  function scheduleClose(menu: 'transactions' | 'admin') {
+    const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (menu === 'transactions') setTransactionsOpen(false);
+      else setAdminOpen(false);
+    }, 1500);
+  }
+
+  function cancelClose(menu: 'transactions' | 'admin') {
+    const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
 
   return (
     <nav className="sticky top-0 z-40 mb-6 border-b border-slate-200 bg-[#f5f7fa]/95 pb-3 pt-2 text-sm backdrop-blur">
@@ -61,7 +80,7 @@ export function Nav() {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <div className="relative" onMouseLeave={() => setTransactionsOpen(false)}>
+        <div className="relative" onMouseEnter={() => cancelClose('transactions')} onMouseLeave={() => scheduleClose('transactions')}>
           <button
             type="button"
             onClick={() => setTransactionsOpen((v) => !v)}
@@ -70,18 +89,20 @@ export function Nav() {
             Transactions ▾
           </button>
           {transactionsOpen ? (
-            <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-              {transactionLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
-                  {link.label}
-                </Link>
-              ))}
+            <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
+              <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                {transactionLinks.map((link) => (
+                  <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>
 
         {isAdmin ? (
-          <div className="relative" onMouseLeave={() => setAdminOpen(false)}>
+          <div className="relative" onMouseEnter={() => cancelClose('admin')} onMouseLeave={() => scheduleClose('admin')}>
             <button
               type="button"
               onClick={() => setAdminOpen((v) => !v)}
@@ -90,22 +111,24 @@ export function Nav() {
               Admin ▾
             </button>
             {adminOpen ? (
-              <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                {adminLinks.map((link) => (
-                  <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
-                    {link.label}
-                  </Link>
-                ))}
-                {isSuperAdmin ? (
-                  <>
-                    <div className="my-1 border-t border-slate-200" />
-                    {superAdminLinks.map((link) => (
-                      <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
-                        {link.label}
-                      </Link>
-                    ))}
-                  </>
-                ) : null}
+              <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
+                <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  {adminLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                      {link.label}
+                    </Link>
+                  ))}
+                  {isSuperAdmin ? (
+                    <>
+                      <div className="my-1 border-t border-slate-200" />
+                      {superAdminLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                          {link.label}
+                        </Link>
+                      ))}
+                    </>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
