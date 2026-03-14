@@ -11,6 +11,7 @@ export default function VendorsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [error, setError] = useState('');
 
   async function load() {
     const res = await fetch('/api/vendors');
@@ -19,10 +20,19 @@ export default function VendorsPage() {
 
   async function createVendor(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/vendors', {
+    setError('');
+
+    const res = await fetch('/api/vendors', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setError(typeof payload?.error === 'string' ? payload.error : 'Failed to create vendor');
+      return;
+    }
+
     setName(''); setEmail(''); setPhone('');
     await load();
   }
@@ -39,6 +49,7 @@ export default function VendorsPage() {
       <Nav />
 
       <form onSubmit={createVendor} className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        {error ? <p className="md:col-span-4 text-sm text-rose-600">{error}</p> : null}
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="field" />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="field" />
