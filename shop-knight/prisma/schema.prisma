@@ -271,8 +271,23 @@ model Customer {
   additionalFeePercent Decimal @default(0) @db.Decimal(5, 2)
   company       Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   opportunities Opportunity[]
+  contacts      CustomerContact[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+model CustomerContact {
+  id         String    @id @default(cuid())
+  customerId String
+  name       String
+  email      String?
+  phone      String?
+  title      String?
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([customerId, name])
 }
 
 model Vendor {
