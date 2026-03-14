@@ -9,6 +9,7 @@ type AuthUser = {
   id: string;
   email: string;
   name: string;
+  image?: string | null;
   role: string;
   roles: string[];
   permissions: string[];
@@ -63,6 +64,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          image: user.avatarUrl,
           role: user.type,
           roles: [user.type, ...customRoleNames],
           permissions,
@@ -77,12 +79,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {
-        const typed = user as { role?: string; roles?: string[]; permissions?: string[]; companyId?: string; companies?: Array<{ id: string; name: string; slug: string }> };
+        const typed = user as { role?: string; roles?: string[]; permissions?: string[]; companyId?: string; companies?: Array<{ id: string; name: string; slug: string }>; image?: string | null };
         if (typed.role) token.role = typed.role;
         token.roles = typed.roles ?? [];
         token.permissions = typed.permissions ?? [];
         token.companyId = typed.companyId ?? '';
         token.companies = typed.companies ?? [];
+        token.image = typed.image || undefined;
         token.uid = user.id;
       } else if (token.uid && trigger === 'update') {
         const context = await ensureUserCompanyContext(String(token.uid));
@@ -103,6 +106,7 @@ export const authOptions: NextAuthOptions = {
         session.user.companies = Array.isArray(token.companies)
           ? token.companies.map((c) => ({ id: String((c as { id?: string }).id || ''), name: String((c as { name?: string }).name || ''), slug: String((c as { slug?: string }).slug || '') }))
           : [];
+        session.user.image = typeof token.image === 'string' ? token.image : null;
       }
       return session;
     },

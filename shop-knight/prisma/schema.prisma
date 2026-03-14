@@ -156,6 +156,7 @@ model User {
   passwordHash                String
   type                        UserType
   phone                       String?
+  avatarUrl                   String?
   knownTravelerNumber         String?
   rewardMarriottNumber        String?
   rewardUnitedNumber          String?

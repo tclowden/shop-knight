@@ -43,10 +43,13 @@ export function Nav() {
   const { data: session } = useSession();
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
+  const avatarUrl = session?.user?.image || null;
+  const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   function scheduleClose(menu: 'transactions' | 'admin') {
     const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
@@ -136,13 +139,32 @@ export function Nav() {
 
         <CompanySwitcher />
 
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-rose-700 hover:bg-rose-100"
-        >
-          Logout
-        </button>
+        <div className="relative ml-auto">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:border-sky-300"
+            title="Profile"
+          >
+            {avatarUrl ? <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+          </button>
+          {profileOpen ? (
+            <div className="absolute right-0 top-full z-20 min-w-44 pt-1">
+              <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                <Link href="/profile" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setProfileOpen(false)}>
+                  My Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="mt-1 w-full rounded-lg px-3 py-2 text-left text-rose-700 hover:bg-rose-50"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </nav>
   );
