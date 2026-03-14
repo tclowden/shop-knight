@@ -14,6 +14,7 @@ export default function CustomersPage() {
   const [phone, setPhone] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('Net 30');
   const [additionalFeePercent, setAdditionalFeePercent] = useState('0');
+  const [createError, setCreateError] = useState('');
 
   async function load() {
     const res = await fetch('/api/customers');
@@ -26,14 +27,24 @@ export default function CustomersPage() {
     setPhone('');
     setPaymentTerms('Net 30');
     setAdditionalFeePercent('0');
+    setCreateError('');
   }
 
   async function createCustomer(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/customers', {
+    setCreateError('');
+
+    const res = await fetch('/api/customers', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, paymentTerms, additionalFeePercent }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setCreateError(typeof payload?.error === 'string' ? payload.error : 'Failed to create customer');
+      return;
+    }
+
     resetForm();
     setShowCreateModal(false);
     await load();
@@ -102,6 +113,7 @@ export default function CustomersPage() {
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Additional Fee %</span>
                 <input value={additionalFeePercent} onChange={(e) => setAdditionalFeePercent(e.target.value)} type="number" min="0" step="0.01" placeholder="Additional Fee %" className="field" />
               </label>
+              {createError ? <p className="md:col-span-2 text-sm text-rose-600">{createError}</p> : null}
               <div className="md:col-span-2 flex justify-end gap-2">
                 <button type="button" onClick={() => { setShowCreateModal(false); resetForm(); }} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm">Cancel</button>
                 <button className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600">Create Customer</button>
