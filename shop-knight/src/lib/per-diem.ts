@@ -13,6 +13,27 @@ export function normalizeStateCode(value: string | null | undefined) {
   return String(value).trim().toUpperCase();
 }
 
+function toNum(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractMie(rateEntry: Record<string, unknown> | null) {
+  if (!rateEntry) return null;
+  const candidates = [
+    rateEntry.meals,
+    rateEntry.mie,
+    rateEntry.mealsAndIncidentalExpenses,
+    (rateEntry as { me?: unknown }).me,
+    (rateEntry as { mAndIe?: unknown }).mAndIe,
+  ];
+  for (const c of candidates) {
+    const n = toNum(c);
+    if (n && n > 0) return n;
+  }
+  return null;
+}
+
 export async function fetchGsaPerDiem(city: string, state: string, year: number, apiKey: string) {
   const yearsToTry = [year, year - 1, year - 2];
 
@@ -30,13 +51,19 @@ export async function fetchGsaPerDiem(city: string, state: string, year: number,
       continue;
     }
 
-    const rateContainer = gsaData.rates[0];
-    const rateEntry = Array.isArray(rateContainer?.rate) ? rateContainer.rate[0] : null;
-    const mie = Number(rateEntry?.meals ?? 0);
-    if (!Number.isFinite(mie) || mie <= 0) throw new Error('GSA response did not include a valid M&IE rate.');
+    const allRateEntries = gsaData.rates.flatMap((container: { rate?: unknown }) =>
+      Array.isArray(container?.rate) ? container.rate : []
+    ) as Record<string, unknown>[];
+
+    if (allRateEntries.length === 0) continue;
+
+    const best = allRateEntries.find((entry) => extractMie(entry) !== null) ?? allRateEntries[0];
+    const mie = extractMie(best);
+
+    if (!mie || mie <= 0) throw new Error('GSA response did not include a valid M&IE rate.');
 
     return {
-      rateEntry,
+      rateEntry: best,
       mie,
       yearUsed: y,
       fallbackUsed: y !== year,

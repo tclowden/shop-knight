@@ -17,7 +17,7 @@ async function retry<T>(fn: () => Promise<T>, attempts = 2, waitMs = 250): Promi
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -84,10 +84,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const tripMonth = (trip.startDate || trip.endDate || new Date()).getMonth() + 1;
-    const monthRates = rateEntry?.months?.month;
+    const monthRates = (rateEntry as { months?: { month?: Array<{ number?: number; value?: number; amount?: number; rate?: number }> } } | null)?.months?.month;
     const monthArray = Array.isArray(monthRates) ? monthRates : [];
-    const lodgingForMonth = monthArray.find((m: { number?: number; value?: number }) => Number(m?.number) === tripMonth);
-    const lodgingRate = Number(lodgingForMonth?.value ?? 0);
+    const lodgingForMonth = monthArray.find((m) => Number(m?.number) === tripMonth);
+    const lodgingRate = Number(lodgingForMonth?.value ?? lodgingForMonth?.amount ?? lodgingForMonth?.rate ?? 0);
 
     if (!Number.isFinite(mie) || mie <= 0) {
       return NextResponse.json({ error: 'GSA response did not include a valid M&IE rate.' }, { status: 422 });

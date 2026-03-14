@@ -70,10 +70,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const year = getTripYear(existing.trip.startDate, existing.trip.endDate);
     const gsa = await fetchGsaPerDiem(existing.trip.destinationCity, existing.trip.destinationState, year, apiKey);
     const tripMonth = (existing.trip.startDate || existing.trip.endDate || new Date()).getMonth() + 1;
-    const monthRates = gsa.rateEntry?.months?.month;
+    const monthRates = (gsa.rateEntry as { months?: { month?: Array<{ number?: number; value?: number; amount?: number; rate?: number }> } } | null)?.months?.month;
     const monthArray = Array.isArray(monthRates) ? monthRates : [];
     const lodgingForMonth = monthArray.find((m) => Number(m?.number) === tripMonth);
-    const lodgingRate = Number(lodgingForMonth?.value ?? 0);
+    const lodgingRate = Number(lodgingForMonth?.value ?? lodgingForMonth?.amount ?? lodgingForMonth?.rate ?? 0);
 
     const days = dateDiffDays(existing.trip.startDate, existing.trip.endDate);
     const travelerCount = Math.max(1, existing.trip.travelers.length || 1);
