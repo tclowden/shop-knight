@@ -65,11 +65,18 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
 
   async function addNote(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/notes', {
+    const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entityType, entityId, body: noteBody, mentionedUserIds }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(typeof payload?.error === 'string' ? payload.error : 'Failed to add note');
+      return;
+    }
+
     setNoteBody('');
     setMentionedUserIds([]);
     setMentionQuery('');
@@ -78,7 +85,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/tasks', {
+    const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -89,6 +96,13 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
         assigneeId: taskAssigneeId || null,
       }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(typeof payload?.error === 'string' ? payload.error : 'Failed to create task');
+      return;
+    }
+
     setTaskTitle('');
     setTaskDueAt('');
     setTaskAssigneeId('');
