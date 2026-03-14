@@ -14,6 +14,7 @@ type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string; customerId: string };
 type CustomerOption = { id: string; name: string };
+type CustomerContactOption = { id: string; name: string; title?: string | null; email?: string | null; phone?: string | null };
 type TravelerOption = { id: string; fullName: string };
 type VendorOption = { id: string; name: string };
 type ExpenseReportOption = { id: string; reportNumber: string; title: string };
@@ -114,6 +115,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [workflowTemplates, setWorkflowTemplates] = useState<WorkflowTemplateOption[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customerContacts, setCustomerContacts] = useState<CustomerContactOption[]>([]);
   const [travelers, setTravelers] = useState<TravelerOption[]>([]);
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [expenseReports, setExpenseReports] = useState<ExpenseReportOption[]>([]);
@@ -277,6 +279,24 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       setExpenseReports(Array.isArray(payload) ? payload : []);
     }
     await Promise.all([loadLoadLists(orderId), loadPurchaseItems(orderId), loadProofsForOrder(orderId)]);
+  }
+
+  async function loadCustomerContacts(nextCustomerId: string) {
+    if (!nextCustomerId) {
+      setCustomerContacts([]);
+      return;
+    }
+
+    const res = await fetch(`/api/customers/${nextCustomerId}/contacts`);
+    if (!res.ok) {
+      setCustomerContacts([]);
+      return;
+    }
+
+    const payload = await res.json().catch(() => []);
+    setCustomerContacts(Array.isArray(payload)
+      ? payload.map((c) => ({ id: String(c.id || ''), name: String(c.name || ''), title: c.title ? String(c.title) : null, email: c.email ? String(c.email) : null, phone: c.phone ? String(c.phone) : null }))
+      : []);
   }
 
   async function loadLoadLists(orderId: string) {
@@ -690,6 +710,10 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (selected && selected.customerId !== customerId) setCustomerId(selected.customerId);
   }, [opportunityId, opportunities, customerId]);
 
+  useEffect(() => {
+    void loadCustomerContacts(customerId);
+  }, [customerId]);
+
   useUnsavedGuard(headerDirty);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
@@ -784,7 +808,24 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             }} className="field"><option value="">Select customer</option>{customerOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></FormField>
             <FormField label="Opportunity"><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="field"><option value="">Select opportunity</option>{filteredOpportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></FormField>
             <FormField label="Status"><select value={statusName} onChange={(e) => setStatusName(e.target.value)} className="field"><option value="">Status</option>{sortedStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></FormField>
-            <FormField label="Primary Customer Contact"><input value={primaryCustomerContact} onChange={(e) => setPrimaryCustomerContact(e.target.value)} className="field" /></FormField>
+            <FormField label="Primary Customer Contact">
+              <input
+                value={primaryCustomerContact}
+                onChange={(e) => setPrimaryCustomerContact(e.target.value)}
+                className="field"
+                list="customer-contact-options"
+                placeholder={customerId ? 'Type to search customer contacts' : 'Select a customer first'}
+              />
+              <datalist id="customer-contact-options">
+                {customerContacts.map((contact) => (
+                  <option
+                    key={contact.id}
+                    value={contact.name}
+                    label={[contact.title || '', contact.email || '', contact.phone || ''].filter(Boolean).join(' • ')}
+                  />
+                ))}
+              </datalist>
+            </FormField>
             <FormField label="Customer Invoice Contact"><input value={customerInvoiceContact} onChange={(e) => setCustomerInvoiceContact(e.target.value)} className="field" /></FormField>
             <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule Dates</p>
