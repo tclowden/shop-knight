@@ -112,6 +112,11 @@ enum NotificationEvent {
   SALES_ORDER_ROLE_ASSIGNED
 }
 
+enum PurchaseMethod {
+  CREDIT_CARD
+  ON_ACCOUNT
+}
+
 model Company {
   id                   String                @id @default(cuid())
   name                 String
@@ -512,6 +517,7 @@ model SalesOrder {
   projectManager         User?             @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
   designer               User?             @relation("SalesOrderDesigner", fields: [designerId], references: [id])
   lines                  SalesOrderLine[]
+  purchaseItems          SalesOrderPurchaseItem[]
   loadLists              LoadList[]
   jobs                   Job[]
   tasks                  Task[]
@@ -552,6 +558,26 @@ model SalesOrderLine {
   proofs          Proof[]
   jobs            Job[]
   loadListItems   LoadListItem[]
+}
+
+model SalesOrderPurchaseItem {
+  id            String         @id @default(cuid())
+  salesOrderId  String
+  item          String
+  description   String?
+  qty           Int            @default(1)
+  itemCost      Decimal        @db.Decimal(12, 2)
+  totalCost     Decimal        @db.Decimal(12, 2)
+  purchasedBy   PurchaseMethod @default(CREDIT_CARD)
+  poNumber      String?
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+
+  @@index([salesOrderId, sortOrder])
+  @@index([salesOrderId, purchasedBy])
 }
 
 model LoadList {

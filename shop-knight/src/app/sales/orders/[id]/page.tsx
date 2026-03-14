@@ -31,6 +31,16 @@ type Proof = {
   } | null;
 };
 type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
+type PurchaseItem = {
+  id: string;
+  item: string;
+  description: string | null;
+  qty: number;
+  itemCost: string | number;
+  totalCost: string | number;
+  purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT';
+  poNumber: string | null;
+};
 type LoadListItem = { id: string; item: string; qty: number; salesOrderLineId?: string | null };
 type LoadList = { id: string; name: string; createdAt: string; items: LoadListItem[] };
 type LinkedTrip = {
@@ -86,6 +96,7 @@ type SalesOrder = {
 };
 
 const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medium';
+type SoTab = 'ITEMS' | 'PURCHASING' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { push } = useToast();
@@ -121,6 +132,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [showProofPicker, setShowProofPicker] = useState(false);
   const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string; statusLabel: string }>>([]);
   const [proofsByLineId, setProofsByLineId] = useState<Record<string, Proof[]>>({});
+  const [activeTab, setActiveTab] = useState<SoTab>('ITEMS');
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
 
 
   const [newProductId, setNewProductId] = useState('');
@@ -241,7 +254,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     if (workflowRes.ok) setWorkflowTemplates(await workflowRes.json());
     if (oppRes.ok) setOpportunities(await oppRes.json());
     if (travelerRes.ok) setTravelers(await travelerRes.json());
-    await Promise.all([loadLoadLists(orderId), loadProofsForOrder(orderId)]);
+    await Promise.all([loadLoadLists(orderId), loadPurchaseItems(orderId), loadProofsForOrder(orderId)]);
   }
 
   async function loadLoadLists(orderId: string) {
@@ -251,6 +264,16 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       return;
     }
     setLoadLists(await res.json());
+  }
+
+  async function loadPurchaseItems(orderId: string) {
+    const res = await fetch(`/api/sales-orders/${orderId}/purchasing-items`);
+    if (!res.ok) {
+      setPurchaseItems([]);
+      return;
+    }
+    const payload = await res.json().catch(() => []);
+    setPurchaseItems(Array.isArray(payload) ? payload : []);
   }
 
   async function createLoadList(e: React.FormEvent) {
@@ -659,12 +682,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
       <section className="mb-4 border-b border-slate-200">
         <div className="flex flex-wrap gap-4 text-slate-500">
-          <button className={`${tabBase} border-sky-500 text-sky-600`}>Items ({order.lines.length})</button>
-          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Purchasing (0)</button>
-          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Tasks</button>
-          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Assets</button>
-          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Notes</button>
-          <button className={`${tabBase} border-transparent hover:border-slate-300`}>Emails</button>
+          <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
+          <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
+          <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
+          <button onClick={() => setActiveTab('ASSETS')} className={`${tabBase} ${activeTab === 'ASSETS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Assets</button>
+          <button onClick={() => setActiveTab('NOTES')} className={`${tabBase} ${activeTab === 'NOTES' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Notes</button>
+          <button onClick={() => setActiveTab('EMAILS')} className={`${tabBase} ${activeTab === 'EMAILS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Emails</button>
         </div>
       </section>
 
@@ -804,6 +827,18 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </details>
       </section>
 
+      {activeTab === 'PURCHASING' ? (
+        <SalesOrderPurchasingGrid
+          salesOrderId={id}
+          orderNumber={order.orderNumber}
+          items={purchaseItems}
+          onReload={() => loadPurchaseItems(id)}
+          toast={push}
+        />
+      ) : null}
+
+      {activeTab === 'ITEMS' ? (
+      <>
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Items & Load Lists</h2>
@@ -921,6 +956,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         </details>
       </section>
+      </>
+      ) : null}
 
       {showLoadListModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -1101,6 +1138,168 @@ function FormFieldSmall({ label, children }: { label: string; children: React.Re
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
       {children}
     </label>
+  );
+}
+
+function SalesOrderPurchasingGrid({ salesOrderId, orderNumber, items, onReload, toast }: { salesOrderId: string; orderNumber: string; items: PurchaseItem[]; onReload: () => Promise<void>; toast: (message: string, variant?: 'success' | 'error' | 'info') => void }) {
+  const [drafts, setDrafts] = useState<Array<{ item: string; description: string; qty: string; itemCost: string; totalCost: string; purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT' }>>([
+    { item: '', description: '', qty: '1', itemCost: '', totalCost: '', purchasedBy: 'CREDIT_CARD' },
+  ]);
+
+  function setDraft(idx: number, patch: Partial<{ item: string; description: string; qty: string; itemCost: string; totalCost: string; purchasedBy: 'CREDIT_CARD' | 'ON_ACCOUNT' }>) {
+    setDrafts((prev) => prev.map((d, i) => i === idx ? { ...d, ...patch } : d));
+  }
+
+  async function addRow() {
+    setDrafts((prev) => [...prev, { item: '', description: '', qty: '1', itemCost: '', totalCost: '', purchasedBy: 'CREDIT_CARD' }]);
+  }
+
+  async function saveRow(idx: number) {
+    const d = drafts[idx];
+    const qty = Number(d.qty || 0);
+    const itemCost = d.itemCost === '' ? null : Number(d.itemCost);
+    const totalCost = d.totalCost === '' ? null : Number(d.totalCost);
+
+    const res = await fetch(`/api/sales-orders/${salesOrderId}/purchasing-items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item: d.item,
+        description: d.description,
+        qty,
+        itemCost,
+        totalCost,
+        purchasedBy: d.purchasedBy,
+      }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to save purchase row', 'error');
+      return;
+    }
+
+    toast('Purchase row saved', 'success');
+    setDrafts((prev) => prev.filter((_, i) => i !== idx));
+    await onReload();
+  }
+
+  async function updateExisting(item: PurchaseItem, patch: Partial<PurchaseItem>) {
+    const res = await fetch(`/api/sales-orders/purchasing-items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to update purchase row', 'error');
+      return;
+    }
+    await onReload();
+  }
+
+  async function removeExisting(id: string) {
+    const res = await fetch(`/api/sales-orders/purchasing-items/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      toast(typeof payload?.error === 'string' ? payload.error : 'Failed to delete purchase row', 'error');
+      return;
+    }
+    await onReload();
+  }
+
+  return (
+    <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-base font-semibold">Purchasing</h2>
+        <button type="button" onClick={addRow} className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">+ Add Row</button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] text-left text-sm">
+          <thead className="bg-[#eaf6fd] text-slate-600">
+            <tr>
+              <th className="px-3 py-2">Item</th>
+              <th className="px-3 py-2">Description</th>
+              <th className="px-3 py-2">Quantity</th>
+              <th className="px-3 py-2">Item Cost</th>
+              <th className="px-3 py-2">Total Cost</th>
+              <th className="px-3 py-2">Purchased By</th>
+              <th className="px-3 py-2">PO Number</th>
+              <th className="px-3 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((row) => (
+              <tr key={row.id} className="border-t border-slate-100">
+                <td className="px-3 py-2">{row.item}</td>
+                <td className="px-3 py-2">{row.description || '—'}</td>
+                <td className="px-3 py-2">{row.qty}</td>
+                <td className="px-3 py-2">{Number(row.itemCost).toFixed(2)}</td>
+                <td className="px-3 py-2">{Number(row.totalCost).toFixed(2)}</td>
+                <td className="px-3 py-2">
+                  <select value={row.purchasedBy} onChange={(e) => updateExisting(row, { purchasedBy: e.target.value as PurchaseItem['purchasedBy'] })} className="field h-8 w-36 text-xs">
+                    <option value="CREDIT_CARD">Credit Card</option>
+                    <option value="ON_ACCOUNT">On Account</option>
+                  </select>
+                </td>
+                <td className="px-3 py-2">{row.poNumber || '—'}</td>
+                <td className="px-3 py-2 text-right"><button type="button" onClick={() => removeExisting(row.id)} className="rounded border border-rose-200 px-2 py-1 text-xs font-semibold text-rose-700">Delete</button></td>
+              </tr>
+            ))}
+
+            {drafts.map((d, idx) => {
+              const qty = Number(d.qty || 0) || 0;
+              const itemCost = d.itemCost === '' ? null : Number(d.itemCost);
+              const totalCost = d.totalCost === '' ? null : Number(d.totalCost);
+              return (
+                <tr key={`draft-${idx}`} className="border-t border-slate-100 bg-slate-50">
+                  <td className="px-3 py-2"><input value={d.item} onChange={(e) => setDraft(idx, { item: e.target.value })} className="field" /></td>
+                  <td className="px-3 py-2"><input value={d.description} onChange={(e) => setDraft(idx, { description: e.target.value })} className="field" /></td>
+                  <td className="px-3 py-2"><input value={d.qty} onChange={(e) => {
+                    const q = e.target.value;
+                    const qn = Number(q || 0);
+                    if (d.totalCost !== '' && (d.itemCost === '' || !Number.isFinite(Number(d.itemCost)))) {
+                      const tc = Number(d.totalCost || 0);
+                      setDraft(idx, { qty: q, itemCost: qn > 0 ? (tc / qn).toFixed(2) : '' });
+                    } else if (d.itemCost !== '') {
+                      const ic = Number(d.itemCost || 0);
+                      setDraft(idx, { qty: q, totalCost: qn > 0 ? (ic * qn).toFixed(2) : '' });
+                    } else {
+                      setDraft(idx, { qty: q });
+                    }
+                  }} type="number" min="1" className="field" /></td>
+                  <td className="px-3 py-2"><input value={d.itemCost} onChange={(e) => {
+                    const ic = e.target.value;
+                    const qn = Number(d.qty || 0);
+                    const icn = Number(ic || 0);
+                    setDraft(idx, { itemCost: ic, totalCost: qn > 0 && Number.isFinite(icn) ? (icn * qn).toFixed(2) : '' });
+                  }} type="number" min="0" step="0.01" className="field" /></td>
+                  <td className="px-3 py-2"><input value={d.totalCost} onChange={(e) => {
+                    const tc = e.target.value;
+                    const qn = Number(d.qty || 0);
+                    const tcn = Number(tc || 0);
+                    setDraft(idx, { totalCost: tc, itemCost: qn > 0 && Number.isFinite(tcn) ? (tcn / qn).toFixed(2) : '' });
+                  }} type="number" min="0" step="0.01" className="field" /></td>
+                  <td className="px-3 py-2">
+                    <select value={d.purchasedBy} onChange={(e) => setDraft(idx, { purchasedBy: e.target.value as 'CREDIT_CARD' | 'ON_ACCOUNT' })} className="field">
+                      <option value="CREDIT_CARD">Credit Card</option>
+                      <option value="ON_ACCOUNT">On Account</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-500">{d.purchasedBy === 'ON_ACCOUNT' ? `${orderNumber}-#` : '—'}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button type="button" onClick={() => saveRow(idx)} className="mr-1 rounded border border-sky-300 px-2 py-1 text-xs font-semibold text-sky-700">Save</button>
+                    <button type="button" onClick={() => setDrafts((prev) => prev.filter((_, i) => i !== idx))} className="rounded border border-slate-300 px-2 py-1 text-xs">Cancel</button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {items.length === 0 && drafts.length === 0 ? <tr><td className="px-3 py-6 text-center text-slate-500" colSpan={8}>No purchasing rows yet.</td></tr> : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
