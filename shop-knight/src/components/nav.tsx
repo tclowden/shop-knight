@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 
@@ -40,6 +41,8 @@ const superAdminLinks = [{ href: '/admin/companies', label: 'Companies' }];
 
 export function Nav() {
   const { data: session } = useSession();
+  const [transactionsOpen, setTransactionsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
 
@@ -58,42 +61,54 @@ export function Nav() {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <details className="relative">
-          <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
+        <div className="relative" onMouseLeave={() => setTransactionsOpen(false)}>
+          <button
+            type="button"
+            onClick={() => setTransactionsOpen((v) => !v)}
+            className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+          >
             Transactions ▾
-          </summary>
-          <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-            {transactionLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </details>
-
-        {isAdmin ? (
-          <details className="relative">
-            <summary className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50">
-              Admin ▾
-            </summary>
+          </button>
+          {transactionsOpen ? (
             <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-              {adminLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+              {transactionLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
                   {link.label}
                 </Link>
               ))}
-              {isSuperAdmin ? (
-                <>
-                  <div className="my-1 border-t border-slate-200" />
-                  {superAdminLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
-                      {link.label}
-                    </Link>
-                  ))}
-                </>
-              ) : null}
             </div>
-          </details>
+          ) : null}
+        </div>
+
+        {isAdmin ? (
+          <div className="relative" onMouseLeave={() => setAdminOpen(false)}>
+            <button
+              type="button"
+              onClick={() => setAdminOpen((v) => !v)}
+              className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+            >
+              Admin ▾
+            </button>
+            {adminOpen ? (
+              <div className="absolute left-0 z-20 mt-2 min-w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                {adminLinks.map((link) => (
+                  <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                    {link.label}
+                  </Link>
+                ))}
+                {isSuperAdmin ? (
+                  <>
+                    <div className="my-1 border-t border-slate-200" />
+                    {superAdminLinks.map((link) => (
+                      <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                        {link.label}
+                      </Link>
+                    ))}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         <CompanySwitcher />
