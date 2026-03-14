@@ -1126,7 +1126,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <p className="flex justify-between text-lg font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></p>
       </div>
 
-      {activeTab === 'TASKS' ? <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} /> : null}
+      {activeTab === 'TASKS' || activeTab === 'NOTES' ? <ModuleNotesTasks entityType="SALES_ORDER" entityId={id} /> : null}
     </main>
   );
 }
