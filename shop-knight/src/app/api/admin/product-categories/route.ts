@@ -24,12 +24,39 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
+  const existing = await prisma.productCategory.findFirst({
+    where: {
+      companyId,
+      name: {
+        equals: name,
+        mode: 'insensitive',
+      },
+    },
+  });
+
+  if (existing) {
+    return NextResponse.json(
+      {
+        error: existing.active
+          ? `Category "${existing.name}" already exists.`
+          : `Category "${existing.name}" already exists but is inactive. Re-enable it instead of creating a duplicate.`,
+      },
+      { status: 409 }
+    );
+  }
+
   try {
     const created = await prisma.productCategory.create({
       data: { companyId, name, active: body?.active === undefined ? true : Boolean(body.active) },
     });
     return NextResponse.json(created, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Category already exists or could not be created' }, { status: 409 });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to create category',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }
