@@ -39,7 +39,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [inputType, setInputType] = useState('NUMBER');
   const [required, setRequired] = useState(false);
   const [defaultValue, setDefaultValue] = useState('');
-  const [optionsCsv, setOptionsCsv] = useState('');
+  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; priceValue: string }>>([{ label: '', priceValue: '' }]);
 
   const [previewQty, setPreviewQty] = useState('1');
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
@@ -90,7 +90,12 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         inputType,
         required,
         defaultValue: defaultValue || null,
-        options: inputType === 'SELECT' ? optionsCsv.split(',').map((s) => s.trim()).filter(Boolean) : null,
+        options: inputType === 'SELECT'
+          ? selectOptions
+              .map((opt) => ({ label: opt.label.trim(), price: opt.priceValue.trim() }))
+              .filter((opt) => opt.label && opt.price)
+              .map((opt) => `${opt.label}|${opt.price}`)
+          : null,
       }),
     });
 
@@ -99,8 +104,20 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setInputType('NUMBER');
     setRequired(false);
     setDefaultValue('');
-    setOptionsCsv('');
+    setSelectOptions([{ label: '', priceValue: '' }]);
     await load(id);
+  }
+
+  function updateSelectOption(index: number, patch: { label?: string; priceValue?: string }) {
+    setSelectOptions((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function addSelectOptionRow() {
+    setSelectOptions((prev) => [...prev, { label: '', priceValue: '' }]);
+  }
+
+  function removeSelectOptionRow(index: number) {
+    setSelectOptions((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function applyFabricRollPrintBuilder() {
@@ -297,8 +314,46 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <option value="NUMBER">NUMBER</option><option value="TEXT">TEXT</option><option value="SELECT">SELECT</option><option value="BOOLEAN">BOOLEAN</option>
         </select>
         <input value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} placeholder="default value" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-        <input value={optionsCsv} onChange={(e) => setOptionsCsv(e.target.value)} placeholder="select options: a,b,c" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <label className="flex items-center gap-2 rounded border border-zinc-700 p-2 text-sm"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /> Required</label>
+
+        {inputType === 'SELECT' ? (
+          <div className="md:col-span-6 rounded border border-zinc-700 p-3">
+            <p className="mb-2 text-xs text-zinc-300">Select options with explicit price differentiator</p>
+            <div className="space-y-2">
+              {selectOptions.map((row, index) => (
+                <div key={`opt-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-12">
+                  <input
+                    value={row.label}
+                    onChange={(e) => updateSelectOption(index, { label: e.target.value })}
+                    placeholder="Option label (e.g. Backlit Fabric)"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-6"
+                  />
+                  <input
+                    value={row.priceValue}
+                    onChange={(e) => updateSelectOption(index, { priceValue: e.target.value })}
+                    placeholder="Price value (e.g. 1.55)"
+                    type="number"
+                    step="0.01"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-4"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSelectOptionRow(index)}
+                    disabled={selectOptions.length === 1}
+                    className="rounded border border-zinc-700 px-2 py-1 text-xs md:col-span-2 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={addSelectOptionRow} className="mt-2 rounded border border-zinc-700 px-2 py-1 text-xs">
+              + Add Option
+            </button>
+            <p className="mt-2 text-[11px] text-zinc-500">Stored format is Label|Value so formulas can use the selected option directly as a number.</p>
+          </div>
+        ) : null}
+
         <button className="rounded bg-blue-600 px-3 py-2 md:col-span-6">Add Attribute</button>
       </form>
 
