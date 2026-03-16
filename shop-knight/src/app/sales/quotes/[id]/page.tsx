@@ -8,8 +8,10 @@ import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
 import { useUnsavedGuard } from '@/components/use-unsaved-guard';
 import { useToast } from '@/components/toast-provider';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
-type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null; required?: boolean };
+type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 type User = { id: string; name: string; type: string };
 type OpportunityOption = { id: string; name: string; customer: string };
 type Proof = {
@@ -92,6 +94,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [newTaxable, setNewTaxable] = useState(true);
   const [newUnitCost, setNewUnitCost] = useState('0.00');
   const [newGpmPercent, setNewGpmPercent] = useState('35');
+  const [newAttributeValues, setNewAttributeValues] = useState<Record<string, string>>({});
 
   const [customerContactRole, setCustomerContactRole] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
@@ -236,13 +239,36 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
+  function recalcNewLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    const basePrice = Number(p.salePrice || 0);
+    const vars = buildPricingVars(Number(qty || 1), basePrice, attrs);
+    setNewUnitPrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
+  }
+
   async function addLine(e: React.FormEvent) {
     e.preventDefault();
+
+    const selected = products.find((p) => p.id === newProductId);
+    if (selected?.attributes?.length) {
+      const missing = selected.attributes.filter((attr) => {
+        if (!attr.required) return false;
+        const raw = newAttributeValues[attr.code] || '';
+        if (attr.inputType === 'BOOLEAN') return raw.toLowerCase() !== 'true';
+        return !String(raw).trim();
+      });
+      if (missing.length > 0) {
+        push(`Please fill required attributes: ${missing.map((m) => m.name).join(', ')}`, 'error');
+        return;
+      }
+    }
+
     await fetch(`/api/quotes/${id}/lines`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0 }),
+      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0, attributeValues: newAttributeValues }),
     });
-    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35');
+    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35'); setNewAttributeValues({});
     await load(id);
   }
 
@@ -452,13 +478,13 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <label className="text-xs text-zinc-300">Product
-            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setNewAttributeValues(defaults); recalcNewLinePrice(pid, newQty, defaults); } else { setNewAttributeValues({}); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
           </label>
           <label className="text-xs text-zinc-300">Description
             <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           </label>
           <label className="text-xs text-zinc-300">Quantity
-            <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+            <input value={newQty} onChange={(e) => { const q = e.target.value; setNewQty(q); recalcNewLinePrice(newProductId, q, newAttributeValues); }} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           </label>
           <label className="text-xs text-zinc-300">Unit Cost
             <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
@@ -480,6 +506,58 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
           </label>
         </div>
+        {(() => {
+          const selected = products.find((p) => p.id === newProductId);
+          if (!selected?.attributes?.length) return null;
+          return (
+            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+              {selected.attributes.map((attr) => (
+                <label key={attr.id} className="text-xs text-zinc-300">
+                  {attr.name}
+                  {attr.inputType === 'SELECT' ? (
+                    <select
+                      value={newAttributeValues[attr.code] || ''}
+                      required={Boolean(attr.required)}
+                      onChange={(e) => {
+                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                        setNewAttributeValues(next);
+                        recalcNewLinePrice(newProductId, newQty, next);
+                      }}
+                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                    >
+                      <option value="">Select</option>
+                      {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  ) : attr.inputType === 'BOOLEAN' ? (
+                    <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                      <input
+                        type="checkbox"
+                        checked={(newAttributeValues[attr.code] || '').toLowerCase() === 'true'}
+                        onChange={(e) => {
+                          const next = { ...newAttributeValues, [attr.code]: e.target.checked ? 'true' : 'false' };
+                          setNewAttributeValues(next);
+                          recalcNewLinePrice(newProductId, newQty, next);
+                        }}
+                      />
+                    </span>
+                  ) : (
+                    <input
+                      value={newAttributeValues[attr.code] || ''}
+                      onChange={(e) => {
+                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                        setNewAttributeValues(next);
+                        recalcNewLinePrice(newProductId, newQty, next);
+                      }}
+                      type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      required={Boolean(attr.required)}
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          );
+        })()}
         </details>
       </form>
 

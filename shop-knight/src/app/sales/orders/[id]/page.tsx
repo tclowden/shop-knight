@@ -7,8 +7,10 @@ import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
 import { useUnsavedGuard } from '@/components/use-unsaved-guard';
 import { useToast } from '@/components/toast-provider';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
-type Product = { id: string; sku: string; name: string; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null; required?: boolean };
+type Product = { id: string; sku: string; name: string; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 type User = { id: string; name: string; type: string };
 type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
@@ -154,6 +156,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [newTaxable, setNewTaxable] = useState(true);
   const [newUnitCost, setNewUnitCost] = useState('0.00');
   const [newGpmPercent, setNewGpmPercent] = useState('35');
+  const [newAttributeValues, setNewAttributeValues] = useState<Record<string, string>>({});
 
   const [title, setTitle] = useState('');
   const [statusName, setStatusName] = useState('');
@@ -550,11 +553,34 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
+  function recalcNewLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    const basePrice = Number(p.salePrice || 0);
+    const vars = buildPricingVars(Number(qty || 1), basePrice, attrs);
+    setNewUnitPrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
+  }
+
   async function addLine(e: React.FormEvent) {
     e.preventDefault();
+
+    const selected = products.find((p) => p.id === newProductId);
+    if (selected?.attributes?.length) {
+      const missing = selected.attributes.filter((attr) => {
+        if (!attr.required) return false;
+        const raw = newAttributeValues[attr.code] || '';
+        if (attr.inputType === 'BOOLEAN') return raw.toLowerCase() !== 'true';
+        return !String(raw).trim();
+      });
+      if (missing.length > 0) {
+        push(`Please fill required attributes: ${missing.map((m) => m.name).join(', ')}`, 'error');
+        return;
+      }
+    }
+
     await fetch(`/api/sales-orders/${id}/lines`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), attributeValues: { _taxable: newTaxable ? 'true' : 'false', _unitCost: newUnitCost, _gpmPercent: newGpmPercent } }),
+      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), attributeValues: { ...newAttributeValues, _taxable: newTaxable ? 'true' : 'false', _unitCost: newUnitCost, _gpmPercent: newGpmPercent } }),
     });
     setNewProductId('');
     setNewDescription('');
@@ -563,6 +589,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     setNewTaxable(true);
     setNewUnitCost('0.00');
     setNewGpmPercent('35');
+    setNewAttributeValues({});
     setShowAddLineModal(false);
     await load(id);
   }
@@ -1219,12 +1246,12 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <form onSubmit={addLine} className="space-y-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
                 <FormFieldSmall label="Product">
-                  <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="field">
+                  <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setNewAttributeValues(defaults); recalcNewLinePrice(pid, newQty, defaults); } else { setNewAttributeValues({}); } }} className="field">
                     <option value="">Custom / no product</option>{sortedProducts.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}
                   </select>
                 </FormFieldSmall>
                 <FormFieldSmall label="Description"><input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="field" required /></FormFieldSmall>
-                <FormFieldSmall label="Quantity"><input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="field" required /></FormFieldSmall>
+                <FormFieldSmall label="Quantity"><input value={newQty} onChange={(e) => { const q = e.target.value; setNewQty(q); recalcNewLinePrice(newProductId, q, newAttributeValues); }} type="number" min="1" className="field" required /></FormFieldSmall>
                 <FormFieldSmall label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormFieldSmall>
                 <FormFieldSmall label="Taxable"><span className="field flex items-center"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span></FormFieldSmall>
                 <div className="flex items-end"><button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600">Create Line</button></div>
@@ -1234,6 +1261,47 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                 <FormFieldSmall label={`GPM % (+ Fee ${Number(order?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%)`}><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /></FormFieldSmall>
                 <FormFieldSmall label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100" /></FormFieldSmall>
               </div>
+              {(() => {
+                const selected = products.find((p) => p.id === newProductId);
+                if (!selected?.attributes?.length) return null;
+                return (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                    {selected.attributes.map((attr) => (
+                      <FormFieldSmall key={attr.id} label={attr.name}>
+                        {attr.inputType === 'SELECT' ? (
+                          <select
+                            value={newAttributeValues[attr.code] || ''}
+                            required={Boolean(attr.required)}
+                            onChange={(e) => {
+                              const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                              setNewAttributeValues(next);
+                              recalcNewLinePrice(newProductId, newQty, next);
+                            }}
+                            className="field"
+                          >
+                            <option value="">Select</option>
+                            {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                          </select>
+                        ) : attr.inputType === 'BOOLEAN' ? (
+                          <span className="field flex items-center"><input type="checkbox" checked={(newAttributeValues[attr.code] || '').toLowerCase() === 'true'} onChange={(e) => { const next = { ...newAttributeValues, [attr.code]: e.target.checked ? 'true' : 'false' }; setNewAttributeValues(next); recalcNewLinePrice(newProductId, newQty, next); }} /></span>
+                        ) : (
+                          <input
+                            value={newAttributeValues[attr.code] || ''}
+                            onChange={(e) => {
+                              const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                              setNewAttributeValues(next);
+                              recalcNewLinePrice(newProductId, newQty, next);
+                            }}
+                            type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                            className="field"
+                            required={Boolean(attr.required)}
+                          />
+                        )}
+                      </FormFieldSmall>
+                    ))}
+                  </div>
+                );
+              })()}
             </form>
           </div>
         </div>
