@@ -11,6 +11,11 @@ type Profile = {
   phone: string | null;
   avatarUrl: string | null;
   titleName: string | null;
+  knownTravelerNumber: string | null;
+  rewardMarriottNumber: string | null;
+  rewardUnitedNumber: string | null;
+  rewardDeltaNumber: string | null;
+  rewardAmericanNumber: string | null;
 };
 
 type Pref = { event: string; emailEnabled: boolean; inAppEnabled: boolean };
@@ -29,6 +34,11 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [knownTravelerNumber, setKnownTravelerNumber] = useState('');
+  const [rewardMarriottNumber, setRewardMarriottNumber] = useState('');
+  const [rewardUnitedNumber, setRewardUnitedNumber] = useState('');
+  const [rewardDeltaNumber, setRewardDeltaNumber] = useState('');
+  const [rewardAmericanNumber, setRewardAmericanNumber] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -67,6 +77,11 @@ export default function ProfilePage() {
     setName(profilePayload.name || session?.user?.name || '');
     setPhone(profilePayload.phone || '');
     setAvatarUrl(profilePayload.avatarUrl || session?.user?.image || '');
+    setKnownTravelerNumber(profilePayload.knownTravelerNumber || '');
+    setRewardMarriottNumber(profilePayload.rewardMarriottNumber || '');
+    setRewardUnitedNumber(profilePayload.rewardUnitedNumber || '');
+    setRewardDeltaNumber(profilePayload.rewardDeltaNumber || '');
+    setRewardAmericanNumber(profilePayload.rewardAmericanNumber || '');
 
     if (prefsRes.ok) {
       const prefPayload = await prefsRes.json().catch(() => []);
@@ -83,7 +98,16 @@ export default function ProfilePage() {
     const res = await fetch('/api/users/me', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, avatarUrl }),
+      body: JSON.stringify({
+        name,
+        phone,
+        avatarUrl,
+        knownTravelerNumber,
+        rewardMarriottNumber,
+        rewardUnitedNumber,
+        rewardDeltaNumber,
+        rewardAmericanNumber,
+      }),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -203,6 +227,32 @@ export default function ProfilePage() {
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Title</span>
             <input value={profile?.titleName || ''} disabled className="field bg-slate-100" />
           </label>
+
+          <div className="md:col-span-2 mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <h3 className="text-sm font-semibold text-slate-700">Travel Info</h3>
+            <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Known Traveler Number</span>
+                <input value={knownTravelerNumber} onChange={(e) => setKnownTravelerNumber(e.target.value)} className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Marriott #</span>
+                <input value={rewardMarriottNumber} onChange={(e) => setRewardMarriottNumber(e.target.value)} className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">United #</span>
+                <input value={rewardUnitedNumber} onChange={(e) => setRewardUnitedNumber(e.target.value)} className="field" />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Delta #</span>
+                <input value={rewardDeltaNumber} onChange={(e) => setRewardDeltaNumber(e.target.value)} className="field" />
+              </label>
+              <label className="text-sm md:col-span-2">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">American #</span>
+                <input value={rewardAmericanNumber} onChange={(e) => setRewardAmericanNumber(e.target.value)} className="field" />
+              </label>
+            </div>
+          </div>
           {error ? <p className="md:col-span-2 text-sm text-rose-600">{error}</p> : null}
           {message ? <p className="md:col-span-2 text-sm text-emerald-700">{message}</p> : null}
           <div className="md:col-span-2 flex justify-end">
