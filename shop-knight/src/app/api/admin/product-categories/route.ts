@@ -24,15 +24,11 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
-  const existing = await prisma.productCategory.findFirst({
-    where: {
-      companyId,
-      name: {
-        equals: name,
-        mode: 'insensitive',
-      },
-    },
+  const existingItems = await prisma.productCategory.findMany({
+    where: { companyId },
+    select: { id: true, name: true, active: true },
   });
+  const existing = existingItems.find((c) => c.name.trim().toLowerCase() === name.toLowerCase());
 
   if (existing) {
     return NextResponse.json(

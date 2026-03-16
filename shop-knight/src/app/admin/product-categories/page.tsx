@@ -26,10 +26,14 @@ export default function ProductCategoriesPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
-    const payload = await res.json().catch(() => ({}));
+    const raw = await res.text();
+    let payload: Record<string, unknown> = {};
+    try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = {}; }
     setSaving(false);
     if (!res.ok) {
-      setMessage(payload?.error || 'Failed to create category');
+      const apiError = typeof payload?.error === 'string' ? payload.error : '';
+      const apiDetail = typeof payload?.detail === 'string' ? payload.detail : '';
+      setMessage(apiError || apiDetail || `Failed to create category (HTTP ${res.status})${raw ? `: ${raw.slice(0, 300)}` : ''}`);
       return;
     }
     setName('');
