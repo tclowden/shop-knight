@@ -75,8 +75,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `${message} (no cached rate available)` }, { status: 504 });
     }
     mie = Number(cached.dailyRate);
+    yearUsed = Number(cached.year) > 0 ? Number(cached.year) : year;
     rateEntry = { county: undefined, months: { month: [] } };
-    fallbackNote = 'Used cached per-diem rate due to temporary GSA lookup failure.';
+    fallbackNote = `Used cached per-diem rate (${yearUsed}) due to temporary GSA lookup failure.`;
   }
 
   const tripMonth = (trip.startDate || trip.endDate || new Date()).getMonth() + 1;

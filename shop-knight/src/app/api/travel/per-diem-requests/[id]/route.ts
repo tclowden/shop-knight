@@ -89,6 +89,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         return NextResponse.json({ error: `${message} (no cached rate available)` }, { status: 504 });
       }
       mie = Number(cached.dailyRate);
+      yearUsed = Number(cached.year) > 0 ? Number(cached.year) : year;
       rateEntry = { months: { month: [] } };
     }
 
