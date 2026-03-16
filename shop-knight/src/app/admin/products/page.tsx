@@ -9,6 +9,7 @@ type Product = {
   sku: string;
   name: string;
   category: string | null;
+  productCategory?: { id: string; name: string } | null;
   uom: string | null;
   description: string | null;
   salePrice: string | number;
@@ -105,7 +106,7 @@ export default function ProductsAdminPage() {
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="px-4 py-4">{p.sku}</td>
                 <td className="px-4 py-4">{p.name}</td>
-                <td className="px-4 py-4">{p.category || '—'}</td>
+                <td className="px-4 py-4">{p.productCategory?.name || p.category || '—'}</td>
                 <td className="px-4 py-4">{p.uom || 'EA'}</td>
                 <td className="px-4 py-4">{p.description || '—'}</td>
                 <td className="px-4 py-4">{p.salePrice}</td>

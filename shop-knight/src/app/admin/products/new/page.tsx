@@ -1,9 +1,13 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
+
+type Department = { id: string; name: string; active: boolean };
+type ProductCategory = { id: string; name: string; active: boolean };
+type IncomeAccount = { id: string; code: string; name: string; active: boolean };
 
 type DraftAttribute = {
   code: string;
@@ -18,12 +22,21 @@ export default function NewProductPage() {
   const router = useRouter();
   const [sku, setSku] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('General');
+  const [type, setType] = useState('PRINT');
+  const [departmentId, setDepartmentId] = useState('');
+  const [incomeAccountId, setIncomeAccountId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [category, setCategory] = useState('');
   const [uom, setUom] = useState('EA');
   const [description, setDescription] = useState('');
   const [salePrice, setSalePrice] = useState('0.00');
   const [costPrice, setCostPrice] = useState('0.00');
+  const [gpmPercent, setGpmPercent] = useState('35');
   const [taxable, setTaxable] = useState(true);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [incomeAccounts, setIncomeAccounts] = useState<IncomeAccount[]>([]);
 
   const [attributes, setAttributes] = useState<DraftAttribute[]>([]);
   const [attrCode, setAttrCode] = useState('');
@@ -35,6 +48,20 @@ export default function NewProductPage() {
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function loadOptions() {
+      const [dRes, cRes, iRes] = await Promise.all([
+        fetch('/api/admin/departments'),
+        fetch('/api/admin/product-categories'),
+        fetch('/api/admin/income-accounts'),
+      ]);
+      if (dRes.ok) setDepartments((await dRes.json()).filter((d: Department) => d.active));
+      if (cRes.ok) setCategories((await cRes.json()).filter((c: ProductCategory) => c.active));
+      if (iRes.ok) setIncomeAccounts((await iRes.json()).filter((i: IncomeAccount) => i.active));
+    }
+    loadOptions();
+  }, []);
 
   function addAttributeDraft(e: FormEvent) {
     e.preventDefault();
@@ -90,12 +117,31 @@ export default function NewProductPage() {
     if (saving) return;
     setError('');
 
+    if (!departmentId || !incomeAccountId || !categoryId || !type) {
+      setError('Type, Department, Income Account, and Category are required.');
+      return;
+    }
+
     try {
       setSaving(true);
       const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku, name, category, uom, description, salePrice, costPrice, taxable }),
+        body: JSON.stringify({
+          sku,
+          name,
+          type,
+          departmentId,
+          incomeAccountId,
+          categoryId,
+          category,
+          uom,
+          description,
+          salePrice,
+          costPrice,
+          gpmPercent,
+          taxable,
+        }),
       });
 
       if (!res.ok) {
@@ -175,8 +221,32 @@ export default function NewProductPage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
+            Type
+            <input value={type} onChange={(e) => setType(e.target.value)} placeholder="PRINT, LABOR, INSTALL..." className="field mt-1" required />
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
+            Department (Revenue Recognition)
+            <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="field mt-1" required>
+              <option value="">Select department</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
+            Income Account
+            <select value={incomeAccountId} onChange={(e) => setIncomeAccountId(e.target.value)} className="field mt-1" required>
+              <option value="">Select income account</option>
+              {incomeAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+            </select>
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
             Category
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="field mt-1" />
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="field mt-1" required>
+              <option value="">Select category</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </label>
 
           <label className="text-sm font-medium text-slate-700">
@@ -190,13 +260,18 @@ export default function NewProductPage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            Sale Price
+            Revenue Price
             <input value={salePrice} onChange={(e) => setSalePrice(e.target.value)} type="number" step="0.01" min="0" placeholder="0.00" className="field mt-1" required />
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            Cost Price
+            Cost
             <input value={costPrice} onChange={(e) => setCostPrice(e.target.value)} type="number" step="0.01" min="0" placeholder="0.00" className="field mt-1" />
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
+            GPM %
+            <input value={gpmPercent} onChange={(e) => setGpmPercent(e.target.value)} type="number" step="0.01" min="0" max="99.99" placeholder="35" className="field mt-1" />
           </label>
 
           <label className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 md:col-span-2">

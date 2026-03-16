@@ -26,7 +26,12 @@ export async function GET(req: Request) {
           ? {}
           : { active: true }),
     },
-    include: { attributes: { orderBy: { sortOrder: 'asc' } } },
+    include: {
+      attributes: { orderBy: { sortOrder: 'asc' } },
+      department: { select: { id: true, name: true } },
+      incomeAccount: { select: { id: true, code: true, name: true } },
+      productCategory: { select: { id: true, name: true } },
+    },
     orderBy: { name: 'asc' },
   });
 
@@ -45,9 +50,29 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   const salePrice = toNumber(body?.salePrice);
   const costPrice = body?.costPrice === '' || body?.costPrice === undefined ? null : toNumber(body?.costPrice);
+  const gpmPercent = body?.gpmPercent === '' || body?.gpmPercent === undefined ? null : toNumber(body?.gpmPercent);
+  const departmentId = body?.departmentId ? String(body.departmentId) : null;
+  const incomeAccountId = body?.incomeAccountId ? String(body.incomeAccountId) : null;
+  const categoryId = body?.categoryId ? String(body.categoryId) : null;
 
   if (!sku || !name || salePrice === null) {
     return NextResponse.json({ error: 'sku, name, and salePrice are required' }, { status: 400 });
+  }
+  if (!body?.type || !departmentId || !incomeAccountId || !categoryId) {
+    return NextResponse.json({ error: 'type, departmentId, incomeAccountId, and categoryId are required' }, { status: 400 });
+  }
+
+  if (departmentId) {
+    const d = await prisma.department.findFirst({ where: { id: departmentId, companyId } });
+    if (!d) return NextResponse.json({ error: 'Invalid department' }, { status: 400 });
+  }
+  if (incomeAccountId) {
+    const ia = await prisma.incomeAccount.findFirst({ where: { id: incomeAccountId, companyId } });
+    if (!ia) return NextResponse.json({ error: 'Invalid income account' }, { status: 400 });
+  }
+  if (categoryId) {
+    const c = await prisma.productCategory.findFirst({ where: { id: categoryId, companyId } });
+    if (!c) return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
   }
 
   try {
@@ -56,11 +81,16 @@ export async function POST(req: Request) {
         companyId,
         sku,
         name,
+        type: body?.type ? String(body.type) : null,
+        departmentId,
+        incomeAccountId,
+        categoryId,
         category: body?.category ? String(body.category) : null,
         description: body?.description ? String(body.description) : null,
         uom: body?.uom ? String(body.uom) : 'EA',
         salePrice,
         costPrice,
+        gpmPercent,
         taxable: body?.taxable === false ? false : true,
         active: true,
       },

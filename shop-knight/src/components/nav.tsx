@@ -31,6 +31,8 @@ const adminLinks = [
   { href: '/admin/job-workflows', label: 'Job Workflows' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/departments', label: 'Departments' },
+  { href: '/admin/product-categories', label: 'Product Categories' },
+  { href: '/admin/income-accounts', label: 'Income Accounts' },
   { href: '/admin/titles', label: 'Titles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
   { href: '/tasks/templates', label: 'Task Templates' },

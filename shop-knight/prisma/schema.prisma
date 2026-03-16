@@ -145,6 +145,8 @@ model Company {
   notificationPreferences NotificationPreference[]
   departments          Department[]
   titles               Title[]
+  productCategories    ProductCategory[]
+  incomeAccounts       IncomeAccount[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -211,6 +213,7 @@ model Department {
   opportunities Opportunity[]
   quotes       Quote[]
   salesOrders  SalesOrder[]
+  products     Product[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -228,6 +231,34 @@ model Title {
   updatedAt DateTime  @updatedAt
 
   @@unique([companyId, name])
+}
+
+model ProductCategory {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model IncomeAccount {
+  id          String    @id @default(cuid())
+  companyId   String?
+  code        String
+  name        String
+  description String?
+  active      Boolean   @default(true)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([companyId, code])
 }
 
 model CustomRole {
@@ -430,26 +461,37 @@ model QuoteLine {
 }
 
 model Product {
-  id              String             @id @default(cuid())
-  companyId       String?
-  sku             String
-  name            String
-  category        String?
-  uom             String?            @default("EA")
-  description     String?
-  salePrice       Decimal            @db.Decimal(12, 2)
-  costPrice       Decimal?           @db.Decimal(12, 2)
-  pricingFormula  String?
-  company         Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  taxable         Boolean            @default(true)
-  active          Boolean            @default(true)
-  attributes      ProductAttribute[]
-  quoteLines      QuoteLine[]
-  salesOrderLines SalesOrderLine[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id               String             @id @default(cuid())
+  companyId        String?
+  sku              String
+  name             String
+  type             String?
+  departmentId     String?
+  incomeAccountId  String?
+  categoryId       String?
+  category         String?
+  uom              String?            @default("EA")
+  description      String?
+  salePrice        Decimal            @db.Decimal(12, 2)
+  costPrice        Decimal?           @db.Decimal(12, 2)
+  gpmPercent       Decimal?           @db.Decimal(5, 2)
+  pricingFormula   String?
+  company          Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department       Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  incomeAccount    IncomeAccount?     @relation(fields: [incomeAccountId], references: [id], onDelete: SetNull)
+  productCategory  ProductCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taxable          Boolean            @default(true)
+  active           Boolean            @default(true)
+  attributes       ProductAttribute[]
+  quoteLines       QuoteLine[]
+  salesOrderLines  SalesOrderLine[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@unique([companyId, sku])
+  @@index([companyId, categoryId])
+  @@index([companyId, incomeAccountId])
+  @@index([companyId, departmentId])
 }
 
 enum AttributeInputType {
