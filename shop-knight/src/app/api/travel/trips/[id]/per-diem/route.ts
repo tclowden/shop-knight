@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
-import { dateDiffDays, fetchGsaPerDiem, getTripYear, normalizeStateCode } from '@/lib/per-diem';
+import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear, normalizeStateCode } from '@/lib/per-diem';
 
 async function retry<T>(fn: () => Promise<T>, attempts = 2, waitMs = 250): Promise<T> {
   let lastError: unknown;
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
 
-    const apiKey = String(process.env.GSA_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+    const apiKey = getGsaApiKeyFromEnv();
     if (!apiKey) {
       return NextResponse.json({ error: 'GSA API key missing. Set GSA_API_KEY in environment.' }, { status: 400 });
     }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
-import { dateDiffDays, fetchGsaPerDiem, getTripYear } from '@/lib/per-diem';
+import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear } from '@/lib/per-diem';
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
@@ -60,7 +60,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     };
   }
   if (body?.action === 'recompute') {
-    const apiKey = process.env.GSA_API_KEY;
+    const apiKey = getGsaApiKeyFromEnv();
     if (!apiKey) return NextResponse.json({ error: 'GSA API key missing' }, { status: 400 });
 
     if (!existing.trip.destinationCity || !existing.trip.destinationState) {

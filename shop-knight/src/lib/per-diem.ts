@@ -13,6 +13,19 @@ export function normalizeStateCode(value: string | null | undefined) {
   return String(value).trim().toUpperCase();
 }
 
+export function sanitizeApiKey(value: string | null | undefined) {
+  if (!value) return '';
+  return String(value)
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\\n/g, '')
+    .replace(/\s+/g, '');
+}
+
+export function getGsaApiKeyFromEnv() {
+  return sanitizeApiKey(process.env.GSA_API_KEY);
+}
+
 function toNum(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
