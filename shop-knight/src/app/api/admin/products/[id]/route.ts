@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
+import { ensureProductAdminSchema } from '@/lib/product-admin-schema';
 
 function toNumber(value: unknown) {
   const n = Number(value);
@@ -13,6 +14,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  await ensureProductAdminSchema();
 
   const { id } = await params;
   const body = await req.json();
@@ -75,6 +78,8 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
+  await ensureProductAdminSchema();
+
   const { id } = await params;
   const existing = await prisma.product.findFirst({ where: { id, companyId }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -89,6 +94,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  await ensureProductAdminSchema();
 
   const body = await req.json().catch(() => ({}));
   if (body?.action !== 'restore') return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

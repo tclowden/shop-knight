@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
+import { ensureProductAdminSchema } from '@/lib/product-admin-schema';
 
 export async function GET() {
   const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
@@ -8,6 +9,8 @@ export async function GET() {
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  await ensureProductAdminSchema();
 
   try {
     const items = await prisma.productCategory.findMany({ where: withCompany(companyId), orderBy: { name: 'asc' } });
