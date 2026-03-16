@@ -13,6 +13,16 @@ type Profile = {
   titleName: string | null;
 };
 
+type Pref = { event: string; emailEnabled: boolean; inAppEnabled: boolean };
+
+const notificationLabels: Record<string, string> = {
+  NOTE_MENTION: 'Note mentions',
+  TASK_ASSIGNED: 'Task assigned',
+  OPPORTUNITY_ROLE_ASSIGNED: 'Opportunity role assignments',
+  QUOTE_ROLE_ASSIGNED: 'Quote role assignments',
+  SALES_ORDER_ROLE_ASSIGNED: 'Sales order role assignments',
+};
+
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -22,6 +32,11 @@ export default function ProfilePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [prefs, setPrefs] = useState<Pref[]>([]);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [prefsMsg, setPrefsMsg] = useState('');
+  const [prefsErr, setPrefsErr] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -36,17 +51,28 @@ export default function ProfilePage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/users/me');
-    const payload = await res.json().catch(() => null);
-    if (!res.ok) {
-      setError(typeof payload?.error === 'string' ? payload.error : 'Failed to load profile');
+    const [profileRes, prefsRes] = await Promise.all([
+      fetch('/api/users/me'),
+      fetch('/api/notifications/preferences'),
+    ]);
+
+    const profilePayload = await profileRes.json().catch(() => null);
+    if (!profileRes.ok) {
+      setError(typeof profilePayload?.error === 'string' ? profilePayload.error : 'Failed to load profile');
       setLoading(false);
       return;
     }
-    setProfile(payload);
-    setName(payload.name || session?.user?.name || '');
-    setPhone(payload.phone || '');
-    setAvatarUrl(payload.avatarUrl || session?.user?.image || '');
+
+    setProfile(profilePayload);
+    setName(profilePayload.name || session?.user?.name || '');
+    setPhone(profilePayload.phone || '');
+    setAvatarUrl(profilePayload.avatarUrl || session?.user?.image || '');
+
+    if (prefsRes.ok) {
+      const prefPayload = await prefsRes.json().catch(() => []);
+      setPrefs(Array.isArray(prefPayload) ? prefPayload : []);
+    }
+
     setLoading(false);
   }
 
@@ -67,6 +93,28 @@ export default function ProfilePage() {
     setProfile(payload);
     await update({ image: payload.avatarUrl || null, name: payload.name });
     setMessage('Profile saved');
+  }
+
+  async function saveNotificationPrefs() {
+    setPrefsMsg('');
+    setPrefsErr('');
+    setPrefsSaving(true);
+
+    const res = await fetch('/api/notifications/preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates: prefs }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setPrefsErr(typeof payload?.error === 'string' ? payload.error : 'Failed to save notification preferences');
+      setPrefsSaving(false);
+      return;
+    }
+
+    setPrefsMsg('Notification preferences saved');
+    setPrefsSaving(false);
   }
 
   async function changePassword(e: React.FormEvent) {
@@ -121,7 +169,7 @@ export default function ProfilePage() {
   return (
     <main className="mx-auto max-w-5xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
       <h1 className="text-3xl font-semibold tracking-tight">My Profile</h1>
-      <p className="text-sm text-slate-500">Manage your account details and password.</p>
+      <p className="text-sm text-slate-500">Manage your account details, notifications, and password.</p>
       <Nav />
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -161,6 +209,42 @@ export default function ProfilePage() {
             <button className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600">Save Profile</button>
           </div>
         </form>
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" id="notifications">
+        <h2 className="mb-3 text-base font-semibold">Notification Preferences</h2>
+        <p className="mb-3 text-sm text-slate-500">These settings are per-user and only affect your account.</p>
+        <div className="space-y-3">
+          {prefs.map((p, idx) => (
+            <div key={p.event} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-medium text-slate-700">{notificationLabels[p.event] || p.event}</p>
+              <div className="flex items-center gap-4 text-sm">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={p.emailEnabled}
+                    onChange={(e) => setPrefs((prev) => prev.map((item, i) => i === idx ? { ...item, emailEnabled: e.target.checked } : item))}
+                  />
+                  Email
+                </label>
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={p.inAppEnabled}
+                    onChange={(e) => setPrefs((prev) => prev.map((item, i) => i === idx ? { ...item, inAppEnabled: e.target.checked } : item))}
+                  />
+                  In-app
+                </label>
+              </div>
+            </div>
+          ))}
+          {prefs.length === 0 ? <p className="text-sm text-slate-500">No preferences loaded.</p> : null}
+        </div>
+        {prefsErr ? <p className="mt-3 text-sm text-rose-600">{prefsErr}</p> : null}
+        {prefsMsg ? <p className="mt-3 text-sm text-emerald-700">{prefsMsg}</p> : null}
+        <button onClick={saveNotificationPrefs} disabled={prefsSaving} className="mt-4 rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">
+          {prefsSaving ? 'Saving…' : 'Save Notification Preferences'}
+        </button>
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
