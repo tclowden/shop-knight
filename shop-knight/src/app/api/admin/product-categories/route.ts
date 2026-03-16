@@ -9,8 +9,18 @@ export async function GET() {
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
-  const items = await prisma.productCategory.findMany({ where: withCompany(companyId), orderBy: { name: 'asc' } });
-  return NextResponse.json(items);
+  try {
+    const items = await prisma.productCategory.findMany({ where: withCompany(companyId), orderBy: { name: 'asc' } });
+    return NextResponse.json(items);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to load product categories. Database may be missing recent migrations.',
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: Request) {
@@ -24,24 +34,24 @@ export async function POST(req: Request) {
   const name = String(body?.name || '').trim();
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
-  const existingItems = await prisma.productCategory.findMany({
-    where: { companyId },
-    select: { id: true, name: true, active: true },
-  });
-  const existing = existingItems.find((c) => c.name.trim().toLowerCase() === name.toLowerCase());
-
-  if (existing) {
-    return NextResponse.json(
-      {
-        error: existing.active
-          ? `Category "${existing.name}" already exists.`
-          : `Category "${existing.name}" already exists but is inactive. Re-enable it instead of creating a duplicate.`,
-      },
-      { status: 409 }
-    );
-  }
-
   try {
+    const existingItems = await prisma.productCategory.findMany({
+      where: { companyId },
+      select: { id: true, name: true, active: true },
+    });
+    const existing = existingItems.find((c) => c.name.trim().toLowerCase() === name.toLowerCase());
+
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: existing.active
+            ? `Category "${existing.name}" already exists.`
+            : `Category "${existing.name}" already exists but is inactive. Re-enable it instead of creating a duplicate.`,
+        },
+        { status: 409 }
+      );
+    }
+
     const created = await prisma.productCategory.create({
       data: { companyId, name, active: body?.active === undefined ? true : Boolean(body.active) },
     });
@@ -49,7 +59,7 @@ export async function POST(req: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Failed to create category',
+        error: 'Failed to create category. Database may be missing recent migrations.',
         detail: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
