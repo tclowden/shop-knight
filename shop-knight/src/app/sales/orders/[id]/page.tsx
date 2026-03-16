@@ -553,6 +553,14 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     return (cost / (1 - effectiveGpm)).toFixed(2);
   }
 
+  function applySelectCostToUnitCost(value: string) {
+    const parts = String(value || '').split('|').map((p) => p.trim());
+    if (parts.length >= 3) {
+      const n = Number(parts[2]);
+      if (Number.isFinite(n)) setNewUnitCost(n.toFixed(2));
+    }
+  }
+
   function recalcNewLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
@@ -1283,6 +1291,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                             onChange={(e) => {
                               const next = { ...newAttributeValues, [attr.code]: e.target.value };
                               setNewAttributeValues(next);
+                              applySelectCostToUnitCost(e.target.value);
                               recalcNewLinePrice(newProductId, newQty, next);
                             }}
                             className="field"

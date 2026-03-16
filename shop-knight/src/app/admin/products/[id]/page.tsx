@@ -39,7 +39,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [inputType, setInputType] = useState('NUMBER');
   const [required, setRequired] = useState(false);
   const [defaultValue, setDefaultValue] = useState('');
-  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; priceValue: string }>>([{ label: '', priceValue: '' }]);
+  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; priceValue: string; costValue: string }>>([{ label: '', priceValue: '', costValue: '' }]);
 
   const [previewQty, setPreviewQty] = useState('1');
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
@@ -92,9 +92,9 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         defaultValue: defaultValue || null,
         options: inputType === 'SELECT'
           ? selectOptions
-              .map((opt) => ({ label: opt.label.trim(), price: opt.priceValue.trim() }))
+              .map((opt) => ({ label: opt.label.trim(), price: opt.priceValue.trim(), cost: opt.costValue.trim() }))
               .filter((opt) => opt.label && opt.price)
-              .map((opt) => `${opt.label}|${opt.price}`)
+              .map((opt) => (opt.cost ? `${opt.label}|${opt.price}|${opt.cost}` : `${opt.label}|${opt.price}`))
           : null,
       }),
     });
@@ -104,16 +104,16 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setInputType('NUMBER');
     setRequired(false);
     setDefaultValue('');
-    setSelectOptions([{ label: '', priceValue: '' }]);
+    setSelectOptions([{ label: '', priceValue: '', costValue: '' }]);
     await load(id);
   }
 
-  function updateSelectOption(index: number, patch: { label?: string; priceValue?: string }) {
+  function updateSelectOption(index: number, patch: { label?: string; priceValue?: string; costValue?: string }) {
     setSelectOptions((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
   function addSelectOptionRow() {
-    setSelectOptions((prev) => [...prev, { label: '', priceValue: '' }]);
+    setSelectOptions((prev) => [...prev, { label: '', priceValue: '', costValue: '' }]);
   }
 
   function removeSelectOptionRow(index: number) {
@@ -326,7 +326,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
                     value={row.label}
                     onChange={(e) => updateSelectOption(index, { label: e.target.value })}
                     placeholder="Option label (e.g. Backlit Fabric)"
-                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-6"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-4"
                   />
                   <input
                     value={row.priceValue}
@@ -334,7 +334,15 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
                     placeholder="Price value (e.g. 1.55)"
                     type="number"
                     step="0.01"
-                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-4"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-3"
+                  />
+                  <input
+                    value={row.costValue}
+                    onChange={(e) => updateSelectOption(index, { costValue: e.target.value })}
+                    placeholder="Cost value (optional, e.g. 0.72)"
+                    type="number"
+                    step="0.01"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-3"
                   />
                   <button
                     type="button"
@@ -350,7 +358,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
             <button type="button" onClick={addSelectOptionRow} className="mt-2 rounded border border-zinc-700 px-2 py-1 text-xs">
               + Add Option
             </button>
-            <p className="mt-2 text-[11px] text-zinc-500">Stored format is Label|Value so formulas can use the selected option directly as a number.</p>
+            <p className="mt-2 text-[11px] text-zinc-500">Stored format is Label|Price|Cost (cost optional). Formulas still use the price value.</p>
           </div>
         ) : null}
 

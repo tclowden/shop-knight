@@ -8,7 +8,15 @@ function parseBooleanString(value: string): number | null {
 }
 
 function parseNumberFromOptionLabel(value: string): number | null {
-  // Allows option values like: "Standard|0", "Rush|25", "Premium (+1.2)", "2.5"
+  // Allows option values like: "Standard|0", "Rush|25", "Substrate|1.35|0.72", "Premium (+1.2)", "2.5"
+  const parts = value.split('|').map((p) => p.trim());
+  if (parts.length >= 2) {
+    for (let i = 1; i < parts.length; i += 1) {
+      const n = Number(parts[i]);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+
   const piped = value.split('|').pop()?.trim() || '';
   const pipedNumber = Number(piped);
   if (Number.isFinite(pipedNumber)) return pipedNumber;
