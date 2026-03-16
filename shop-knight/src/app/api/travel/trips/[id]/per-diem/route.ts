@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
-import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear, normalizeStateCode } from '@/lib/per-diem';
-
-async function retry<T>(fn: () => Promise<T>, attempts = 2, waitMs = 250): Promise<T> {
-  let lastError: unknown;
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, waitMs));
-    }
-  }
-  throw lastError;
-}
+import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear, normalizeStateCode, retryPerDiem } from '@/lib/per-diem';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
@@ -27,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const body = await req.json().catch(() => ({}));
 
     const { id } = await params;
-    const trip = await retry(() => prisma.trip.findFirst({
+    const trip = await retryPerDiem(() => prisma.trip.findFirst({
       where: withCompany(companyId, { id }),
       include: { travelers: { include: { traveler: true } } },
     }), 3, 300);
@@ -46,7 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (city !== trip.destinationCity || state !== normalizeStateCode(trip.destinationState)) {
-      await retry(() => prisma.trip.update({
+      await retryPerDiem(() => prisma.trip.update({
         where: { id: trip.id },
         data: { destinationCity: city, destinationState: state },
       }), 2, 250);
@@ -60,7 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     let usedFallback = false;
     let fallbackNote: string | null = null;
     try {
-      const gsa = await retry(() => fetchGsaPerDiem(city, state, year, apiKey), 3, 400);
+      const gsa = await retryPerDiem(() => fetchGsaPerDiem(city, state, year, apiKey), 3, 400);
       rateEntry = gsa.rateEntry;
       mie = gsa.mie;
       yearUsed = gsa.yearUsed;
@@ -98,7 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const total = mie * days * travelerCount;
 
     const userId = (auth.session.user as { id?: string } | undefined)?.id || null;
-    const request = await retry(() => prisma.perDiemRequest.create({
+    const request = await retryPerDiem(() => prisma.perDiemRequest.create({
       data: {
         companyId,
         tripId: trip.id,

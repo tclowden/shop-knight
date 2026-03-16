@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
-import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear } from '@/lib/per-diem';
+import { dateDiffDays, fetchGsaPerDiem, getGsaApiKeyFromEnv, getTripYear, normalizeStateCode, retryPerDiem } from '@/lib/per-diem';
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PROJECT_MANAGER', 'FINANCE']);
@@ -63,31 +63,54 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const apiKey = getGsaApiKeyFromEnv();
     if (!apiKey) return NextResponse.json({ error: 'GSA API key missing' }, { status: 400 });
 
-    if (!existing.trip.destinationCity || !existing.trip.destinationState) {
+    const city = String(existing.trip.destinationCity || '').trim();
+    const state = normalizeStateCode(existing.trip.destinationState);
+    if (!city || !state) {
       return NextResponse.json({ error: 'Trip destination city/state required to recompute.' }, { status: 400 });
     }
 
     const year = getTripYear(existing.trip.startDate, existing.trip.endDate);
-    const gsa = await fetchGsaPerDiem(existing.trip.destinationCity, existing.trip.destinationState, year, apiKey);
+    let rateEntry: { months?: { month?: Array<{ number?: number; value?: number }> } } | null = null;
+    let mie = 0;
+    let yearUsed = year;
+
+    try {
+      const gsa = await retryPerDiem(() => fetchGsaPerDiem(city, state, year, apiKey), 3, 400);
+      rateEntry = gsa.rateEntry;
+      mie = gsa.mie;
+      yearUsed = gsa.yearUsed;
+    } catch (error) {
+      const cached = await prisma.perDiemRequest.findFirst({
+        where: withCompany(companyId, { destinationCity: city, destinationState: state }),
+        orderBy: [{ year: 'desc' }, { updatedAt: 'desc' }],
+      });
+      if (!cached?.dailyRate) {
+        const message = error instanceof Error ? error.message : 'Failed per-diem lookup';
+        return NextResponse.json({ error: `${message} (no cached rate available)` }, { status: 504 });
+      }
+      mie = Number(cached.dailyRate);
+      rateEntry = { months: { month: [] } };
+    }
+
     const tripMonth = (existing.trip.startDate || existing.trip.endDate || new Date()).getMonth() + 1;
-    const monthRates = (gsa.rateEntry as { months?: { month?: Array<{ number?: number; value?: number; amount?: number; rate?: number }> } } | null)?.months?.month;
+    const monthRates = (rateEntry as { months?: { month?: Array<{ number?: number; value?: number; amount?: number; rate?: number }> } } | null)?.months?.month;
     const monthArray = Array.isArray(monthRates) ? monthRates : [];
     const lodgingForMonth = monthArray.find((m) => Number(m?.number) === tripMonth);
     const lodgingRate = Number(lodgingForMonth?.value ?? lodgingForMonth?.amount ?? lodgingForMonth?.rate ?? 0);
 
     const days = dateDiffDays(existing.trip.startDate, existing.trip.endDate);
     const travelerCount = Math.max(1, existing.trip.travelers.length || 1);
-    const total = gsa.mie * days * travelerCount;
+    const total = mie * days * travelerCount;
 
     recomputeData = {
-      year: gsa.yearUsed,
-      dailyRate: gsa.mie,
+      year: yearUsed,
+      dailyRate: mie,
       lodgingRate: Number.isFinite(lodgingRate) && lodgingRate > 0 ? lodgingRate : null,
       days,
       travelerCount: existing.trip.travelers.length,
       total,
-      destinationCity: existing.trip.destinationCity,
-      destinationState: existing.trip.destinationState,
+      destinationCity: city,
+      destinationState: state,
     };
   }
 

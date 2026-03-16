@@ -26,6 +26,19 @@ export function getGsaApiKeyFromEnv() {
   return sanitizeApiKey(process.env.GSA_API_KEY);
 }
 
+export async function retryPerDiem<T>(fn: () => Promise<T>, attempts = 3, waitMs = 300): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+  throw lastError;
+}
+
 function toNum(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
