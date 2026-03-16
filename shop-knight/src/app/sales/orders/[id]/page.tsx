@@ -1267,7 +1267,15 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
                 return (
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     {selected.attributes.map((attr) => (
-                      <FormFieldSmall key={attr.id} label={attr.name}>
+                      <FormFieldSmall
+                        key={attr.id}
+                        label={
+                          <>
+                            {attr.name}
+                            {['width', 'height'].includes(attr.code.toLowerCase()) ? <span className="ml-1 text-[10px] font-normal lowercase tracking-normal">(in inches)</span> : null}
+                          </>
+                        }
+                      >
                         {attr.inputType === 'SELECT' ? (
                           <select
                             value={newAttributeValues[attr.code] || ''}
@@ -1343,7 +1351,7 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function FormFieldSmall({ label, children }: { label: string; children: React.ReactNode }) {
+function FormFieldSmall({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="text-xs">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>

@@ -514,6 +514,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               {selected.attributes.map((attr) => (
                 <label key={attr.id} className="text-xs text-zinc-300">
                   {attr.name}
+                  {['width', 'height'].includes(attr.code.toLowerCase()) ? <span className="ml-1 text-[10px] text-zinc-500">(in inches)</span> : null}
                   {attr.inputType === 'SELECT' ? (
                     <select
                       value={newAttributeValues[attr.code] || ''}
