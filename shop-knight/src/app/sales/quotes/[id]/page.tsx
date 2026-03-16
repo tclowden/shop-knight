@@ -274,7 +274,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
     await fetch(`/api/quotes/${id}/lines`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0, attributeValues: newAttributeValues }),
+      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0, attributeValues: { ...newAttributeValues, _unitCost: newUnitCost, _gpmPercent: newGpmPercent, _taxable: newTaxable ? 'true' : 'false' } }),
     });
     setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35'); setNewAttributeValues({});
     await load(id);
@@ -571,7 +571,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         </details>
       </form>
 
-      <div className="mb-3 rounded border border-zinc-700 p-3">
+      <div className="mb-3 hidden rounded border border-zinc-700 p-3">
         <details open>
           <summary className="cursor-pointer list-none text-sm font-semibold">Batch Proof Approvals</summary>
         <p className="mt-2 text-xs text-zinc-400">Batch proof approvals</p>
@@ -778,19 +778,6 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
         <button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button>
         <button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button>
         <button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button>
-        <button
-          onClick={() => setShowProofs((v) => !v)}
-          className={`rounded border px-2 py-1 ${
-            proofState === 'NONE' ? 'border-slate-400 text-slate-400' :
-            proofState === 'UNSENT' ? 'border-sky-700 text-sky-300' :
-            proofState === 'PENDING' ? 'border-amber-500 text-amber-400' :
-            proofState === 'RESEND_NEEDED' ? 'border-orange-500 text-orange-400' :
-            proofState === 'APPROVED' ? 'border-emerald-600 text-emerald-400' :
-            'border-rose-600 text-rose-400'
-          }`}
-        >
-          {showProofs ? 'Hide Proofs' : 'Proofs'}
-        </button>
         <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
           <option value="">Top level</option>
           {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
