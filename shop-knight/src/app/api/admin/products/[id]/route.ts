@@ -6,8 +6,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
   const body = await req.json();
+
+  const existing = await prisma.product.findFirst({ where: { id, companyId }, select: { id: true } });
+  if (!existing) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
 
   const updated = await prisma.product.update({
     where: { id },

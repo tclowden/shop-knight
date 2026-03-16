@@ -111,7 +111,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           <input value={uom} onChange={(e) => setUom(e.target.value)} placeholder="UOM (EA, sqft, ft)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         </div>
-        <p className="text-xs text-zinc-400">Examples: <code>basePrice + width * height * 0.12</code> or <code>width &lt;= 24 ? 12 : width &lt;= 48 ? 20 : 30</code></p>
+        <p className="text-xs text-zinc-400">Examples: <code>basePrice + width * height * 0.12</code> or <code>width &lt;= 24 ? 12 : width &lt;= 48 ? 20 : 30</code>. Boolean values resolve to <code>1/0</code>. SELECT values can use <code>Label|Number</code> (example: <code>Premium|12.5</code>).</p>
         <button className="rounded bg-blue-600 px-3 py-2 text-sm">Save Rules</button>
       </form>
 

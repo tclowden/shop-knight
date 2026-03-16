@@ -415,6 +415,18 @@ export default function OpportunityDetailPage({ params }: { params: Promise<{ id
                               <option value="">Select</option>
                               {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
+                          ) : attr.inputType === 'BOOLEAN' ? (
+                            <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                              <input
+                                type="checkbox"
+                                checked={(lineAttributeValues[attr.code] || '').toLowerCase() === 'true'}
+                                onChange={(e) => {
+                                  const next = { ...lineAttributeValues, [attr.code]: e.target.checked ? 'true' : 'false' };
+                                  setLineAttributeValues(next);
+                                  recalcSoLinePrice(lineProductId, lineQty, next);
+                                }}
+                              />
+                            </span>
                           ) : (
                             <input
                               value={lineAttributeValues[attr.code] || ''}

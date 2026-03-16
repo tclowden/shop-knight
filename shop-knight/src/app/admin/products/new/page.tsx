@@ -207,7 +207,7 @@ export default function NewProductPage() {
 
         <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <h2 className="text-sm font-semibold text-slate-800">Attributes</h2>
-          <p className="mt-1 text-xs text-slate-500">Add optional product attributes now (width, height, material, finish, etc.).</p>
+          <p className="mt-1 text-xs text-slate-500">Add optional product attributes now (width, height, material, finish, etc.). For SELECT options, you can use <span className="font-mono">Label|Number</span> (example: <span className="font-mono">Rush|25</span>) so formulas can use the numeric value.</p>
 
           <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">

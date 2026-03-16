@@ -401,6 +401,14 @@ export default function NewQuotePage() {
                                 <option key={opt} value={opt}>{opt}</option>
                               ))}
                             </select>
+                          ) : attr.inputType === 'BOOLEAN' ? (
+                            <span className="flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                              <input
+                                type="checkbox"
+                                checked={(line.attributeValues[attr.code] || '').toLowerCase() === 'true'}
+                                onChange={(e) => updateLineAttribute(i, attr.code, e.target.checked ? 'true' : 'false')}
+                              />
+                            </span>
                           ) : (
                             <input
                               value={line.attributeValues[attr.code] || ''}

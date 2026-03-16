@@ -339,6 +339,56 @@ export default function NewSalesOrderPage() {
               <input value={(Number(lineQty || 0) * Number(lineUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
             </label>
           </div>
+          {(() => {
+            const selected = products.find((p) => p.id === lineProductId);
+            if (!selected?.attributes?.length) return null;
+            return (
+              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+                {selected.attributes.map((attr) => (
+                  <label key={attr.id} className="text-xs text-zinc-300">
+                    {attr.name}
+                    {attr.inputType === 'SELECT' ? (
+                      <select
+                        value={lineAttributeValues[attr.code] || ''}
+                        onChange={(e) => {
+                          const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                          setLineAttributeValues(next);
+                          recalcLinePrice(lineProductId, lineQty, next);
+                        }}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      >
+                        <option value="">Select</option>
+                        {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : attr.inputType === 'BOOLEAN' ? (
+                      <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                        <input
+                          type="checkbox"
+                          checked={(lineAttributeValues[attr.code] || '').toLowerCase() === 'true'}
+                          onChange={(e) => {
+                            const next = { ...lineAttributeValues, [attr.code]: e.target.checked ? 'true' : 'false' };
+                            setLineAttributeValues(next);
+                            recalcLinePrice(lineProductId, lineQty, next);
+                          }}
+                        />
+                      </span>
+                    ) : (
+                      <input
+                        value={lineAttributeValues[attr.code] || ''}
+                        onChange={(e) => {
+                          const next = { ...lineAttributeValues, [attr.code]: e.target.value };
+                          setLineAttributeValues(next);
+                          recalcLinePrice(lineProductId, lineQty, next);
+                        }}
+                        type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                        className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}

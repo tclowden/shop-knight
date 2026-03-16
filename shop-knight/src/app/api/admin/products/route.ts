@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 
 function toNumber(value: unknown) {
   const n = Number(value);
@@ -11,15 +11,21 @@ export async function GET(req: Request) {
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { searchParams } = new URL(req.url);
   const archivedMode = searchParams.get('archived');
 
   const products = await prisma.product.findMany({
-    where: archivedMode === 'only'
-      ? { active: false }
-      : archivedMode === 'all'
-        ? {}
-        : { active: true },
+    where: {
+      companyId,
+      ...(archivedMode === 'only'
+        ? { active: false }
+        : archivedMode === 'all'
+          ? {}
+          : { active: true }),
+    },
     include: { attributes: { orderBy: { sortOrder: 'asc' } } },
     orderBy: { name: 'asc' },
   });
@@ -30,6 +36,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const body = await req.json();
   const sku = String(body?.sku || '').trim();
@@ -44,6 +53,7 @@ export async function POST(req: Request) {
   try {
     const created = await prisma.product.create({
       data: {
+        companyId,
         sku,
         name,
         category: body?.category ? String(body.category) : null,

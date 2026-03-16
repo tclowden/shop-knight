@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requirePermissions } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
+
+async function ensureProductInCompany(productId: string, companyId: string) {
+  return prisma.product.findFirst({ where: { id: productId, companyId }, select: { id: true } });
+}
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
+  const product = await ensureProductInCompany(id, companyId);
+  if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
   const attrs = await prisma.productAttribute.findMany({
     where: { productId: id },
     orderBy: { sortOrder: 'asc' },
@@ -18,7 +28,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const auth = await requirePermissions(['admin.products.manage']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
   const { id } = await params;
+  const product = await ensureProductInCompany(id, companyId);
+  if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
   const body = await req.json();
 
   const code = String(body?.code || '').trim();
