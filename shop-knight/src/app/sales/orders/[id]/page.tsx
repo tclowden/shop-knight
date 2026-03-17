@@ -36,7 +36,7 @@ type Proof = {
     decision: string | null;
   } | null;
 };
-type Line = { id: string; description: string; qty: number; unitPrice: string | number; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
+type Line = { id: string; description: string; qty: number; unitPrice: string | number; priceLocked?: boolean; productId?: string | null; sortOrder?: number; parentLineId?: string | null; collapsed?: boolean };
 type PurchaseItem = {
   id: string;
   item: string;
@@ -2030,11 +2030,19 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
         </div>
       </td>
       <td className="px-4 py-4"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="field w-24" /></td>
-      <td className="px-4 py-4"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="field w-32" /></td>
+      <td className="px-4 py-4"><input value={draft.unitPrice} disabled={Boolean(draft.priceLocked)} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="field w-32 disabled:bg-slate-100 disabled:text-slate-500" /></td>
       <td className="px-4 py-4 font-medium text-slate-700">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
       <td className="px-4 py-4">
         <div className="flex flex-wrap items-center gap-1">
           <button onClick={() => onSave(draft)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50">Save</button>
+          <button
+            type="button"
+            onClick={() => onSave({ ...draft, priceLocked: !draft.priceLocked })}
+            className={`rounded-md border px-2 py-1 text-xs ${draft.priceLocked ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
+            title={draft.priceLocked ? 'Unlock line price' : 'Lock line price'}
+          >
+            {draft.priceLocked ? 'Unlock Price' : 'Lock Price'}
+          </button>
           <button type="button" onClick={openCreatePurchaseDialog} className="rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-100">Convert to Purchase</button>
           <button onClick={() => onDelete(line.id)} className="rounded-md border border-rose-300 bg-rose-50 px-2 py-1 text-xs text-rose-700 hover:bg-rose-100">Delete</button>
           <button onClick={() => onMove(line.id, -1)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">↑</button>
