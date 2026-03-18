@@ -15,33 +15,70 @@ function toNumber(value: unknown) {
 }
 
 async function buildSalesOrderPayload(id: string, companyId: string) {
-  const so = await prisma.salesOrder.findFirst({
-    where: { id, companyId },
-    include: {
-      status: true,
-      salesRep: true,
-      projectManager: true,
-      designer: true,
-      department: true,
-      lines: { include: { product: true }, orderBy: { id: 'asc' } },
-    },
-  });
+  try {
+    const so = await prisma.salesOrder.findFirst({
+      where: { id, companyId },
+      include: {
+        status: true,
+        salesRep: true,
+        projectManager: true,
+        designer: true,
+        department: true,
+        lines: { include: { product: true }, orderBy: { id: 'asc' } },
+      },
+    });
 
-  if (!so) return null;
+    if (!so) return null;
 
-  const opportunity = await prisma.opportunity.findUnique({
-    where: { id: so.opportunityId },
-    include: { customer: true },
-  });
+    const opportunity = await prisma.opportunity.findUnique({
+      where: { id: so.opportunityId },
+      include: { customer: true },
+    });
 
-  return {
-    ...so,
-    opportunity: opportunity ?? {
-      id: so.opportunityId,
-      name: 'Missing Opportunity',
-      customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
-    },
-  };
+    return {
+      ...so,
+      opportunity: opportunity ?? {
+        id: so.opportunityId,
+        name: 'Missing Opportunity',
+        customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
+      },
+    };
+  } catch {
+    const rawRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      'SELECT id, "companyId", "orderNumber", title, "opportunityId", "statusId", "salesRepId", "projectManagerId", "designerId", "billingAddress", "shippingAddress", "installAddress", "salesOrderDate", "dueDate", "createdAt", "updatedAt" FROM "SalesOrder" WHERE id = $1 AND "companyId" = $2 LIMIT 1',
+      id,
+      companyId,
+    );
+    const so = rawRows[0];
+    if (!so) return null;
+
+    const [lines, opportunity, status, salesRep, projectManager, designer] = await Promise.all([
+      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        'SELECT id, description, qty, "unitPrice", "productId", "sortOrder", "parentLineId", collapsed, "priceLocked" FROM "SalesOrderLine" WHERE "salesOrderId" = $1 ORDER BY "sortOrder" ASC, id ASC',
+        id,
+      ),
+      prisma.opportunity.findUnique({ where: { id: String(so.opportunityId || '') }, include: { customer: true } }).catch(() => null),
+      so.statusId ? prisma.salesOrderStatus.findUnique({ where: { id: String(so.statusId) } }).catch(() => null) : Promise.resolve(null),
+      so.salesRepId ? prisma.user.findUnique({ where: { id: String(so.salesRepId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+      so.projectManagerId ? prisma.user.findUnique({ where: { id: String(so.projectManagerId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+      so.designerId ? prisma.user.findUnique({ where: { id: String(so.designerId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+    ]);
+
+    return {
+      ...so,
+      lines,
+      status,
+      salesRep,
+      projectManager,
+      designer,
+      department: null,
+      opportunity: opportunity ?? {
+        id: String(so.opportunityId || ''),
+        name: 'Missing Opportunity',
+        customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
+      },
+    };
+  }
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -56,10 +93,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const so = await buildSalesOrderPayload(id, companyId);
 
     if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+    const soOrderNumber = String((so as { orderNumber?: string }).orderNumber || '');
     let linkedTrips: Array<unknown> = [];
     try {
       linkedTrips = await prisma.trip.findMany({
-        where: { companyId, salesOrderRef: so.orderNumber },
+        where: { companyId, salesOrderRef: soOrderNumber },
         include: { travelers: { include: { traveler: true } } },
         orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
       });
@@ -151,10 +189,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const updated = await buildSalesOrderPayload(id, companyId);
   if (!updated) return NextResponse.json({ error: 'Sales order not found after update' }, { status: 404 });
+  const updatedOrderNumber = String((updated as { orderNumber?: string }).orderNumber || '');
   let linkedTrips: Array<unknown> = [];
   try {
     linkedTrips = await prisma.trip.findMany({
-      where: { companyId, salesOrderRef: updated.orderNumber },
+      where: { companyId, salesOrderRef: updatedOrderNumber },
       include: { travelers: { include: { traveler: true } } },
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
     });
