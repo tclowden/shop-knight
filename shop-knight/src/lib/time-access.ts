@@ -33,3 +33,13 @@ export function canManageAll(permissions: string[]) {
 export function canManageTeam(permissions: string[]) {
   return permissions.includes('time.manage.team') || canManageAll(permissions);
 }
+
+export async function getPayPeriodLock(companyId: string, at: Date) {
+  return prisma.payPeriodLock.findFirst({
+    where: {
+      companyId,
+      startDate: { lte: at },
+      endDate: { gte: at },
+    },
+  });
+}

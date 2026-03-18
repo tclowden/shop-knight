@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { canManageAll, canManageTeam, getManagedUserIds } from '@/lib/time-access';
+import { canManageAll, canManageTeam, getManagedUserIds, getPayPeriodLock } from '@/lib/time-access';
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -24,6 +24,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const body = await request.json().catch(() => ({}));
   const patch: Record<string, unknown> = {};
+  const overrideLock = Boolean(body?.overrideLock);
+
+  const periodLock = await getPayPeriodLock(companyId, entry.clockInAt);
+  if (periodLock && !(overrideLock && manageAll)) {
+    return NextResponse.json({ error: 'This pay period is locked. HR override required.' }, { status: 423 });
+  }
 
   if (typeof body.clockInAt === 'string' && (isOwn || canManageEntry)) patch.clockInAt = new Date(body.clockInAt);
   if (typeof body.clockOutAt === 'string' && (isOwn || canManageEntry)) patch.clockOutAt = new Date(body.clockOutAt);

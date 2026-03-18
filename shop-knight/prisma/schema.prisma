@@ -160,6 +160,7 @@ model Company {
   productCategories    ProductCategory[]
   incomeAccounts       IncomeAccount[]
   timeEntries          TimeEntry[]
+  payPeriodLocks       PayPeriodLock[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -217,6 +218,7 @@ model User {
   timeEntries                 TimeEntry[]           @relation("TimeEntryUser")
   approvedTimeEntries         TimeEntry[]           @relation("TimeEntryApprover")
   editedTimeEntries           TimeEntry[]           @relation("TimeEntryEditor")
+  payPeriodLocks              PayPeriodLock[]       @relation("PayPeriodLockCreator")
 }
 
 model Department {
@@ -1195,4 +1197,19 @@ model TimeEntry {
   @@index([companyId, userId, clockInAt])
   @@index([companyId, status, clockInAt])
   @@index([userId, clockOutAt])
+}
+
+model PayPeriodLock {
+  id          String    @id @default(cuid())
+  companyId   String?
+  startDate   DateTime
+  endDate     DateTime
+  note        String?
+  lockedById  String
+  lockedAt    DateTime  @default(now())
+
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lockedBy    User      @relation("PayPeriodLockCreator", fields: [lockedById], references: [id], onDelete: Cascade)
+
+  @@index([companyId, startDate, endDate])
 }

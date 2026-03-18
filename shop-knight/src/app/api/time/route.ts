@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { canManageAll, canManageTeam, getManagedUserIds } from '@/lib/time-access';
+import { canManageAll, canManageTeam, getManagedUserIds, getPayPeriodLock } from '@/lib/time-access';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -73,6 +73,9 @@ export async function POST(request: Request) {
     const open = await prisma.timeEntry.findFirst({ where: { companyId, userId: session.user.id, clockOutAt: null } });
     if (open) return NextResponse.json({ error: 'You already have an open time entry. Clock out first.' }, { status: 400 });
 
+    const lock = await getPayPeriodLock(companyId, new Date());
+    if (lock) return NextResponse.json({ error: 'Current pay period is locked. Contact HR Admin.' }, { status: 400 });
+
     const sourceType = String(body.sourceType || '');
     const sourceId = String(body.sourceId || '');
     if (!['SALES_ORDER', 'QUOTE', 'JOB'].includes(sourceType) || !sourceId) {
@@ -98,6 +101,9 @@ export async function POST(request: Request) {
   if (action === 'clock_out') {
     const open = await prisma.timeEntry.findFirst({ where: { companyId, userId: session.user.id, clockOutAt: null }, orderBy: { clockInAt: 'desc' } });
     if (!open) return NextResponse.json({ error: 'No open time entry to clock out' }, { status: 400 });
+
+    const lock = await getPayPeriodLock(companyId, open.clockInAt);
+    if (lock) return NextResponse.json({ error: 'This pay period is locked. Contact HR Admin.' }, { status: 400 });
 
     const clockOutAt = new Date();
     const minutesWorked = Math.max(0, Math.round((clockOutAt.getTime() - open.clockInAt.getTime()) / 60000));
