@@ -14,18 +14,10 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
-  if (!auth.ok) return auth.response;
-
-  const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
-
-  const { id } = await params;
+async function buildSalesOrderPayload(id: string, companyId: string) {
   const so = await prisma.salesOrder.findFirst({
     where: { id, companyId },
     include: {
-      opportunity: { include: { customer: true } },
       status: true,
       salesRep: true,
       projectManager: true,
@@ -35,8 +27,34 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     },
   });
 
-  if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+  if (!so) return null;
 
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: so.opportunityId },
+    include: { customer: true },
+  });
+
+  return {
+    ...so,
+    opportunity: opportunity ?? {
+      id: so.opportunityId,
+      name: 'Missing Opportunity',
+      customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
+    },
+  };
+}
+
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+  if (!auth.ok) return auth.response;
+
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await params;
+  const so = await buildSalesOrderPayload(id, companyId);
+
+  if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
   let linkedTrips: Array<unknown> = [];
   try {
     linkedTrips = await prisma.trip.findMany({
@@ -90,7 +108,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  const updated = await prisma.salesOrder.update({
+  await prisma.salesOrder.update({
     where: { id },
     data: {
       opportunityId,
@@ -124,17 +142,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       designerId: body?.designerId !== undefined ? (body.designerId ? String(body.designerId) : null) : undefined,
       departmentId: body?.departmentId !== undefined ? (body.departmentId ? String(body.departmentId) : null) : undefined,
     },
-    include: {
-      opportunity: { include: { customer: true } },
-      status: true,
-      salesRep: true,
-      projectManager: true,
-      designer: true,
-      department: true,
-      lines: { include: { product: true }, orderBy: { id: 'asc' } },
-    },
   });
 
+  const updated = await buildSalesOrderPayload(id, companyId);
+  if (!updated) return NextResponse.json({ error: 'Sales order not found after update' }, { status: 404 });
   let linkedTrips: Array<unknown> = [];
   try {
     linkedTrips = await prisma.trip.findMany({
