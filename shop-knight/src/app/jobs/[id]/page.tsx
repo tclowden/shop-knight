@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Nav } from '@/components/nav';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
+import { ClockInButton } from '@/components/clock-in-button';
 
 type Step = { id: string; stepName: string; status: string; assignee?: { id: string; name: string } | null };
 type JobDetail = {
@@ -44,7 +45,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <h1 className="text-3xl font-semibold tracking-tight">{job?.name || 'Job'}</h1>
           <p className="text-sm text-slate-500">Monitor workflow progress, notes, and tasks for this job.</p>
         </div>
-        <Link href="/jobs" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Back to Jobs</Link>
+        <div className="flex items-center gap-2">
+          {id ? <ClockInButton sourceType="JOB" sourceId={id} /> : null}
+          <Link href="/jobs" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Back to Jobs</Link>
+        </div>
       </div>
 
       <Nav />

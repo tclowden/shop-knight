@@ -14,6 +14,9 @@ export const APP_PERMISSIONS = [
   'expenses.view',
   'tasks.calendar.view',
   'tasks.templates.view',
+  'time.view',
+  'time.manage.team',
+  'time.manage.all',
 ] as const;
 
 export type AppPermission = (typeof APP_PERMISSIONS)[number];
@@ -23,13 +26,13 @@ const ALL_PERMISSIONS = [...APP_PERMISSIONS];
 export const BASE_ROLE_DEFAULTS: Record<string, AppPermission[]> = {
   SUPER_ADMIN: ALL_PERMISSIONS,
   ADMIN: ALL_PERMISSIONS.filter((permission) => permission !== 'admin.companies.manage'),
-  SALES: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view'],
-  SALES_REP: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'expenses.view', 'tasks.calendar.view'],
-  PROJECT_MANAGER: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view', 'tasks.templates.view'],
-  DESIGNER: ['dashboard.view', 'sales.orders.view', 'customers.view', 'expenses.view', 'tasks.calendar.view'],
-  OPERATIONS: ['dashboard.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view'],
-  PURCHASING: ['dashboard.view', 'sales.orders.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view'],
-  FINANCE: ['dashboard.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view'],
+  SALES: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view', 'time.view'],
+  SALES_REP: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'expenses.view', 'tasks.calendar.view', 'time.view'],
+  PROJECT_MANAGER: ['dashboard.view', 'sales.opportunities.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view', 'tasks.templates.view', 'time.view', 'time.manage.team'],
+  DESIGNER: ['dashboard.view', 'sales.orders.view', 'customers.view', 'expenses.view', 'tasks.calendar.view', 'time.view'],
+  OPERATIONS: ['dashboard.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view', 'time.view'],
+  PURCHASING: ['dashboard.view', 'sales.orders.view', 'vendors.view', 'expenses.view', 'tasks.calendar.view', 'time.view'],
+  FINANCE: ['dashboard.view', 'sales.quotes.view', 'sales.orders.view', 'customers.view', 'vendors.view', 'expenses.view', 'time.view', 'time.manage.all'],
 };
 
 export const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: AppPermission }> = [
@@ -52,6 +55,8 @@ export const ROUTE_PERMISSIONS: Array<{ prefix: string; permission: AppPermissio
   { prefix: '/jobs/workflows', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/calendar', permission: 'tasks.calendar.view' },
   { prefix: '/tasks/templates', permission: 'tasks.templates.view' },
+  { prefix: '/time', permission: 'time.view' },
+  { prefix: '/admin/time', permission: 'time.manage.team' },
 ];
 
 export function sanitizePermissions(input: unknown): AppPermission[] {

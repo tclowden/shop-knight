@@ -117,6 +117,18 @@ enum PurchaseMethod {
   ON_ACCOUNT
 }
 
+enum TimeEntryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TimeEntrySourceType {
+  SALES_ORDER
+  QUOTE
+  JOB
+}
+
 model Company {
   id                   String                @id @default(cuid())
   name                 String
@@ -147,6 +159,7 @@ model Company {
   titles               Title[]
   productCategories    ProductCategory[]
   incomeAccounts       IncomeAccount[]
+  timeEntries          TimeEntry[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -201,6 +214,9 @@ model User {
   assignedWorkflowSteps       JobWorkflowStepRun[] @relation("WorkflowStepAssignee")
   noteMentions                NoteMention[]
   notificationPreferences     NotificationPreference[]
+  timeEntries                 TimeEntry[]           @relation("TimeEntryUser")
+  approvedTimeEntries         TimeEntry[]           @relation("TimeEntryApprover")
+  editedTimeEntries           TimeEntry[]           @relation("TimeEntryEditor")
 }
 
 model Department {
@@ -424,6 +440,7 @@ model Quote {
   lines                      QuoteLine[]
   salesOrders                SalesOrder[]
   tasks                      Task[]
+  timeEntries                TimeEntry[]
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
 
@@ -581,6 +598,7 @@ model SalesOrder {
   loadLists              LoadList[]
   jobs                   Job[]
   tasks                  Task[]
+  timeEntries            TimeEntry[]
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
@@ -729,6 +747,7 @@ model Job {
   salesOrder       SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
   salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
   tasks            Task[]
+  timeEntries      TimeEntry[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -1142,4 +1161,38 @@ model AmexTransaction {
   expenseLine      ExpenseLine?          @relation("MatchedExpenseLine", fields: [expenseLineId], references: [id], onDelete: SetNull)
 
   @@index([companyId, status, postedAt])
+}
+
+model TimeEntry {
+  id             String              @id @default(cuid())
+  companyId      String?
+  userId         String
+  sourceType     TimeEntrySourceType
+  salesOrderId   String?
+  quoteId        String?
+  jobId          String?
+  clockInAt      DateTime
+  clockOutAt     DateTime?
+  minutesWorked  Int?
+  status         TimeEntryStatus     @default(PENDING)
+  notes          String?
+  approvalNote   String?
+  approvedById   String?
+  approvedAt     DateTime?
+  lastEditedById String?
+  lastEditedAt   DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  company        Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User                @relation("TimeEntryUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy     User?               @relation("TimeEntryApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?               @relation("TimeEntryEditor", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  salesOrder     SalesOrder?         @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  quote          Quote?              @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  job            Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, userId, clockInAt])
+  @@index([companyId, status, clockInAt])
+  @@index([userId, clockOutAt])
 }

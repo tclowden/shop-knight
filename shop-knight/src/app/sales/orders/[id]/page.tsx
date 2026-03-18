@@ -5,6 +5,7 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { ClockInButton } from '@/components/clock-in-button';
 import { useUnsavedGuard } from '@/components/use-unsaved-guard';
 import { useToast } from '@/components/toast-provider';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
@@ -772,8 +773,11 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
           <h1 className="text-3xl font-semibold tracking-tight">Sales Order {order.orderNumber}</h1>
           <p className="mt-1 text-sm text-slate-500">{order.opportunity.name} • {order.opportunity.customer.name}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-          <StatusChip value={order.status?.name || 'Unknown'} />
+        <div className="flex items-center gap-2">
+          <ClockInButton sourceType="SALES_ORDER" sourceId={id} />
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <StatusChip value={order.status?.name || 'Unknown'} />
+          </div>
         </div>
       </header>
 

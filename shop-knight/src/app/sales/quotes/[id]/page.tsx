@@ -6,6 +6,7 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { ClockInButton } from '@/components/clock-in-button';
 import { useUnsavedGuard } from '@/components/use-unsaved-guard';
 import { useToast } from '@/components/toast-provider';
 import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
@@ -419,6 +420,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
 
       <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <ClockInButton sourceType="QUOTE" sourceId={id} />
         <button
           onClick={convertToSalesOrder}
           disabled={converting}

@@ -13,6 +13,7 @@ const links = [
   { href: '/jobs/workflows', label: 'Job Workflows' },
   { href: '/tasks', label: 'Tasks' },
   { href: '/travel', label: 'Travel' },
+  { href: '/time', label: 'Time' },
   { href: '/tasks/calendar', label: 'Task Calendar' },
 ];
 
@@ -35,6 +36,7 @@ const adminLinks = [
   { href: '/admin/income-accounts', label: 'Income Accounts' },
   { href: '/admin/titles', label: 'Titles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
+  { href: '/admin/time', label: 'Time Admin' },
   { href: '/tasks/templates', label: 'Task Templates' },
 ];
 
