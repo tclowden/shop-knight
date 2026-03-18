@@ -45,28 +45,33 @@ async function buildSalesOrderPayload(id: string, companyId: string) {
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
-  if (!auth.ok) return auth.response;
-
-  const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
-
-  const { id } = await params;
-  const so = await buildSalesOrderPayload(id, companyId);
-
-  if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
-  let linkedTrips: Array<unknown> = [];
   try {
-    linkedTrips = await prisma.trip.findMany({
-      where: { companyId, salesOrderRef: so.orderNumber },
-      include: { travelers: { include: { traveler: true } } },
-      orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
-    });
-  } catch {
-    linkedTrips = [];
-  }
+    const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+    if (!auth.ok) return auth.response;
 
-  return NextResponse.json({ ...so, linkedTrips });
+    const companyId = getSessionCompanyId(auth.session);
+    if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+    const { id } = await params;
+    const so = await buildSalesOrderPayload(id, companyId);
+
+    if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+    let linkedTrips: Array<unknown> = [];
+    try {
+      linkedTrips = await prisma.trip.findMany({
+        where: { companyId, salesOrderRef: so.orderNumber },
+        include: { travelers: { include: { traveler: true } } },
+        orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+      });
+    } catch {
+      linkedTrips = [];
+    }
+
+    return NextResponse.json({ ...so, linkedTrips });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unexpected sales order load error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
