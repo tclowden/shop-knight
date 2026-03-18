@@ -161,6 +161,7 @@ model Company {
   incomeAccounts       IncomeAccount[]
   timeEntries          TimeEntry[]
   payPeriodLocks       PayPeriodLock[]
+  payrollExportConfig  PayrollExportConfig?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -1212,4 +1213,17 @@ model PayPeriodLock {
   lockedBy    User      @relation("PayPeriodLockCreator", fields: [lockedById], references: [id], onDelete: Cascade)
 
   @@index([companyId, startDate, endDate])
+}
+
+model PayrollExportConfig {
+  id                    String   @id @default(cuid())
+  companyId             String?  @unique
+  paycomEarningCode     String   @default("REG")
+  defaultDepartmentCode String?
+  employeeCodeField     String   @default("USER_ID")
+  departmentMap         Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company               Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }

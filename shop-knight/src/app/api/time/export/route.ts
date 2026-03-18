@@ -33,30 +33,33 @@ export async function GET(request: Request) {
     userIds = await getManagedUserIds(companyId, session.user.id);
   }
 
-  const rows = await prisma.timeEntry.findMany({
-    where: {
-      companyId,
-      userId: { in: userIds },
-      ...(status ? { status: status as 'PENDING' | 'APPROVED' | 'REJECTED' } : {}),
-      ...(from || to
-        ? {
-            clockInAt: {
-              ...(from ? { gte: new Date(from) } : {}),
-              ...(to ? { lte: new Date(to) } : {}),
-            },
-          }
-        : {}),
-    },
-    orderBy: { clockInAt: 'asc' },
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      approvedBy: { select: { name: true } },
-      lastEditedBy: { select: { name: true } },
-      salesOrder: { select: { orderNumber: true } },
-      quote: { select: { quoteNumber: true } },
-      job: { select: { name: true } },
-    },
-  });
+  const [rows, exportConfig] = await Promise.all([
+    prisma.timeEntry.findMany({
+      where: {
+        companyId,
+        userId: { in: userIds },
+        ...(status ? { status: status as 'PENDING' | 'APPROVED' | 'REJECTED' } : {}),
+        ...(from || to
+          ? {
+              clockInAt: {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(to) } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: { clockInAt: 'asc' },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        approvedBy: { select: { name: true } },
+        lastEditedBy: { select: { name: true } },
+        salesOrder: { select: { orderNumber: true } },
+        quote: { select: { quoteNumber: true } },
+        job: { select: { name: true } },
+      },
+    }),
+    prisma.payrollExportConfig.findUnique({ where: { companyId } }),
+  ]);
 
   const lines: string[] = [];
 
@@ -64,23 +67,30 @@ export async function GET(request: Request) {
     const header = ['EmployeeName', 'EmployeeEmail', 'EmployeeCode', 'Date', 'ClockIn', 'ClockOut', 'Hours', 'EarningCode', 'Department', 'JobCode', 'RecordType', 'RecordRef', 'Status', 'Notes'];
     lines.push(header.join(','));
 
+    const earningCode = exportConfig?.paycomEarningCode || 'REG';
+    const defaultDepartment = exportConfig?.defaultDepartmentCode || '';
+    const employeeCodeField = exportConfig?.employeeCodeField || 'USER_ID';
+    const deptMap = (exportConfig?.departmentMap && typeof exportConfig.departmentMap === 'object' ? exportConfig.departmentMap : {}) as Record<string, string>;
+
     for (const row of rows) {
       const recordRef = row.salesOrder?.orderNumber || row.quote?.quoteNumber || row.job?.name || '';
       const day = row.clockInAt.toISOString().slice(0, 10);
       const inLocal = row.clockInAt.toISOString();
       const outLocal = row.clockOutAt ? row.clockOutAt.toISOString() : '';
       const hours = row.minutesWorked ? (row.minutesWorked / 60).toFixed(2) : '';
+      const employeeCode = employeeCodeField === 'EMAIL' ? row.user.email : row.user.id;
+      const department = deptMap[row.sourceType] || defaultDepartment;
 
       lines.push([
         row.user.name,
         row.user.email,
-        row.user.id,
+        employeeCode,
         day,
         inLocal,
         outLocal,
         hours,
-        'REG',
-        '',
+        earningCode,
+        department,
         row.job?.name || '',
         row.sourceType,
         recordRef,

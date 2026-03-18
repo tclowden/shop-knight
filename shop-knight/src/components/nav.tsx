@@ -37,6 +37,7 @@ const adminLinks = [
   { href: '/admin/titles', label: 'Titles' },
   { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
   { href: '/admin/time', label: 'Time Admin' },
+  { href: '/admin/time/payroll-config', label: 'Payroll Export Config' },
   { href: '/tasks/templates', label: 'Task Templates' },
 ];
 
