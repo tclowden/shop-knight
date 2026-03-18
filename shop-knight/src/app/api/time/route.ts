@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') || 'mine';
   const status = url.searchParams.get('status') || '';
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
 
   const permissions = session.user.permissions || [];
   let userIds: string[] = [session.user.id];
@@ -30,12 +32,21 @@ export async function GET(request: Request) {
       companyId,
       userId: { in: userIds },
       ...(status ? { status: status as 'PENDING' | 'APPROVED' | 'REJECTED' } : {}),
+      ...(from || to
+        ? {
+            clockInAt: {
+              ...(from ? { gte: new Date(from) } : {}),
+              ...(to ? { lte: new Date(to) } : {}),
+            },
+          }
+        : {}),
     },
     orderBy: { clockInAt: 'desc' },
     take: 300,
     include: {
       user: { select: { id: true, name: true, email: true } },
       approvedBy: { select: { id: true, name: true } },
+      lastEditedBy: { select: { id: true, name: true } },
       salesOrder: { select: { id: true, orderNumber: true, title: true } },
       quote: { select: { id: true, quoteNumber: true, title: true } },
       job: { select: { id: true, name: true } },
