@@ -55,6 +55,7 @@ export default function AdminTimePage() {
   const [lockStartDate, setLockStartDate] = useState('');
   const [lockEndDate, setLockEndDate] = useState('');
   const [lockNote, setLockNote] = useState('');
+  const [exportFormat, setExportFormat] = useState<'standard' | 'paycom'>('paycom');
 
   async function load() {
     const params = new URLSearchParams();
@@ -160,6 +161,7 @@ export default function AdminTimePage() {
   function exportCsv() {
     const params = new URLSearchParams();
     params.set('scope', scope);
+    params.set('format', exportFormat);
     if (statusFilter) params.set('status', statusFilter);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
@@ -204,6 +206,10 @@ export default function AdminTimePage() {
           </select>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="field h-11" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="field h-11" />
+          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as 'standard' | 'paycom')} className="field h-11">
+            <option value="paycom">Paycom Format</option>
+            <option value="standard">Standard Format</option>
+          </select>
           <button type="button" onClick={exportCsv} className="inline-flex h-11 items-center rounded-lg border border-sky-300 bg-sky-50 px-4 text-sm font-semibold text-sky-700">Export Payroll CSV</button>
           <label className="ml-auto inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
             <input type="checkbox" checked={hrOverrideLock} onChange={(e) => setHrOverrideLock(e.target.checked)} />

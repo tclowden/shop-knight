@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status') || '';
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const format = (url.searchParams.get('format') || 'standard').toLowerCase();
 
   const permissions = session.user.permissions || [];
   let userIds: string[] = [session.user.id];
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
     },
     orderBy: { clockInAt: 'asc' },
     include: {
-      user: { select: { name: true, email: true } },
+      user: { select: { id: true, name: true, email: true } },
       approvedBy: { select: { name: true } },
       lastEditedBy: { select: { name: true } },
       salesOrder: { select: { orderNumber: true } },
@@ -57,29 +58,61 @@ export async function GET(request: Request) {
     },
   });
 
-  const header = ['Employee', 'Email', 'SourceType', 'Record', 'ClockIn', 'ClockOut', 'Minutes', 'Hours', 'Status', 'ApprovedBy', 'ApprovedAt', 'LastEditedBy', 'LastEditedAt', 'Notes', 'ApprovalNote'];
-  const lines = [header.join(',')];
+  const lines: string[] = [];
 
-  for (const row of rows) {
-    const record = row.salesOrder?.orderNumber || row.quote?.quoteNumber || row.job?.name || '';
-    const hours = row.minutesWorked ? (row.minutesWorked / 60).toFixed(2) : '';
-    lines.push([
-      row.user.name,
-      row.user.email,
-      row.sourceType,
-      record,
-      row.clockInAt.toISOString(),
-      row.clockOutAt ? row.clockOutAt.toISOString() : '',
-      row.minutesWorked ?? '',
-      hours,
-      row.status,
-      row.approvedBy?.name || '',
-      row.approvedAt ? row.approvedAt.toISOString() : '',
-      row.lastEditedBy?.name || '',
-      row.lastEditedAt ? row.lastEditedAt.toISOString() : '',
-      row.notes || '',
-      row.approvalNote || '',
-    ].map(csvEscape).join(','));
+  if (format === 'paycom') {
+    const header = ['EmployeeName', 'EmployeeEmail', 'EmployeeCode', 'Date', 'ClockIn', 'ClockOut', 'Hours', 'EarningCode', 'Department', 'JobCode', 'RecordType', 'RecordRef', 'Status', 'Notes'];
+    lines.push(header.join(','));
+
+    for (const row of rows) {
+      const recordRef = row.salesOrder?.orderNumber || row.quote?.quoteNumber || row.job?.name || '';
+      const day = row.clockInAt.toISOString().slice(0, 10);
+      const inLocal = row.clockInAt.toISOString();
+      const outLocal = row.clockOutAt ? row.clockOutAt.toISOString() : '';
+      const hours = row.minutesWorked ? (row.minutesWorked / 60).toFixed(2) : '';
+
+      lines.push([
+        row.user.name,
+        row.user.email,
+        row.user.id,
+        day,
+        inLocal,
+        outLocal,
+        hours,
+        'REG',
+        '',
+        row.job?.name || '',
+        row.sourceType,
+        recordRef,
+        row.status,
+        row.notes || '',
+      ].map(csvEscape).join(','));
+    }
+  } else {
+    const header = ['Employee', 'Email', 'SourceType', 'Record', 'ClockIn', 'ClockOut', 'Minutes', 'Hours', 'Status', 'ApprovedBy', 'ApprovedAt', 'LastEditedBy', 'LastEditedAt', 'Notes', 'ApprovalNote'];
+    lines.push(header.join(','));
+
+    for (const row of rows) {
+      const record = row.salesOrder?.orderNumber || row.quote?.quoteNumber || row.job?.name || '';
+      const hours = row.minutesWorked ? (row.minutesWorked / 60).toFixed(2) : '';
+      lines.push([
+        row.user.name,
+        row.user.email,
+        row.sourceType,
+        record,
+        row.clockInAt.toISOString(),
+        row.clockOutAt ? row.clockOutAt.toISOString() : '',
+        row.minutesWorked ?? '',
+        hours,
+        row.status,
+        row.approvedBy?.name || '',
+        row.approvedAt ? row.approvedAt.toISOString() : '',
+        row.lastEditedBy?.name || '',
+        row.lastEditedAt ? row.lastEditedAt.toISOString() : '',
+        row.notes || '',
+        row.approvalNote || '',
+      ].map(csvEscape).join(','));
+    }
   }
 
   return new Response(lines.join('\n'), {
