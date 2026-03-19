@@ -30,6 +30,16 @@ type TimeEntry = {
   job?: { name?: string | null } | null;
 };
 
+type PayPeriodSummary = {
+  periodIndex: number;
+  isCurrent: boolean;
+  start: string;
+  endExclusive: string;
+  totalHours: number;
+  week1: { start: string; endExclusive: string; hours: number };
+  week2: { start: string; endExclusive: string; hours: number };
+};
+
 const notificationLabels: Record<string, string> = {
   NOTE_MENTION: 'Note mentions',
   TASK_ASSIGNED: 'Task assigned',
@@ -68,6 +78,8 @@ export default function ProfilePage() {
   const [clockBusy, setClockBusy] = useState(false);
   const [clockMsg, setClockMsg] = useState('');
   const [clockErr, setClockErr] = useState('');
+  const [payPeriods, setPayPeriods] = useState<PayPeriodSummary[]>([]);
+  const [periodsToShow, setPeriodsToShow] = useState(6);
 
   const initials = useMemo(() => {
     const source = name || session?.user?.name || '';
@@ -76,10 +88,11 @@ export default function ProfilePage() {
 
   async function load() {
     setLoading(true);
-    const [profileRes, prefsRes, timeRes] = await Promise.all([
+    const [profileRes, prefsRes, timeRes, payPeriodsRes] = await Promise.all([
       fetch('/api/users/me'),
       fetch('/api/notifications/preferences'),
       fetch('/api/time?scope=mine'),
+      fetch(`/api/time/my-pay-periods?periods=${periodsToShow}`),
     ]);
 
     const profilePayload = await profileRes.json().catch(() => null);
@@ -109,6 +122,11 @@ export default function ProfilePage() {
       const mine = Array.isArray(timePayload) ? timePayload : [];
       const open = mine.find((entry) => !entry?.clockOutAt) || null;
       setOpenTimeEntry(open);
+    }
+
+    if (payPeriodsRes.ok) {
+      const payPeriodsPayload = await payPeriodsRes.json().catch(() => ({}));
+      setPayPeriods(Array.isArray(payPeriodsPayload?.periods) ? payPeriodsPayload.periods : []);
     }
 
     setLoading(false);
@@ -230,7 +248,7 @@ export default function ProfilePage() {
     if (status === 'authenticated') void load();
     if (status === 'unauthenticated') setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, periodsToShow]);
 
   if (loading) {
     return <main className="mx-auto max-w-5xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">Loading profile...</main>;
@@ -269,6 +287,46 @@ export default function ProfilePage() {
         ) : (
           <p className="text-sm text-slate-500">No active clock-in right now.</p>
         )}
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-base font-semibold">My Hours by Pay Period</h2>
+          <label className="text-sm text-slate-600">
+            Show
+            <select value={periodsToShow} onChange={(e) => setPeriodsToShow(Number(e.target.value) || 6)} className="field ml-2 h-9 w-24">
+              <option value={4}>4 periods</option>
+              <option value={6}>6 periods</option>
+              <option value={8}>8 periods</option>
+              <option value={12}>12 periods</option>
+            </select>
+          </label>
+        </div>
+        <div className="space-y-3">
+          {payPeriods.map((period) => (
+            <div key={period.start} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-700">
+                  {period.isCurrent ? 'Current Pay Period' : 'Previous Pay Period'}: {new Date(period.start).toLocaleDateString()} - {new Date(new Date(period.endExclusive).getTime() - 86400000).toLocaleDateString()}
+                </p>
+                <p className="text-sm font-semibold text-sky-700">Total: {period.totalHours.toFixed(2)} hrs</p>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                <div className="rounded border border-slate-200 bg-white p-2">
+                  <p className="font-medium text-slate-700">Week 1</p>
+                  <p className="text-slate-500">{new Date(period.week1.start).toLocaleDateString()} - {new Date(new Date(period.week1.endExclusive).getTime() - 86400000).toLocaleDateString()}</p>
+                  <p className="mt-1 font-semibold text-slate-800">{period.week1.hours.toFixed(2)} hrs</p>
+                </div>
+                <div className="rounded border border-slate-200 bg-white p-2">
+                  <p className="font-medium text-slate-700">Week 2</p>
+                  <p className="text-slate-500">{new Date(period.week2.start).toLocaleDateString()} - {new Date(new Date(period.week2.endExclusive).getTime() - 86400000).toLocaleDateString()}</p>
+                  <p className="mt-1 font-semibold text-slate-800">{period.week2.hours.toFixed(2)} hrs</p>
+                </div>
+              </div>
+            </div>
+          ))}
+          {payPeriods.length === 0 ? <p className="text-sm text-slate-500">No pay period data available yet.</p> : null}
+        </div>
       </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
