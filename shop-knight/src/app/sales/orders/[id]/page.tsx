@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
@@ -64,6 +65,21 @@ type LinkedTrip = {
   billable: boolean;
   salesOrderRef?: string | null;
 };
+type SalesOrderHoursEntry = {
+  id: string;
+  userName: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  minutesWorked: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  notes?: string | null;
+};
+
+type SalesOrderHoursPayload = {
+  totalMinutes: number;
+  entries: SalesOrderHoursEntry[];
+};
+
 type SalesOrder = {
   opportunityId?: string;
   id: string;
@@ -108,8 +124,12 @@ const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medi
 type SoTab = 'ITEMS' | 'PURCHASING' | 'TRAVEL' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { data: session } = useSession();
   const { push } = useToast();
   const [id, setId] = useState('');
+  const [pmHours, setPmHours] = useState<SalesOrderHoursPayload | null>(null);
+  const [pmHoursLoading, setPmHoursLoading] = useState(false);
+  const [pmHoursError, setPmHoursError] = useState('');
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [loadError, setLoadError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -742,12 +762,61 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const selectedTripTravelers = useMemo(() => travelers.filter((t) => tripTravelerIds.includes(t.id)), [travelers, tripTravelerIds]);
+  const pmHoursByUser = useMemo(() => {
+    if (!pmHours?.entries?.length) return [] as Array<{ userName: string; minutes: number }>;
+    const map = new Map<string, number>();
+    for (const entry of pmHours.entries) {
+      map.set(entry.userName, (map.get(entry.userName) || 0) + entry.minutesWorked);
+    }
+    return [...map.entries()]
+      .map(([userName, minutes]) => ({ userName, minutes }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [pmHours]);
   const travelerLookupResults = useMemo(() => {
     const q = tripTravelerQuery.trim().toLowerCase();
     const pool = travelers.filter((t) => !tripTravelerIds.includes(t.id));
     if (!q) return pool.slice(0, 8);
     return pool.filter((t) => t.fullName.toLowerCase().includes(q)).slice(0, 8);
   }, [travelers, tripTravelerIds, tripTravelerQuery]);
+
+  const isCurrentUserProjectManager = Boolean(session?.user?.id && order?.projectManagerId && session.user.id === order.projectManagerId);
+
+  useEffect(() => {
+    if (!id || !isCurrentUserProjectManager) {
+      setPmHours(null);
+      setPmHoursError('');
+      setPmHoursLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        setPmHoursLoading(true);
+        setPmHoursError('');
+        const res = await fetch(`/api/sales-orders/${id}/hours`);
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to load sales-order hours');
+        if (!cancelled) {
+          setPmHours(payload as SalesOrderHoursPayload);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPmHours(null);
+          setPmHoursError(error instanceof Error ? error.message : 'Failed to load sales-order hours');
+        }
+      } finally {
+        if (!cancelled) setPmHoursLoading(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isCurrentUserProjectManager]);
 
   useEffect(() => {
     if (!opportunityId) return;
@@ -787,6 +856,60 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <SummaryCell label="Assigned Team" value={[order.salesRep?.name, order.projectManager?.name, order.designer?.name].filter(Boolean).join(', ') || 'Unassigned'} />
         <SummaryCell label="Dates" value={`${order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} • Due ${order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}`} />
       </section>
+
+      {isCurrentUserProjectManager ? (
+        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">Project Manager Hours (this Sales Order)</h2>
+            <div className="text-sm text-slate-500">
+              Total: <span className="font-semibold text-slate-800">{((pmHours?.totalMinutes || 0) / 60).toFixed(2)} hrs</span>
+            </div>
+          </div>
+
+          {pmHoursLoading ? <p className="text-sm text-slate-500">Loading hours…</p> : null}
+          {!pmHoursLoading && pmHoursError ? <p className="text-sm text-rose-600">{pmHoursError}</p> : null}
+
+          {!pmHoursLoading && !pmHoursError ? (
+            <>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {pmHoursByUser.map((row) => (
+                  <div key={row.userName} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+                    {row.userName}: {(row.minutes / 60).toFixed(2)} hrs
+                  </div>
+                ))}
+                {pmHoursByUser.length === 0 ? <span className="text-sm text-slate-500">No hours logged yet.</span> : null}
+              </div>
+
+              {pmHours?.entries?.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[#eaf6fd] text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2">Team Member</th>
+                        <th className="px-3 py-2">Clock In</th>
+                        <th className="px-3 py-2">Clock Out</th>
+                        <th className="px-3 py-2">Hours</th>
+                        <th className="px-3 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pmHours.entries.map((entry) => (
+                        <tr key={entry.id} className="border-t border-slate-100">
+                          <td className="px-3 py-2">{entry.userName}</td>
+                          <td className="px-3 py-2">{new Date(entry.clockInAt).toLocaleString()}</td>
+                          <td className="px-3 py-2">{entry.clockOutAt ? new Date(entry.clockOutAt).toLocaleString() : 'Open'}</td>
+                          <td className="px-3 py-2">{(entry.minutesWorked / 60).toFixed(2)}</td>
+                          <td className="px-3 py-2">{entry.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mb-4 border-b border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3 text-slate-500">
