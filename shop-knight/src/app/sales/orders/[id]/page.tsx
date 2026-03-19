@@ -130,6 +130,8 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   const [pmHours, setPmHours] = useState<SalesOrderHoursPayload | null>(null);
   const [pmHoursLoading, setPmHoursLoading] = useState(false);
   const [pmHoursError, setPmHoursError] = useState('');
+  const [pmHoursFromDate, setPmHoursFromDate] = useState('');
+  const [pmHoursToDate, setPmHoursToDate] = useState('');
   const [order, setOrder] = useState<SalesOrder | null>(null);
   const [loadError, setLoadError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -781,6 +783,15 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
 
   const isCurrentUserProjectManager = Boolean(session?.user?.id && order?.projectManagerId && session.user.id === order.projectManagerId);
 
+  function setPmRangeLastDays(days: number) {
+    const today = new Date();
+    const to = today.toISOString().slice(0, 10);
+    const from = new Date(today);
+    from.setDate(today.getDate() - (days - 1));
+    setPmHoursFromDate(from.toISOString().slice(0, 10));
+    setPmHoursToDate(to);
+  }
+
   useEffect(() => {
     if (!id || !isCurrentUserProjectManager) {
       setPmHours(null);
@@ -795,7 +806,11 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       try {
         setPmHoursLoading(true);
         setPmHoursError('');
-        const res = await fetch(`/api/sales-orders/${id}/hours`);
+        const params = new URLSearchParams();
+        if (pmHoursFromDate) params.set('from', pmHoursFromDate);
+        if (pmHoursToDate) params.set('to', pmHoursToDate);
+        const query = params.toString();
+        const res = await fetch(`/api/sales-orders/${id}/hours${query ? `?${query}` : ''}`);
         const payload = await res.json().catch(() => null);
         if (!res.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to load sales-order hours');
         if (!cancelled) {
@@ -816,7 +831,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     return () => {
       cancelled = true;
     };
-  }, [id, isCurrentUserProjectManager]);
+  }, [id, isCurrentUserProjectManager, pmHoursFromDate, pmHoursToDate]);
 
   useEffect(() => {
     if (!opportunityId) return;
@@ -864,6 +879,20 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
             <div className="text-sm text-slate-500">
               Total: <span className="font-semibold text-slate-800">{((pmHours?.totalMinutes || 0) / 60).toFixed(2)} hrs</span>
             </div>
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">From</label>
+              <input type="date" value={pmHoursFromDate} onChange={(e) => setPmHoursFromDate(e.target.value)} className="field h-10" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">To</label>
+              <input type="date" value={pmHoursToDate} onChange={(e) => setPmHoursToDate(e.target.value)} className="field h-10" />
+            </div>
+            <button type="button" onClick={() => setPmRangeLastDays(7)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 7 days</button>
+            <button type="button" onClick={() => setPmRangeLastDays(30)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 30 days</button>
+            <button type="button" onClick={() => { setPmHoursFromDate(''); setPmHoursToDate(''); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">All time</button>
           </div>
 
           {pmHoursLoading ? <p className="text-sm text-slate-500">Loading hours…</p> : null}

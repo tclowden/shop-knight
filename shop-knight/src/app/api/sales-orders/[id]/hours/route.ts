@@ -8,12 +8,27 @@ function computeEffectiveMinutes(clockInAt: Date, clockOutAt: Date | null, minut
   return Math.max(0, Math.round((end.getTime() - clockInAt.getTime()) / 60000));
 }
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const url = new URL(request.url);
+  const fromRaw = url.searchParams.get('from') || '';
+  const toRaw = url.searchParams.get('to') || '';
+
+  const fromDate = fromRaw ? new Date(`${fromRaw}T00:00:00`) : null;
+  if (fromRaw && Number.isNaN(fromDate?.getTime() || NaN)) {
+    return NextResponse.json({ error: 'Invalid from date' }, { status: 400 });
+  }
+
+  const toExclusiveDate = toRaw ? new Date(`${toRaw}T00:00:00`) : null;
+  if (toRaw && Number.isNaN(toExclusiveDate?.getTime() || NaN)) {
+    return NextResponse.json({ error: 'Invalid to date' }, { status: 400 });
+  }
+  if (toExclusiveDate) toExclusiveDate.setDate(toExclusiveDate.getDate() + 1);
 
   const { id } = await params;
   const salesOrder = await prisma.salesOrder.findFirst({
@@ -33,7 +48,18 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const entries = await prisma.timeEntry.findMany({
-    where: { companyId, salesOrderId: salesOrder.id },
+    where: {
+      companyId,
+      salesOrderId: salesOrder.id,
+      ...(fromDate || toExclusiveDate
+        ? {
+            clockInAt: {
+              ...(fromDate ? { gte: fromDate } : {}),
+              ...(toExclusiveDate ? { lt: toExclusiveDate } : {}),
+            },
+          }
+        : {}),
+    },
     orderBy: { clockInAt: 'desc' },
     include: {
       user: { select: { id: true, name: true } },
