@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 
@@ -48,12 +48,66 @@ export function Nav() {
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [clockedInRecord, setClockedInRecord] = useState<string | null>(null);
+  const [clockBusy, setClockBusy] = useState(false);
+  const [clockError, setClockError] = useState('');
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
+  async function loadClockState() {
+    try {
+      const res = await fetch('/api/time?scope=mine');
+      if (!res.ok) return;
+      const payload = await res.json().catch(() => []);
+      if (!Array.isArray(payload)) return;
+      const open = payload.find((entry) => !entry?.clockOutAt);
+      if (!open) {
+        setClockedInRecord(null);
+        return;
+      }
+      const label = open?.salesOrder?.orderNumber || open?.quote?.quoteNumber || open?.job?.name || open?.sourceType || 'Record';
+      setClockedInRecord(String(label));
+    } catch {
+      setClockedInRecord(null);
+    }
+  }
+
+  async function quickClockOut() {
+    setClockError('');
+    setClockBusy(true);
+    const res = await fetch('/api/time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clock_out' }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setClockBusy(false);
+    if (!res.ok) {
+      setClockError(typeof payload?.error === 'string' ? payload.error : 'Unable to clock out');
+      return;
+    }
+    await loadClockState();
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function safeLoad() {
+      if (cancelled) return;
+      await loadClockState();
+    }
+
+    void safeLoad();
+    const interval = setInterval(safeLoad, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   function scheduleClose(menu: 'transactions' | 'admin') {
     const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
@@ -143,6 +197,16 @@ export function Nav() {
 
         <CompanySwitcher />
 
+        {clockedInRecord ? (
+          <Link
+            href="/profile"
+            className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+            title={`Clocked in to ${clockedInRecord}`}
+          >
+            Clocked In: {clockedInRecord}
+          </Link>
+        ) : null}
+
         <div className="relative ml-auto">
           <button
             type="button"
@@ -158,6 +222,20 @@ export function Nav() {
                 <Link href="/profile" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setProfileOpen(false)}>
                   My Profile
                 </Link>
+                <Link href="/time" className="mt-1 block rounded-lg px-3 py-2 text-sky-700 hover:bg-sky-50" onClick={() => setProfileOpen(false)}>
+                  {clockedInRecord ? 'Switch Clock-In Record' : 'Clock In'}
+                </Link>
+                {clockedInRecord ? (
+                  <button
+                    type="button"
+                    onClick={quickClockOut}
+                    disabled={clockBusy}
+                    className="mt-1 w-full rounded-lg px-3 py-2 text-left text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
+                  >
+                    {clockBusy ? 'Clocking out…' : 'Clock Out'}
+                  </button>
+                ) : null}
+                {clockError ? <p className="mt-1 px-3 text-xs text-rose-600">{clockError}</p> : null}
                 <button
                   type="button"
                   onClick={() => signOut({ callbackUrl: '/login' })}
