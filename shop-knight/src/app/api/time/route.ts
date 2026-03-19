@@ -65,7 +65,9 @@ export async function POST(request: Request) {
     if (!companyId) return NextResponse.json({ error: 'No active company selected' }, { status: 400 });
 
     const permissions = session.user.permissions || [];
-    if (!permissions.includes('time.view')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const role = String(session.user.role || '');
+    const roleAllowsTime = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'].includes(role);
+    if (!permissions.includes('time.view') && !roleAllowsTime) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || '');

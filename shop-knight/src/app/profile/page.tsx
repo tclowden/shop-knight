@@ -19,6 +19,16 @@ type Profile = {
 };
 
 type Pref = { event: string; emailEnabled: boolean; inAppEnabled: boolean };
+type TimeEntry = {
+  id: string;
+  sourceType: string;
+  status: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  salesOrder?: { orderNumber?: string | null } | null;
+  quote?: { quoteNumber?: string | null } | null;
+  job?: { name?: string | null } | null;
+};
 
 const notificationLabels: Record<string, string> = {
   NOTE_MENTION: 'Note mentions',
@@ -54,6 +64,11 @@ export default function ProfilePage() {
   const [passwordMsg, setPasswordMsg] = useState('');
   const [passwordErr, setPasswordErr] = useState('');
 
+  const [openTimeEntry, setOpenTimeEntry] = useState<TimeEntry | null>(null);
+  const [clockBusy, setClockBusy] = useState(false);
+  const [clockMsg, setClockMsg] = useState('');
+  const [clockErr, setClockErr] = useState('');
+
   const initials = useMemo(() => {
     const source = name || session?.user?.name || '';
     return source.split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
@@ -61,9 +76,10 @@ export default function ProfilePage() {
 
   async function load() {
     setLoading(true);
-    const [profileRes, prefsRes] = await Promise.all([
+    const [profileRes, prefsRes, timeRes] = await Promise.all([
       fetch('/api/users/me'),
       fetch('/api/notifications/preferences'),
+      fetch('/api/time?scope=mine'),
     ]);
 
     const profilePayload = await profileRes.json().catch(() => null);
@@ -86,6 +102,13 @@ export default function ProfilePage() {
     if (prefsRes.ok) {
       const prefPayload = await prefsRes.json().catch(() => []);
       setPrefs(Array.isArray(prefPayload) ? prefPayload : []);
+    }
+
+    if (timeRes.ok) {
+      const timePayload = await timeRes.json().catch(() => []);
+      const mine = Array.isArray(timePayload) ? timePayload : [];
+      const open = mine.find((entry) => !entry?.clockOutAt) || null;
+      setOpenTimeEntry(open);
     }
 
     setLoading(false);
@@ -163,6 +186,29 @@ export default function ProfilePage() {
     setPasswordMsg('Password updated');
   }
 
+  async function clockOutFromProfile() {
+    setClockMsg('');
+    setClockErr('');
+    setClockBusy(true);
+
+    const res = await fetch('/api/time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clock_out' }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    setClockBusy(false);
+
+    if (!res.ok) {
+      setClockErr(typeof payload?.error === 'string' ? payload.error : 'Failed to clock out');
+      return;
+    }
+
+    setClockMsg('Clocked out successfully');
+    await load();
+  }
+
   async function onAvatarFile(file: File) {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file');
@@ -195,6 +241,35 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-semibold tracking-tight">My Profile</h1>
       <p className="text-sm text-slate-500">Manage your account details, notifications, and password.</p>
       <Nav />
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-base font-semibold">Time Clock</h2>
+        {openTimeEntry ? (
+          <>
+            <p className="text-sm text-slate-600">
+              You are clocked in to{' '}
+              <span className="font-semibold">
+                {openTimeEntry.salesOrder?.orderNumber || openTimeEntry.quote?.quoteNumber || openTimeEntry.job?.name || openTimeEntry.sourceType}
+              </span>{' '}
+              since {new Date(openTimeEntry.clockInAt).toLocaleString()}.
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={clockOutFromProfile}
+                disabled={clockBusy}
+                className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 disabled:opacity-60"
+              >
+                {clockBusy ? 'Clocking out…' : 'Clock Out'}
+              </button>
+              {clockErr ? <p className="text-sm text-rose-600">{clockErr}</p> : null}
+              {clockMsg ? <p className="text-sm text-emerald-700">{clockMsg}</p> : null}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">No active clock-in right now.</p>
+        )}
+      </section>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-base font-semibold">Profile</h2>
