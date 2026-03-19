@@ -121,7 +121,7 @@ type SalesOrder = {
 };
 
 const tabBase = 'inline-flex h-11 items-center border-b-2 px-2 text-sm font-medium';
-type SoTab = 'ITEMS' | 'PURCHASING' | 'TRAVEL' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
+type SoTab = 'ITEMS' | 'LABOR' | 'PURCHASING' | 'TRAVEL' | 'TASKS' | 'ASSETS' | 'NOTES' | 'EMAILS';
 
 export default function SalesOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { data: session } = useSession();
@@ -872,78 +872,11 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <SummaryCell label="Dates" value={`${order.salesOrderDate ? new Date(order.salesOrderDate).toLocaleDateString() : '—'} • Due ${order.dueDate ? new Date(order.dueDate).toLocaleDateString() : '—'}`} />
       </section>
 
-      {isCurrentUserProjectManager ? (
-        <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">Project Manager Hours (this Sales Order)</h2>
-            <div className="text-sm text-slate-500">
-              Total: <span className="font-semibold text-slate-800">{((pmHours?.totalMinutes || 0) / 60).toFixed(2)} hrs</span>
-            </div>
-          </div>
-
-          <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">From</label>
-              <input type="date" value={pmHoursFromDate} onChange={(e) => setPmHoursFromDate(e.target.value)} className="field h-10" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">To</label>
-              <input type="date" value={pmHoursToDate} onChange={(e) => setPmHoursToDate(e.target.value)} className="field h-10" />
-            </div>
-            <button type="button" onClick={() => setPmRangeLastDays(7)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 7 days</button>
-            <button type="button" onClick={() => setPmRangeLastDays(30)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 30 days</button>
-            <button type="button" onClick={() => { setPmHoursFromDate(''); setPmHoursToDate(''); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">All time</button>
-          </div>
-
-          {pmHoursLoading ? <p className="text-sm text-slate-500">Loading hours…</p> : null}
-          {!pmHoursLoading && pmHoursError ? <p className="text-sm text-rose-600">{pmHoursError}</p> : null}
-
-          {!pmHoursLoading && !pmHoursError ? (
-            <>
-              <div className="mb-3 flex flex-wrap gap-2">
-                {pmHoursByUser.map((row) => (
-                  <div key={row.userName} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
-                    {row.userName}: {(row.minutes / 60).toFixed(2)} hrs
-                  </div>
-                ))}
-                {pmHoursByUser.length === 0 ? <span className="text-sm text-slate-500">No hours logged yet.</span> : null}
-              </div>
-
-              {pmHours?.entries?.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-[#eaf6fd] text-slate-600">
-                      <tr>
-                        <th className="px-3 py-2">Team Member</th>
-                        <th className="px-3 py-2">Clock In</th>
-                        <th className="px-3 py-2">Clock Out</th>
-                        <th className="px-3 py-2">Hours</th>
-                        <th className="px-3 py-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pmHours.entries.map((entry) => (
-                        <tr key={entry.id} className="border-t border-slate-100">
-                          <td className="px-3 py-2">{entry.userName}</td>
-                          <td className="px-3 py-2">{new Date(entry.clockInAt).toLocaleString()}</td>
-                          <td className="px-3 py-2">{entry.clockOutAt ? new Date(entry.clockOutAt).toLocaleString() : 'Open'}</td>
-                          <td className="px-3 py-2">{(entry.minutesWorked / 60).toFixed(2)}</td>
-                          <td className="px-3 py-2">{entry.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </section>
-      ) : null}
-
       <section className="mb-4 border-b border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3 text-slate-500">
           <div className="flex flex-wrap gap-4">
             <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
+            {isCurrentUserProjectManager ? <button onClick={() => setActiveTab('LABOR')} className={`${tabBase} ${activeTab === 'LABOR' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Labor ({pmHours?.entries?.length || 0})</button> : null}
             <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
             <button onClick={() => setActiveTab('TRAVEL')} className={`${tabBase} ${activeTab === 'TRAVEL' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Travel</button>
             <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
@@ -1069,6 +1002,74 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         </details>
       </section>
       </>
+      ) : null}
+
+      {activeTab === 'LABOR' && isCurrentUserProjectManager ? (
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Labor (clocked to this Sales Order)</h2>
+          <div className="text-sm text-slate-500">
+            Total: <span className="font-semibold text-slate-800">{((pmHours?.totalMinutes || 0) / 60).toFixed(2)} hrs</span>
+          </div>
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-end gap-2">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">From</label>
+            <input type="date" value={pmHoursFromDate} onChange={(e) => setPmHoursFromDate(e.target.value)} className="field h-10" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">To</label>
+            <input type="date" value={pmHoursToDate} onChange={(e) => setPmHoursToDate(e.target.value)} className="field h-10" />
+          </div>
+          <button type="button" onClick={() => setPmRangeLastDays(7)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 7 days</button>
+          <button type="button" onClick={() => setPmRangeLastDays(30)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Last 30 days</button>
+          <button type="button" onClick={() => { setPmHoursFromDate(''); setPmHoursToDate(''); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">All time</button>
+        </div>
+
+        {pmHoursLoading ? <p className="text-sm text-slate-500">Loading labor…</p> : null}
+        {!pmHoursLoading && pmHoursError ? <p className="text-sm text-rose-600">{pmHoursError}</p> : null}
+
+        {!pmHoursLoading && !pmHoursError ? (
+          <>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {pmHoursByUser.map((row) => (
+                <div key={row.userName} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
+                  {row.userName}: {(row.minutes / 60).toFixed(2)} hrs
+                </div>
+              ))}
+              {pmHoursByUser.length === 0 ? <span className="text-sm text-slate-500">No labor logged yet.</span> : null}
+            </div>
+
+            {pmHours?.entries?.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#eaf6fd] text-slate-600">
+                    <tr>
+                      <th className="px-3 py-2">Team Member</th>
+                      <th className="px-3 py-2">Clock In</th>
+                      <th className="px-3 py-2">Clock Out</th>
+                      <th className="px-3 py-2">Hours</th>
+                      <th className="px-3 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pmHours.entries.map((entry) => (
+                      <tr key={entry.id} className="border-t border-slate-100">
+                        <td className="px-3 py-2">{entry.userName}</td>
+                        <td className="px-3 py-2">{new Date(entry.clockInAt).toLocaleString()}</td>
+                        <td className="px-3 py-2">{entry.clockOutAt ? new Date(entry.clockOutAt).toLocaleString() : 'Open'}</td>
+                        <td className="px-3 py-2">{(entry.minutesWorked / 60).toFixed(2)}</td>
+                        <td className="px-3 py-2">{entry.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </section>
       ) : null}
 
       {activeTab === 'TRAVEL' ? (
