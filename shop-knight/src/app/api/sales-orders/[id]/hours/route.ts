@@ -39,11 +39,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!salesOrder) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
 
   const sessionUserId = String(auth.session.user.id || '');
+  const sessionEmail = String(auth.session.user.email || '').trim().toLowerCase();
   const roles = auth.session.user.roles || (auth.session.user.role ? [auth.session.user.role] : []);
   const isAdmin = roles.includes('SUPER_ADMIN') || roles.includes('ADMIN');
-  const isAssignedProjectManager = Boolean(salesOrder.projectManagerId && salesOrder.projectManagerId === sessionUserId);
+  const isAssignedProjectManagerById = Boolean(salesOrder.projectManagerId && salesOrder.projectManagerId === sessionUserId);
 
-  if (!isAdmin && !isAssignedProjectManager) {
+  let isAssignedProjectManagerByEmail = false;
+  if (!isAssignedProjectManagerById && salesOrder.projectManagerId && sessionEmail) {
+    const pm = await prisma.user.findUnique({ where: { id: salesOrder.projectManagerId }, select: { email: true } });
+    isAssignedProjectManagerByEmail = Boolean(pm?.email && pm.email.toLowerCase() === sessionEmail);
+  }
+
+  if (!isAdmin && !isAssignedProjectManagerById && !isAssignedProjectManagerByEmail) {
     return NextResponse.json({ error: 'Only the assigned project manager can view this hours summary' }, { status: 403 });
   }
 

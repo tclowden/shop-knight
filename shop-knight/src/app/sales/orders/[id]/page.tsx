@@ -13,7 +13,7 @@ import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
 type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null; required?: boolean };
 type Product = { id: string; sku: string; name: string; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
-type User = { id: string; name: string; type: string };
+type User = { id: string; name: string; email?: string | null; type: string };
 type SalesOrderStatus = { id: string; name: string };
 type WorkflowTemplateOption = { id: string; name: string };
 type OpportunityOption = { id: string; name: string; customer: string; customerId: string };
@@ -781,7 +781,19 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     return pool.filter((t) => t.fullName.toLowerCase().includes(q)).slice(0, 8);
   }, [travelers, tripTravelerIds, tripTravelerQuery]);
 
-  const isCurrentUserProjectManager = Boolean(session?.user?.id && order?.projectManagerId && session.user.id === order.projectManagerId);
+  const canViewLaborTab = useMemo(() => {
+    const role = String(session?.user?.role || '');
+    const roles = session?.user?.roles || (role ? [role] : []);
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) return true;
+    if (!order?.projectManagerId) return false;
+
+    if (session?.user?.id && session.user.id === order.projectManagerId) return true;
+
+    const email = String(session?.user?.email || '').trim().toLowerCase();
+    if (!email) return false;
+    const pmUser = users.find((u) => u.id === order.projectManagerId);
+    return Boolean(pmUser?.email && pmUser.email.toLowerCase() === email);
+  }, [session?.user?.role, session?.user?.roles, session?.user?.id, session?.user?.email, order?.projectManagerId, users]);
 
   function setPmRangeLastDays(days: number) {
     const today = new Date();
@@ -793,7 +805,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   }
 
   useEffect(() => {
-    if (!id || !isCurrentUserProjectManager) {
+    if (!id || !canViewLaborTab) {
       setPmHours(null);
       setPmHoursError('');
       setPmHoursLoading(false);
@@ -831,7 +843,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
     return () => {
       cancelled = true;
     };
-  }, [id, isCurrentUserProjectManager, pmHoursFromDate, pmHoursToDate]);
+  }, [id, canViewLaborTab, pmHoursFromDate, pmHoursToDate]);
 
   useEffect(() => {
     if (!opportunityId) return;
@@ -876,7 +888,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
         <div className="flex flex-wrap items-center justify-between gap-3 text-slate-500">
           <div className="flex flex-wrap gap-4">
             <button onClick={() => setActiveTab('ITEMS')} className={`${tabBase} ${activeTab === 'ITEMS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Items ({order.lines.length})</button>
-            {isCurrentUserProjectManager ? <button onClick={() => setActiveTab('LABOR')} className={`${tabBase} ${activeTab === 'LABOR' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Labor ({pmHours?.entries?.length || 0})</button> : null}
+            {canViewLaborTab ? <button onClick={() => setActiveTab('LABOR')} className={`${tabBase} ${activeTab === 'LABOR' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Labor ({pmHours?.entries?.length || 0})</button> : null}
             <button onClick={() => setActiveTab('PURCHASING')} className={`${tabBase} ${activeTab === 'PURCHASING' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Purchasing ({purchaseItems.length})</button>
             <button onClick={() => setActiveTab('TRAVEL')} className={`${tabBase} ${activeTab === 'TRAVEL' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Travel</button>
             <button onClick={() => setActiveTab('TASKS')} className={`${tabBase} ${activeTab === 'TASKS' ? 'border-sky-500 text-sky-600' : 'border-transparent hover:border-slate-300'}`}>Tasks</button>
@@ -1004,7 +1016,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
       </>
       ) : null}
 
-      {activeTab === 'LABOR' && isCurrentUserProjectManager ? (
+      {activeTab === 'LABOR' && canViewLaborTab ? (
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Labor (clocked to this Sales Order)</h2>
