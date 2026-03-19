@@ -761,7 +761,7 @@ export default function SalesOrderDetailPage({ params }: { params: Promise<{ id:
   }, [opportunities, customerId]);
 
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
-  const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+  const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const selectedTripTravelers = useMemo(() => travelers.filter((t) => tripTravelerIds.includes(t.id)), [travelers, tripTravelerIds]);
   const pmHoursByUser = useMemo(() => {
