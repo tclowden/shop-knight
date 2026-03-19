@@ -27,3 +27,6 @@ Long-term memory for important context.
 - Repeated Vercel deployment failures have come from strict TypeScript checks passing locally but failing in production build.
 - Before push/deploy, run full `npm run build` (not only lint/dev) to catch TS issues early.
 - Common hotspot: Prisma update payload typing (`null` vs `undefined`) in API routes; prefer explicit typed assignments compatible with generated Prisma types.
+- Critical: never ship Prisma schema changes without committed migrations; otherwise production hits runtime `column does not exist` errors.
+- Deployment gate for schema changes: `prisma migrate deploy` + `prisma generate` must pass against the active production DB before declaring release complete.
+- Add/keep drift prevention in workflow: reconcile DB/schema immediately when a missing-column error appears; do not rely on route-level fallbacks as a long-term fix.
