@@ -54,7 +54,7 @@ async function buildSalesOrderPayload(id: string, companyId: string) {
 
     const [lines, opportunity, status, salesRep, projectManager, designer] = await Promise.all([
       prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        'SELECT id, description, qty, "unitPrice", "productId", "sortOrder", "parentLineId", collapsed, "priceLocked" FROM "SalesOrderLine" WHERE "salesOrderId" = $1 ORDER BY "sortOrder" ASC, id ASC',
+        'SELECT id, description, qty, "unitPrice", "productId", "sortOrder", "parentLineId", collapsed FROM "SalesOrderLine" WHERE "salesOrderId" = $1 ORDER BY "sortOrder" ASC, id ASC',
         id,
       ),
       prisma.opportunity.findUnique({ where: { id: String(so.opportunityId || '') }, include: { customer: true } }).catch(() => null),
