@@ -73,10 +73,10 @@ export async function POST(request: Request) {
     const action = String(body?.action || '');
 
     if (action === 'clock_in') {
+      const now = new Date();
       const open = await prisma.timeEntry.findFirst({ where: { companyId, userId: session.user.id, clockOutAt: null } });
-      if (open) return NextResponse.json({ error: 'You already have an open time entry. Clock out first.' }, { status: 400 });
 
-      const lock = await getPayPeriodLock(companyId, new Date());
+      const lock = await getPayPeriodLock(companyId, now);
       if (lock) return NextResponse.json({ error: 'Current pay period is locked. Contact HR Admin.' }, { status: 400 });
 
       const sourceType = String(body.sourceType || '');
@@ -98,11 +98,23 @@ export async function POST(request: Request) {
         if (!job) return NextResponse.json({ error: 'Job not found in your active company.' }, { status: 400 });
       }
 
+      if (open) {
+        const openLock = await getPayPeriodLock(companyId, open.clockInAt);
+        if (openLock) {
+          return NextResponse.json({ error: 'Your current open entry is in a locked pay period. Contact HR Admin.' }, { status: 400 });
+        }
+        const openMinutesWorked = Math.max(0, Math.round((now.getTime() - open.clockInAt.getTime()) / 60000));
+        await prisma.timeEntry.update({
+          where: { id: open.id },
+          data: { clockOutAt: now, minutesWorked: openMinutesWorked, status: 'PENDING' },
+        });
+      }
+
       const data: Record<string, unknown> = {
         companyId,
         userId: session.user.id,
         sourceType,
-        clockInAt: new Date(),
+        clockInAt: now,
         notes: typeof body.notes === 'string' ? body.notes : null,
       };
 
@@ -111,7 +123,7 @@ export async function POST(request: Request) {
       if (sourceType === 'JOB') data.jobId = sourceId;
 
       const created = await prisma.timeEntry.create({ data: data as never });
-      return NextResponse.json(created, { status: 201 });
+      return NextResponse.json({ ...created, switchedFromOpenEntry: Boolean(open) }, { status: 201 });
     }
 
     if (action === 'clock_out') {

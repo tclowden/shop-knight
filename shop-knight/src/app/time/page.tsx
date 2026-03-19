@@ -106,13 +106,13 @@ export default function TimePortalPage() {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search SO, Quote, Job..." className="field min-w-80" />
           <button type="button" onClick={clockOut} disabled={!openEntry || busy} className="inline-flex h-11 items-center rounded-lg border border-rose-300 bg-rose-50 px-4 text-sm font-semibold text-rose-700 disabled:opacity-50">Clock Out</button>
         </div>
-        {openEntry ? <p className="mt-2 text-sm text-amber-700">You are currently clocked in. Clock out before starting a new record.</p> : null}
+        {openEntry ? <p className="mt-2 text-sm text-amber-700">You are currently clocked in. Choosing another record will switch your clock-in automatically.</p> : null}
 
         <div className="mt-3 space-y-2">
           {targets.map((target) => (
             <div key={`${target.sourceType}-${target.id}`} className="flex items-center justify-between rounded border border-slate-200 p-2">
               <p className="text-sm">{target.label}</p>
-              <button type="button" onClick={() => clockIn(target)} disabled={Boolean(openEntry) || busy} className="rounded bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Clock In to this record</button>
+              <button type="button" onClick={() => clockIn(target)} disabled={busy} className="rounded bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{openEntry ? 'Switch Clock-In to this record' : 'Clock In to this record'}</button>
             </div>
           ))}
         </div>

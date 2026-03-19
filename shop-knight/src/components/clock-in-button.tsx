@@ -20,13 +20,14 @@ export function ClockInButton({ sourceType, sourceId, label = 'Clock In to this 
     });
     setBusy(false);
 
+    const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const payload = await res.json().catch(() => ({}));
       window.alert(payload?.error || 'Clock-in failed');
       return;
     }
 
-    window.alert('Clock-in started.');
+    if (payload?.switchedFromOpenEntry) window.alert('Clock-in switched to this record.');
+    else window.alert('Clock-in started.');
   }
 
   return (
