@@ -1,13 +1,16 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Traveler = { id: string; fullName: string };
+type TravelerOption = { id: string; fullName: string };
 type Trip = {
   id: string;
   name: string;
   destinations?: string | null;
+  destinationCity?: string | null;
+  destinationState?: string | null;
   purpose?: string | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -33,8 +36,27 @@ type Segment = {
 export default function TripDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [allTravelers, setAllTravelers] = useState<TravelerOption[]>([]);
+  const [selectedTravelerIds, setSelectedTravelerIds] = useState<string[]>([]);
+  const [travelerSearch, setTravelerSearch] = useState('');
+  const [pendingAddTravelerIds, setPendingAddTravelerIds] = useState<string[]>([]);
+  const [savingTravelers, setSavingTravelers] = useState(false);
+  const [travelersMessage, setTravelersMessage] = useState('');
   const [segmentType, setSegmentType] = useState('FLIGHT');
   const [status, setStatus] = useState('PLANNING');
+  const [tripName, setTripName] = useState('');
+  const [tripDestinations, setTripDestinations] = useState('');
+  const [tripPurpose, setTripPurpose] = useState('');
+  const [tripStartDate, setTripStartDate] = useState('');
+  const [tripEndDate, setTripEndDate] = useState('');
+  const [tripBillable, setTripBillable] = useState(false);
+  const [tripSalesOrderRef, setTripSalesOrderRef] = useState('');
+  const [savingTrip, setSavingTrip] = useState(false);
+  const [tripMessage, setTripMessage] = useState('');
+  const [destinationCity, setDestinationCity] = useState('');
+  const [destinationState, setDestinationState] = useState('');
+  const [savingDestination, setSavingDestination] = useState(false);
+  const [destinationMessage, setDestinationMessage] = useState('');
   const [loadingPerDiem, setLoadingPerDiem] = useState(false);
   const [perDiemMessage, setPerDiemMessage] = useState('');
   const [travelerId, setTravelerId] = useState('');
@@ -53,8 +75,39 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       const tripData = await tripRes.json();
       setTrip(tripData);
       setStatus(tripData.status || 'PLANNING');
+      setTripName(tripData.name || '');
+      setTripDestinations(tripData.destinations || '');
+      setTripPurpose(tripData.purpose || '');
+      setTripStartDate(tripData.startDate ? String(tripData.startDate).slice(0, 10) : '');
+      setTripEndDate(tripData.endDate ? String(tripData.endDate).slice(0, 10) : '');
+      setTripBillable(Boolean(tripData.billable));
+      setTripSalesOrderRef(tripData.salesOrderRef || '');
+      setDestinationCity(tripData.destinationCity || '');
+      setDestinationState(tripData.destinationState || '');
+      setSelectedTravelerIds((tripData.travelers || []).map((t: { traveler: { id: string } }) => t.traveler.id));
     }
     if (segmentRes.ok) setSegments(await segmentRes.json());
+  }
+
+  async function saveTravelers(e: FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+
+    setSavingTravelers(true);
+    setTravelersMessage('');
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ travelerIds: selectedTravelerIds }),
+    });
+    setSavingTravelers(false);
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setTravelersMessage(payload?.error || 'Failed to save travelers');
+      return;
+    }
+    setTravelersMessage('Travelers saved.');
+    await load(trip.id);
   }
 
   async function addSegment(e: FormEvent) {
@@ -87,12 +140,67 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
     await load(trip.id);
   }
 
+  async function saveTripDetails(e: FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+
+    setSavingTrip(true);
+    setTripMessage('');
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: tripName,
+        destinations: tripDestinations || null,
+        purpose: tripPurpose || null,
+        startDate: tripStartDate || null,
+        endDate: tripEndDate || null,
+        billable: tripBillable,
+        salesOrderRef: tripSalesOrderRef || null,
+      }),
+    });
+    setSavingTrip(false);
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setTripMessage(payload?.error || 'Failed to save trip details');
+      return;
+    }
+
+    setTripMessage('Trip details saved.');
+    await load(trip.id);
+  }
+
+  async function saveDestination(e: FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+
+    setSavingDestination(true);
+    setDestinationMessage('');
+    const res = await fetch(`/api/travel/trips/${trip.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinationCity: destinationCity || null, destinationState: destinationState || null }),
+    });
+    setSavingDestination(false);
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      setDestinationMessage(payload?.error || 'Failed to save destination');
+      return;
+    }
+    setDestinationMessage('Destination saved.');
+    await load(trip.id);
+  }
+
   async function generatePerDiem() {
     if (!trip) return;
     setLoadingPerDiem(true);
     setPerDiemMessage('');
 
-    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, { method: 'POST' });
+    const res = await fetch(`/api/travel/trips/${trip.id}/per-diem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinationCity, destinationState }),
+    });
     const payload = await res.json().catch(() => ({}));
     setLoadingPerDiem(false);
 
@@ -101,12 +209,31 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    setPerDiemMessage(`Per-diem draft ready: ${payload.total} for ${payload.travelerCount} traveler(s), ${payload.days} day(s) at ${payload.dailyRate}/day (reviewer: ${payload.reviewer}).`);
+    if (trip) await load(trip.id);
+
+    setPerDiemMessage(`Per-diem request created (${payload.requestStatus}): ${payload.total} for ${payload.travelerCount} traveler(s), ${payload.days} day(s) at ${payload.dailyRate}/day.`);
   }
 
   useEffect(() => {
     params.then((p) => load(p.id));
+    fetch('/api/travel/travelers').then(async (res) => {
+      if (!res.ok) return;
+      setAllTravelers(await res.json());
+    });
   }, [params]);
+
+  const assignedTravelers = useMemo(
+    () => allTravelers.filter((t) => selectedTravelerIds.includes(t.id)),
+    [allTravelers, selectedTravelerIds]
+  );
+  const availableTravelers = useMemo(() => {
+    const q = travelerSearch.trim().toLowerCase();
+    return allTravelers.filter((t) => {
+      if (selectedTravelerIds.includes(t.id)) return false;
+      if (!q) return true;
+      return t.fullName.toLowerCase().includes(q);
+    });
+  }, [allTravelers, selectedTravelerIds, travelerSearch]);
 
   if (!trip) return <main className="mx-auto max-w-7xl p-8">Loading trip…</main>;
 
@@ -115,6 +242,21 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
       <Nav />
       <h1 className="text-3xl font-semibold tracking-tight">{trip.name}</h1>
       <p className="text-sm text-slate-500">{trip.destinations || 'No destination'} • {trip.status}</p>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Trip Details</h2>
+        <form onSubmit={saveTripDetails} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <input value={tripName} onChange={(e) => setTripName(e.target.value)} placeholder="Trip name" className="field" required />
+          <input value={tripDestinations} onChange={(e) => setTripDestinations(e.target.value)} placeholder="Destinations" className="field" />
+          <input value={tripPurpose} onChange={(e) => setTripPurpose(e.target.value)} placeholder="Purpose" className="field" />
+          <label className="field inline-flex items-center gap-2"><input type="checkbox" checked={tripBillable} onChange={(e) => setTripBillable(e.target.checked)} /> Billable</label>
+          <input value={tripStartDate} onChange={(e) => setTripStartDate(e.target.value)} type="date" className="field" />
+          <input value={tripEndDate} onChange={(e) => setTripEndDate(e.target.value)} type="date" className="field" />
+          <input value={tripSalesOrderRef} onChange={(e) => setTripSalesOrderRef(e.target.value)} placeholder="Sales order ref" className="field" />
+          <button disabled={savingTrip} className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">{savingTrip ? 'Saving…' : 'Save Trip Details'}</button>
+        </form>
+        {tripMessage ? <p className="mt-2 text-xs text-slate-600">{tripMessage}</p> : null}
+      </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -133,6 +275,7 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
           <div className="text-sm text-slate-600">
             <p>Billing: <span className="font-medium">{trip.billable ? 'Billable' : 'Non-billable'}</span></p>
             <p>SO Ref: <span className="font-medium">{trip.salesOrderRef || '—'}</span></p>
+            <p>Destination: <span className="font-medium">{trip.destinationCity && trip.destinationState ? `${trip.destinationCity}, ${trip.destinationState}` : '—'}</span></p>
           </div>
 
           <div>
@@ -142,6 +285,68 @@ export default function TripDetailPage({ params }: { params: Promise<{ id: strin
             {perDiemMessage ? <p className="mt-2 text-xs text-slate-600">{perDiemMessage}</p> : null}
           </div>
         </div>
+      </section>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Destination for Per-Diem</h2>
+        <form onSubmit={saveDestination} className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <input value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} placeholder="City" className="field" />
+          <select value={destinationState} onChange={(e) => setDestinationState(e.target.value)} className="field">
+            <option value="">State…</option>
+            {['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'].map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
+          <div className="md:col-span-2">
+            <button disabled={savingDestination} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingDestination ? 'Saving…' : 'Save Destination'}</button>
+            {destinationMessage ? <p className="mt-2 text-xs text-slate-600">{destinationMessage}</p> : null}
+          </div>
+        </form>
+      </section>
+
+      <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold">Travelers</h2>
+        <p className="mt-1 text-xs text-slate-500">Type to filter, multi-select names, click Add Selected, then Save Travelers.</p>
+        <form onSubmit={saveTravelers} className="mt-3 space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <input value={travelerSearch} onChange={(e) => setTravelerSearch(e.target.value)} placeholder="Search travelers..." className="field mb-2" />
+              <select
+                multiple
+                value={pendingAddTravelerIds}
+                onChange={(e) => setPendingAddTravelerIds(Array.from(e.target.selectedOptions).map((o) => o.value))}
+                className="field h-40 w-full"
+              >
+                {availableTravelers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTravelerIds((prev) => Array.from(new Set([...prev, ...pendingAddTravelerIds])));
+                  setPendingAddTravelerIds([]);
+                }}
+                className="mt-2 inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-2 text-xs font-medium"
+              >
+                Add Selected
+              </button>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Assigned to Trip</p>
+              <div className="space-y-1">
+                {assignedTravelers.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm">
+                    <span>{t.fullName}</span>
+                    <button type="button" onClick={() => setSelectedTravelerIds((prev) => prev.filter((id) => id !== t.id))} className="text-xs text-rose-700">Remove</button>
+                  </div>
+                ))}
+                {assignedTravelers.length === 0 ? <p className="text-xs text-slate-500">No travelers assigned yet.</p> : null}
+              </div>
+            </div>
+          </div>
+          {allTravelers.length === 0 ? <p className="text-xs text-slate-500">No traveler profiles found. Add them in Travel → Manage Travelers.</p> : null}
+          <div className="flex items-center gap-3">
+            <button disabled={savingTravelers} className="inline-flex h-11 items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">{savingTravelers ? 'Saving…' : 'Save Travelers'}</button>
+            {travelersMessage ? <p className="text-xs text-slate-600">{travelersMessage}</p> : null}
+          </div>
+        </form>
       </section>
 
       <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

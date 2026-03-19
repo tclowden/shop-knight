@@ -41,7 +41,7 @@ async function ensureUnassignedOpportunity(companyId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -71,6 +71,7 @@ export async function GET(req: Request) {
       salesRep: true,
       projectManager: true,
       designer: true,
+      department: true,
     },
     orderBy: { orderNumber: 'asc' },
   });
@@ -90,12 +91,21 @@ export async function GET(req: Request) {
       dueDate: so.dueDate,
       installDate: so.installDate,
       shippingDate: so.shippingDate,
+      earlyBirdDiscountDate: so.earlyBirdDiscountDate,
+      advancedReceivingDeadline: so.advancedReceivingDeadline,
+      shipFromRoarkDate: so.shipFromRoarkDate,
+      travelToSiteStart: so.travelToSiteStart,
+      travelToSiteEnd: so.travelToSiteEnd,
+      outboundShippingFromShowDate: so.outboundShippingFromShowDate,
+      estimatedInvoiceDate: so.estimatedInvoiceDate,
       paymentTerms: so.paymentTerms,
       downPaymentType: so.downPaymentType,
       downPaymentValue: so.downPaymentValue,
       salesRepName: so.salesRep?.name ?? null,
       projectManagerName: so.projectManager?.name ?? null,
       designerName: so.designer?.name ?? null,
+      departmentId: so.departmentId,
+      departmentName: so.department?.name ?? null,
     }))
   );
 }
@@ -112,6 +122,8 @@ export async function POST(req: Request) {
   const requestedOpportunityId = String(body?.opportunityId || '').trim();
   const sourceQuoteId = body?.sourceQuoteId ? String(body.sourceQuoteId).trim() : null;
   const initialLine = body?.initialLine && typeof body.initialLine === 'object' ? body.initialLine : null;
+  const sessionUserId = (auth.session.user as { id?: string } | undefined)?.id;
+  const creator = sessionUserId ? await prisma.user.findUnique({ where: { id: sessionUserId }, select: { departmentId: true } }) : null;
 
   let opportunityId = requestedOpportunityId;
   if (!opportunityId) {
@@ -147,6 +159,7 @@ export async function POST(req: Request) {
     sourceQuoteId,
     title: body?.title ? String(body.title) : sourceQuote?.title ?? null,
     statusId: status.id,
+    departmentId: body?.departmentId ? String(body.departmentId) : (creator?.departmentId || null),
     primaryCustomerContact: body?.primaryCustomerContact ? String(body.primaryCustomerContact) : null,
     customerInvoiceContact: body?.customerInvoiceContact ? String(body.customerInvoiceContact) : null,
     billingAddress: body?.billingAddress ? String(body.billingAddress) : null,
@@ -160,6 +173,13 @@ export async function POST(req: Request) {
     dueDate: toDate(body?.dueDate),
     installDate: toDate(body?.installDate),
     shippingDate: toDate(body?.shippingDate),
+    earlyBirdDiscountDate: toDate(body?.earlyBirdDiscountDate),
+    advancedReceivingDeadline: toDate(body?.advancedReceivingDeadline),
+    shipFromRoarkDate: toDate(body?.shipFromRoarkDate),
+    travelToSiteStart: toDate(body?.travelToSiteStart),
+    travelToSiteEnd: toDate(body?.travelToSiteEnd),
+    outboundShippingFromShowDate: toDate(body?.outboundShippingFromShowDate),
+    estimatedInvoiceDate: toDate(body?.estimatedInvoiceDate),
     paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : opportunity.customer.paymentTerms ?? null,
     downPaymentType: body?.downPaymentType ? String(body.downPaymentType) : null,
     downPaymentValue: toNumber(body?.downPaymentValue),

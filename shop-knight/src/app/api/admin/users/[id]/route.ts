@@ -47,6 +47,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const rewardUnitedNumber = body?.rewardUnitedNumber === undefined ? undefined : (body.rewardUnitedNumber ? String(body.rewardUnitedNumber) : null);
   const rewardDeltaNumber = body?.rewardDeltaNumber === undefined ? undefined : (body.rewardDeltaNumber ? String(body.rewardDeltaNumber) : null);
   const rewardAmericanNumber = body?.rewardAmericanNumber === undefined ? undefined : (body.rewardAmericanNumber ? String(body.rewardAmericanNumber) : null);
+  const departmentId = body?.departmentId === undefined ? undefined : (body.departmentId ? String(body.departmentId) : null);
+  const titleId = body?.titleId === undefined ? undefined : (body.titleId ? String(body.titleId) : null);
+  const reportsToId = body?.reportsToId === undefined ? undefined : (body.reportsToId ? String(body.reportsToId) : null);
+  const isEmployee = body?.isEmployee === undefined ? undefined : Boolean(body.isEmployee);
 
   if (name !== undefined && !name) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
@@ -88,6 +92,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
+  const contextCompanyId = activeCompanyId !== undefined
+    ? activeCompanyId
+    : (await prisma.user.findUnique({ where: { id }, select: { activeCompanyId: true } }))?.activeCompanyId ?? null;
+
+  if (titleId !== undefined && titleId && contextCompanyId) {
+    const title = await prisma.title.findFirst({ where: { id: titleId, companyId: contextCompanyId } });
+    if (!title) {
+      return NextResponse.json({ error: 'invalid title' }, { status: 400 });
+    }
+  }
+
+  if (reportsToId !== undefined && reportsToId) {
+    if (reportsToId === id) {
+      return NextResponse.json({ error: 'user cannot report to themselves' }, { status: 400 });
+    }
+
+    const manager = await prisma.user.findUnique({ where: { id: reportsToId }, select: { id: true } });
+    if (!manager) {
+      return NextResponse.json({ error: 'invalid reportsTo user' }, { status: 400 });
+    }
+  }
+
   try {
     const updated = await prisma.$transaction(async (tx) => {
       if (companyIds !== undefined) {
@@ -122,6 +148,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           rewardAmericanNumber,
           active: body?.active !== undefined ? Boolean(body.active) : undefined,
           activeCompanyId: nextActiveCompanyId,
+          departmentId,
+          titleId,
+          reportsToId,
+          isEmployee,
           customRoles: customRoleIds
             ? {
                 deleteMany: {},
@@ -142,6 +172,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           rewardAmericanNumber: true,
           active: true,
           activeCompanyId: true,
+          departmentId: true,
+          department: { select: { id: true, name: true } },
+          titleId: true,
+          title: { select: { id: true, name: true } },
+          reportsToId: true,
+          reportsTo: { select: { id: true, name: true } },
+          isEmployee: true,
           companyMemberships: { select: { companyId: true } },
           customRoles: {
             select: {

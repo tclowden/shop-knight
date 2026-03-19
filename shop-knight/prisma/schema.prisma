@@ -83,26 +83,87 @@ enum TravelSegmentType {
   OTHER
 }
 
+enum PerDiemRequestStatus {
+  NEW
+  IN_REVIEW
+  COMPLETE
+  CANCELED
+}
+
+enum ExpenseReportStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+enum AmexTransactionStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+enum NotificationEvent {
+  NOTE_MENTION
+  TASK_ASSIGNED
+  OPPORTUNITY_ROLE_ASSIGNED
+  QUOTE_ROLE_ASSIGNED
+  SALES_ORDER_ROLE_ASSIGNED
+}
+
+enum PurchaseMethod {
+  CREDIT_CARD
+  ON_ACCOUNT
+}
+
+enum TimeEntryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TimeEntrySourceType {
+  SALES_ORDER
+  QUOTE
+  JOB
+}
+
 model Company {
-  id                 String             @id @default(cuid())
-  name               String
-  slug               String             @unique
-  active             Boolean            @default(true)
-  users              UserCompany[]
-  activeUsers        User[]             @relation("ActiveCompanyUsers")
-  customRoles        CustomRole[]
-  customers          Customer[]
-  vendors            Vendor[]
-  opportunities      Opportunity[]
-  quotes             Quote[]
-  salesOrders        SalesOrder[]
-  products           Product[]
-  salesOrderStatuses SalesOrderStatus[]
-  taskTemplates      TaskTemplate[]
-  travelers          Traveler[]
-  trips              Trip[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String                @unique
+  active               Boolean               @default(true)
+  users                UserCompany[]
+  activeUsers          User[]                @relation("ActiveCompanyUsers")
+  customRoles          CustomRole[]
+  customers            Customer[]
+  vendors              Vendor[]
+  opportunities        Opportunity[]
+  quotes               Quote[]
+  salesOrders          SalesOrder[]
+  jobs                 Job[]
+  products             Product[]
+  machines             Machine[]
+  salesOrderStatuses   SalesOrderStatus[]
+  taskTemplates        TaskTemplate[]
+  jobWorkflowTemplates JobWorkflowTemplate[]
+  jobWorkflowRuns      JobWorkflowRun[]
+  travelers            Traveler[]
+  trips                Trip[]
+  perDiemRequests      PerDiemRequest[]
+  expenseReports       ExpenseReport[]
+  amexTransactions     AmexTransaction[]
+  notificationPreferences NotificationPreference[]
+  departments          Department[]
+  titles               Title[]
+  productCategories    ProductCategory[]
+  incomeAccounts       IncomeAccount[]
+  timeEntries          TimeEntry[]
+  payPeriodLocks       PayPeriodLock[]
+  payrollExportConfig  PayrollExportConfig?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model User {
@@ -112,6 +173,7 @@ model User {
   passwordHash                String
   type                        UserType
   phone                       String?
+  avatarUrl                   String?
   knownTravelerNumber         String?
   rewardMarriottNumber        String?
   rewardUnitedNumber          String?
@@ -119,14 +181,23 @@ model User {
   rewardAmericanNumber        String?
   active                      Boolean            @default(true)
   activeCompanyId             String?
+  departmentId                String?
+  titleId                     String?
+  reportsToId                 String?
+  isEmployee                  Boolean            @default(true)
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
   tasks                       Task[]
   notes                       Note[]
   companyMemberships          UserCompany[]
   activeCompany               Company?           @relation("ActiveCompanyUsers", fields: [activeCompanyId], references: [id])
+  department                  Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  title                       Title?             @relation(fields: [titleId], references: [id], onDelete: SetNull)
+  reportsTo                   User?              @relation("UserReporting", fields: [reportsToId], references: [id], onDelete: SetNull)
+  directReports               User[]             @relation("UserReporting")
   customRoles                 UserCustomRole[]
   templateSteps               TaskTemplateStep[] @relation("TemplateSpecificAssignee")
+  workflowTemplateSteps       JobWorkflowStep[]  @relation("WorkflowTemplateSpecificAssignee")
   salesRepOpportunities       Opportunity[]      @relation("OpportunitySalesRep")
   projectManagerOpportunities Opportunity[]      @relation("OpportunityProjectManager")
   salesRepQuotes              Quote[]            @relation("QuoteSalesRep")
@@ -138,6 +209,75 @@ model User {
   travelerProfiles            Traveler[]
   createdTrips                Trip[]             @relation("TripCreator")
   approvedTrips               Trip[]             @relation("TripApprover")
+  createdPerDiemRequests      PerDiemRequest[]   @relation("PerDiemRequestCreator")
+  createdExpenseReports       ExpenseReport[]    @relation("ExpenseReportCreator")
+  approvedExpenseReports      ExpenseReport[]    @relation("ExpenseReportApprover")
+  employeeExpenseReports      ExpenseReport[]      @relation("ExpenseReportEmployee")
+  assignedWorkflowSteps       JobWorkflowStepRun[] @relation("WorkflowStepAssignee")
+  noteMentions                NoteMention[]
+  notificationPreferences     NotificationPreference[]
+  timeEntries                 TimeEntry[]           @relation("TimeEntryUser")
+  approvedTimeEntries         TimeEntry[]           @relation("TimeEntryApprover")
+  editedTimeEntries           TimeEntry[]           @relation("TimeEntryEditor")
+  payPeriodLocks              PayPeriodLock[]       @relation("PayPeriodLockCreator")
+}
+
+model Department {
+  id           String        @id @default(cuid())
+  companyId    String?
+  name         String
+  active       Boolean       @default(true)
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users        User[]
+  opportunities Opportunity[]
+  quotes       Quote[]
+  salesOrders  SalesOrder[]
+  products     Product[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model Title {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users     User[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model ProductCategory {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model IncomeAccount {
+  id          String    @id @default(cuid())
+  companyId   String?
+  code        String
+  name        String
+  description String?
+  active      Boolean   @default(true)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([companyId, code])
 }
 
 model CustomRole {
@@ -179,10 +319,26 @@ model Customer {
   email         String?
   phone         String?
   paymentTerms  String?
+  additionalFeePercent Decimal @default(0) @db.Decimal(5, 2)
   company       Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   opportunities Opportunity[]
+  contacts      CustomerContact[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+model CustomerContact {
+  id         String    @id @default(cuid())
+  customerId String
+  name       String
+  email      String?
+  phone      String?
+  title      String?
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([customerId, name])
 }
 
 model Vendor {
@@ -193,6 +349,7 @@ model Vendor {
   phone     String?
   company   Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   poLines   PurchaseOrderLine[]
+  salesOrderPurchaseItems SalesOrderPurchaseItem[]
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
 }
@@ -206,6 +363,7 @@ model Opportunity {
   ownerId           String?
   salesRepId        String?
   projectManagerId  String?
+  departmentId      String?
   description       String?
   source            String?
   priority          String?
@@ -220,6 +378,7 @@ model Opportunity {
   customer          Customer         @relation(fields: [customerId], references: [id])
   salesRep          User?            @relation("OpportunitySalesRep", fields: [salesRepId], references: [id])
   projectManager    User?            @relation("OpportunityProjectManager", fields: [projectManagerId], references: [id])
+  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   quotes            Quote[]
   salesOrders       SalesOrder[]
   projects          Project[]
@@ -248,6 +407,7 @@ model Quote {
   installAddress             String?
   salesRepId                 String?
   projectManagerId           String?
+  departmentId               String?
   totalPriceInDollars        Decimal?     @db.Decimal(12, 2)
   totalTaxInDollars          Decimal?     @db.Decimal(12, 2)
   totalPriceWithTaxInDollars Decimal?     @db.Decimal(12, 2)
@@ -279,9 +439,11 @@ model Quote {
   opportunity                Opportunity  @relation(fields: [opportunityId], references: [id])
   salesRep                   User?        @relation("QuoteSalesRep", fields: [salesRepId], references: [id])
   projectManager             User?        @relation("QuoteProjectManager", fields: [projectManagerId], references: [id])
+  department                 Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   lines                      QuoteLine[]
   salesOrders                SalesOrder[]
   tasks                      Task[]
+  timeEntries                TimeEntry[]
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
 
@@ -319,26 +481,37 @@ model QuoteLine {
 }
 
 model Product {
-  id              String             @id @default(cuid())
-  companyId       String?
-  sku             String
-  name            String
-  category        String?
-  uom             String?            @default("EA")
-  description     String?
-  salePrice       Decimal            @db.Decimal(12, 2)
-  costPrice       Decimal?           @db.Decimal(12, 2)
-  pricingFormula  String?
-  company         Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  taxable         Boolean            @default(true)
-  active          Boolean            @default(true)
-  attributes      ProductAttribute[]
-  quoteLines      QuoteLine[]
-  salesOrderLines SalesOrderLine[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id               String             @id @default(cuid())
+  companyId        String?
+  sku              String
+  name             String
+  type             String?
+  departmentId     String?
+  incomeAccountId  String?
+  categoryId       String?
+  category         String?
+  uom              String?            @default("EA")
+  description      String?
+  salePrice        Decimal            @db.Decimal(12, 2)
+  costPrice        Decimal?           @db.Decimal(12, 2)
+  gpmPercent       Decimal?           @db.Decimal(5, 2)
+  pricingFormula   String?
+  company          Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department       Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  incomeAccount    IncomeAccount?     @relation(fields: [incomeAccountId], references: [id], onDelete: SetNull)
+  productCategory  ProductCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taxable          Boolean            @default(true)
+  active           Boolean            @default(true)
+  attributes       ProductAttribute[]
+  quoteLines       QuoteLine[]
+  salesOrderLines  SalesOrderLine[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   @@unique([companyId, sku])
+  @@index([companyId, categoryId])
+  @@index([companyId, incomeAccountId])
+  @@index([companyId, departmentId])
 }
 
 enum AttributeInputType {
@@ -363,12 +536,30 @@ model ProductAttribute {
   @@unique([productId, code])
 }
 
+model Machine {
+  id               String    @id @default(cuid())
+  companyId        String?
+  name             String
+  costPerMinute    Decimal   @db.Decimal(12, 4)
+  setupMinutes     Int?
+  hourlyCapacity   Int?
+  notes            String?
+  active           Boolean   @default(true)
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
 model SalesOrder {
   id                     String            @id @default(cuid())
   companyId              String?
   orderNumber            String
   opportunityId          String
   sourceQuoteId          String?
+  departmentId           String?
   title                  String?
   statusId               String?
   primaryCustomerContact String?
@@ -384,6 +575,13 @@ model SalesOrder {
   dueDate                DateTime?
   installDate            DateTime?
   shippingDate           DateTime?
+  earlyBirdDiscountDate  DateTime?
+  advancedReceivingDeadline DateTime?
+  shipFromRoarkDate      DateTime?
+  travelToSiteStart      DateTime?
+  travelToSiteEnd        DateTime?
+  outboundShippingFromShowDate DateTime?
+  estimatedInvoiceDate   DateTime?
   paymentTerms           String?
   downPaymentType        String?
   downPaymentValue       Decimal?          @db.Decimal(12, 2)
@@ -393,12 +591,17 @@ model SalesOrder {
   company                Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   opportunity            Opportunity       @relation(fields: [opportunityId], references: [id])
   sourceQuote            Quote?            @relation(fields: [sourceQuoteId], references: [id])
+  department             Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   status                 SalesOrderStatus? @relation(fields: [statusId], references: [id])
   salesRep               User?             @relation("SalesOrderSalesRep", fields: [salesRepId], references: [id])
   projectManager         User?             @relation("SalesOrderProjectManager", fields: [projectManagerId], references: [id])
   designer               User?             @relation("SalesOrderDesigner", fields: [designerId], references: [id])
   lines                  SalesOrderLine[]
+  purchaseItems          SalesOrderPurchaseItem[]
+  loadLists              LoadList[]
+  jobs                   Job[]
   tasks                  Task[]
+  timeEntries            TimeEntry[]
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
@@ -425,6 +628,7 @@ model SalesOrderLine {
   description     String
   qty             Int
   unitPrice       Decimal             @db.Decimal(12, 2)
+  priceLocked     Boolean             @default(false)
   sortOrder       Int                 @default(0)
   parentLineId    String?
   collapsed       Boolean             @default(false)
@@ -434,6 +638,71 @@ model SalesOrderLine {
   product         Product?            @relation(fields: [productId], references: [id])
   poLines         PurchaseOrderLine[]
   proofs          Proof[]
+  jobs            Job[]
+  loadListItems   LoadListItem[]
+}
+
+model SalesOrderPurchaseItem {
+  id            String         @id @default(cuid())
+  salesOrderId  String
+  vendorId      String?
+  item          String
+  description   String?
+  qty           Int            @default(1)
+  itemCost      Decimal        @db.Decimal(12, 2)
+  totalCost     Decimal        @db.Decimal(12, 2)
+  purchasedBy   PurchaseMethod @default(CREDIT_CARD)
+  poNumber      String?
+  receiptRef    String?
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  salesOrder    SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  receipts      SalesOrderPurchaseReceipt[]
+
+  @@index([salesOrderId, sortOrder])
+  @@index([salesOrderId, purchasedBy])
+}
+
+model SalesOrderPurchaseReceipt {
+  id            String               @id @default(cuid())
+  purchaseItemId String
+  fileName      String
+  mimeType      String
+  fileData      Bytes
+  createdAt     DateTime             @default(now())
+
+  purchaseItem  SalesOrderPurchaseItem @relation(fields: [purchaseItemId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseItemId, createdAt])
+}
+
+model LoadList {
+  id           String         @id @default(cuid())
+  salesOrderId String
+  name         String         @default("Load List")
+  createdById  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  salesOrder   SalesOrder     @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  items        LoadListItem[]
+}
+
+model LoadListItem {
+  id               String          @id @default(cuid())
+  loadListId       String
+  salesOrderLineId String?
+  item             String
+  qty              Int             @default(1)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  loadList         LoadList        @relation(fields: [loadListId], references: [id], onDelete: Cascade)
+  salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
+
+  @@index([loadListId, sortOrder])
 }
 
 model PurchaseOrder {
@@ -470,13 +739,23 @@ model Project {
 }
 
 model Job {
-  id            String      @id @default(cuid())
-  name          String
-  opportunityId String
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
-  tasks         Task[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String         @id @default(cuid())
+  companyId        String?
+  name             String
+  opportunityId    String
+  salesOrderId     String?
+  salesOrderLineId String?
+  opportunity      Opportunity    @relation(fields: [opportunityId], references: [id])
+  company          Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salesOrder       SalesOrder?    @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  salesOrderLine   SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
+  tasks            Task[]
+  timeEntries      TimeEntry[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([companyId, salesOrderId])
+  @@index([salesOrderLineId])
 }
 
 model Task {
@@ -514,7 +793,38 @@ model Note {
   entityId    String
   createdById String?
   createdBy   User?      @relation(fields: [createdById], references: [id])
+  mentions    NoteMention[]
   createdAt   DateTime   @default(now())
+}
+
+model NoteMention {
+  id              String   @id @default(cuid())
+  noteId          String
+  mentionedUserId String
+  createdAt       DateTime @default(now())
+
+  note            Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  mentionedUser   User     @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, mentionedUserId])
+  @@index([mentionedUserId, createdAt])
+}
+
+model NotificationPreference {
+  id                           String            @id @default(cuid())
+  companyId                    String?
+  userId                       String
+  event                        NotificationEvent
+  emailEnabled                 Boolean           @default(true)
+  inAppEnabled                 Boolean           @default(true)
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+
+  company                      Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId, event])
+  @@index([userId, event])
 }
 
 model Proof {
@@ -573,6 +883,73 @@ model TaskTemplateStep {
   specificAssignee   User?                @relation("TemplateSpecificAssignee", fields: [specificAssigneeId], references: [id])
 }
 
+model JobWorkflowTemplate {
+  id        String               @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean              @default(true)
+  company   Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  steps     JobWorkflowStep[]
+  runs      JobWorkflowRun[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model JobWorkflowStep {
+  id               String               @id @default(cuid())
+  workflowId       String
+  name             String
+  sortOrder        Int                  @default(0)
+  assigneeMode     TemplateAssigneeMode @default(UNASSIGNED)
+  specificAssigneeId String?
+  workflow         JobWorkflowTemplate  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  specificAssignee User?                @relation("WorkflowTemplateSpecificAssignee", fields: [specificAssigneeId], references: [id], onDelete: SetNull)
+
+  @@index([workflowId, sortOrder])
+}
+
+model JobWorkflowRun {
+  id                        String             @id @default(cuid())
+  companyId                 String?
+  workflowTemplateId        String
+  entityType                EntityType
+  entityId                  String
+  status                    TaskStatus         @default(TODO)
+  currentStepSortOrder      Int?
+  projectManagerUserId      String?
+  projectCoordinatorUserId  String?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+
+  company                   Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  workflowTemplate          JobWorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  steps                     JobWorkflowStepRun[]
+
+  @@index([companyId, entityType, entityId])
+}
+
+model JobWorkflowStepRun {
+  id              String      @id @default(cuid())
+  workflowRunId   String
+  stepName        String
+  sortOrder       Int
+  assigneeMode    TemplateAssigneeMode @default(UNASSIGNED)
+  assigneeId      String?
+  status          TaskStatus  @default(TODO)
+  activatedAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  workflowRun     JobWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+  assignee        User?          @relation("WorkflowStepAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@unique([workflowRunId, sortOrder])
+  @@index([workflowRunId, status, sortOrder])
+}
+
 model Traveler {
   id                    String    @id @default(cuid())
   companyId             String?
@@ -613,6 +990,8 @@ model Trip {
   name             String
   projectRef       String?
   destinations     String?
+  destinationCity  String?
+  destinationState String?
   purpose          String?
   startDate        DateTime?
   endDate          DateTime?
@@ -630,6 +1009,7 @@ model Trip {
   approvedByUser User?          @relation("TripApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   travelers      TripTraveler[]
   segments       TripSegment[]
+  perDiemRequests PerDiemRequest[]
 
   @@index([companyId, startDate, endDate])
 }
@@ -669,4 +1049,181 @@ model TripSegment {
   traveler Traveler? @relation(fields: [travelerId], references: [id], onDelete: SetNull)
 
   @@index([tripId, segmentType])
+}
+
+model PerDiemRequest {
+  id                String               @id @default(cuid())
+  companyId         String?
+  tripId            String
+  status            PerDiemRequestStatus @default(NEW)
+  destinationCity   String?
+  destinationState  String?
+  year              Int?
+  dailyRate         Decimal?             @db.Decimal(12, 2)
+  lodgingRate       Decimal?             @db.Decimal(12, 2)
+  days              Int?
+  travelerCount     Int?
+  total             Decimal?             @db.Decimal(12, 2)
+  notes             String?
+  createdByUserId   String?
+  completedAt       DateTime?
+  canceledAt        DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  createdByUser User?    @relation("PerDiemRequestCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status, createdAt])
+  @@index([tripId, createdAt])
+}
+
+model ExpenseReport {
+  id               String              @id @default(cuid())
+  companyId        String?
+  reportNumber     String
+  title            String
+  employeeName     String
+  employeeUserId   String?
+  status           ExpenseReportStatus @default(DRAFT)
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  notes            String?
+  amexLinked       Boolean             @default(false)
+  amexLastSyncAt   DateTime?
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  reimbursedAt     DateTime?
+  rejectedAt       DateTime?
+  createdByUserId  String?
+  approvedByUserId String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  company          Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser    User?               @relation("ExpenseReportCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  approvedByUser   User?               @relation("ExpenseReportApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  employeeUser     User?               @relation("ExpenseReportEmployee", fields: [employeeUserId], references: [id], onDelete: SetNull)
+  lines            ExpenseLine[]
+
+  @@unique([companyId, reportNumber])
+  @@index([companyId, status, createdAt])
+}
+
+model ExpenseLine {
+  id                String            @id @default(cuid())
+  expenseReportId   String
+  expenseDate       DateTime
+  merchant          String
+  category          String
+  description       String?
+  paymentMethod     String?
+  amount            Decimal           @db.Decimal(12, 2)
+  taxAmount         Decimal?          @db.Decimal(12, 2)
+  currency          String            @default("USD")
+  receiptRef        String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  expenseReport     ExpenseReport     @relation(fields: [expenseReportId], references: [id], onDelete: Cascade)
+  receipts          ExpenseReceipt[]
+  matchedAmexTxns   AmexTransaction[] @relation("MatchedExpenseLine")
+
+  @@index([expenseReportId, expenseDate])
+}
+
+model ExpenseReceipt {
+  id            String      @id @default(cuid())
+  expenseLineId String
+  fileName      String
+  mimeType      String
+  fileData      Bytes
+  createdAt     DateTime    @default(now())
+
+  expenseLine   ExpenseLine @relation(fields: [expenseLineId], references: [id], onDelete: Cascade)
+
+  @@index([expenseLineId, createdAt])
+}
+
+model AmexTransaction {
+  id               String                @id @default(cuid())
+  companyId        String?
+  postedAt         DateTime
+  merchant         String
+  amount           Decimal               @db.Decimal(12, 2)
+  currency         String                @default("USD")
+  reference        String?
+  source           String?               @default("manual")
+  status           AmexTransactionStatus @default(UNMATCHED)
+  expenseLineId    String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  company          Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenseLine      ExpenseLine?          @relation("MatchedExpenseLine", fields: [expenseLineId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status, postedAt])
+}
+
+model TimeEntry {
+  id             String              @id @default(cuid())
+  companyId      String?
+  userId         String
+  sourceType     TimeEntrySourceType
+  salesOrderId   String?
+  quoteId        String?
+  jobId          String?
+  clockInAt      DateTime
+  clockOutAt     DateTime?
+  minutesWorked  Int?
+  status         TimeEntryStatus     @default(PENDING)
+  notes          String?
+  approvalNote   String?
+  approvedById   String?
+  approvedAt     DateTime?
+  lastEditedById String?
+  lastEditedAt   DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  company        Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User                @relation("TimeEntryUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy     User?               @relation("TimeEntryApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  lastEditedBy   User?               @relation("TimeEntryEditor", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  salesOrder     SalesOrder?         @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  quote          Quote?              @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  job            Job?                @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, userId, clockInAt])
+  @@index([companyId, status, clockInAt])
+  @@index([userId, clockOutAt])
+}
+
+model PayPeriodLock {
+  id          String    @id @default(cuid())
+  companyId   String?
+  startDate   DateTime
+  endDate     DateTime
+  note        String?
+  lockedById  String
+  lockedAt    DateTime  @default(now())
+
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lockedBy    User      @relation("PayPeriodLockCreator", fields: [lockedById], references: [id], onDelete: Cascade)
+
+  @@index([companyId, startDate, endDate])
+}
+
+model PayrollExportConfig {
+  id                    String   @id @default(cuid())
+  companyId             String?  @unique
+  paycomEarningCode     String   @default("REG")
+  defaultDepartmentCode String?
+  employeeCodeField     String   @default("USER_ID")
+  departmentMap         Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company               Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }

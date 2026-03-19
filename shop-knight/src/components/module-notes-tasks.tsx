@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 type User = { id: string; name: string; email: string };
 type TaskTemplate = { id: string; name: string };
-type Note = { id: string; body: string; createdAt: string; createdBy?: { id: string; name: string } | null };
+type Note = { id: string; body: string; createdAt: string; createdBy?: { id: string; name: string } | null; mentions?: Array<{ mentionedUser?: { id: string; name: string } | null }> };
 type Task = { id: string; title: string; status: string; dueAt: string | null; assignee?: { id: string; name: string } | null };
 
 export function ModuleNotesTasks({ entityType, entityId }: { entityType: string; entityId: string }) {
@@ -14,6 +14,8 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const [noteBody, setNoteBody] = useState('');
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
+  const [mentionQuery, setMentionQuery] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskAssigneeId, setTaskAssigneeId] = useState('');
@@ -37,20 +39,53 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     if (tasksRes.ok) setTasks(await tasksRes.json());
   }, [entityType, entityId]);
 
+  function onNoteChange(value: string) {
+    setNoteBody(value);
+    const at = value.lastIndexOf('@');
+    if (at < 0) {
+      setMentionQuery('');
+      return;
+    }
+    const tail = value.slice(at + 1);
+    if (!tail || /\s/.test(tail)) {
+      setMentionQuery('');
+      return;
+    }
+    setMentionQuery(tail.toLowerCase());
+  }
+
+  function insertMention(user: User) {
+    const at = noteBody.lastIndexOf('@');
+    if (at < 0) return;
+    const next = `${noteBody.slice(0, at)}@${user.name} `;
+    setNoteBody(next);
+    setMentionQuery('');
+    setMentionedUserIds((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
+  }
+
   async function addNote(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/notes', {
+    const res = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entityType, entityId, body: noteBody }),
+      body: JSON.stringify({ entityType, entityId, body: noteBody, mentionedUserIds }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(typeof payload?.error === 'string' ? payload.error : 'Failed to add note');
+      return;
+    }
+
     setNoteBody('');
+    setMentionedUserIds([]);
+    setMentionQuery('');
     await load();
   }
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
-    await fetch('/api/tasks', {
+    const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,6 +96,13 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
         assigneeId: taskAssigneeId || null,
       }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(typeof payload?.error === 'string' ? payload.error : 'Failed to create task');
+      return;
+    }
+
     setTaskTitle('');
     setTaskDueAt('');
     setTaskAssigneeId('');
@@ -101,29 +143,54 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     load();
   }, [entityId, load]);
 
+  const mentionSuggestions = mentionQuery
+    ? users.filter((u) => u.name.toLowerCase().includes(mentionQuery)).slice(0, 6)
+    : [];
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash;
-    if (!hash.startsWith('#task-')) return;
-    const taskId = hash.replace('#task-', '');
-    if (!tasks.some((t) => t.id === taskId)) return;
 
-    const el = document.getElementById(`task-${taskId}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [tasks]);
+    if (hash.startsWith('#task-')) {
+      const taskId = hash.replace('#task-', '');
+      if (!tasks.some((t) => t.id === taskId)) return;
+      const el = document.getElementById(`task-${taskId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (hash.startsWith('#note-')) {
+      const noteId = hash.replace('#note-', '');
+      if (!notes.some((n) => n.id === noteId)) return;
+      const el = document.getElementById(`note-${noteId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [tasks, notes]);
 
   return (
     <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
       <article className="rounded border border-zinc-800 p-4">
         <h2 className="mb-2 text-lg font-medium">Notes</h2>
         <form onSubmit={addNote} className="mb-3 space-y-2">
-          <textarea value={noteBody} onChange={(e) => setNoteBody(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={3} placeholder="Add note..." required />
+          <textarea value={noteBody} onChange={(e) => onNoteChange(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" rows={3} placeholder="Add note... use @ to mention" required />
+          {mentionSuggestions.length > 0 ? (
+            <div className="rounded border border-zinc-700 bg-white p-1 text-xs text-zinc-800">
+              {mentionSuggestions.map((u) => (
+                <button key={u.id} type="button" onClick={() => insertMention(u)} className="mr-1 mb-1 rounded border border-zinc-300 px-2 py-1 hover:bg-zinc-100">
+                  @{u.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <button className="rounded bg-blue-600 px-3 py-2 text-sm">Add Note</button>
         </form>
         <div className="space-y-2">
           {notes.map((n) => (
-            <div key={n.id} className="rounded border border-zinc-700 p-2 text-sm">
+            <div id={`note-${n.id}`} key={n.id} className="rounded border border-zinc-700 p-2 text-sm target:border-blue-500 target:bg-blue-950/20">
               <p>{n.body}</p>
+              {n.mentions?.length ? (
+                <p className="mt-1 text-xs text-zinc-500">Mentions: {n.mentions.map((m) => m.mentionedUser?.name).filter(Boolean).join(', ')}</p>
+              ) : null}
               <p className="mt-1 text-xs text-zinc-400">{new Date(n.createdAt).toLocaleString()} {n.createdBy?.name ? `• ${n.createdBy.name}` : ''}</p>
             </div>
           ))}

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);

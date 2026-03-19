@@ -71,7 +71,8 @@ export default function SalesOrdersPage() {
   useEffect(() => {
     const run = async () => {
       const res = await fetch(`/api/sales-orders?archived=${showArchived ? 'only' : 'active'}`);
-      setItems(await res.json());
+      const payload = await res.json().catch(() => null);
+      setItems(Array.isArray(payload) ? payload : []);
     };
     run();
   }, [showArchived]);
@@ -114,19 +115,59 @@ export default function SalesOrdersPage() {
               Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}
             </div>
             {!showArchived ? (
-              <Link
-                href="/sales/orders/new"
-                className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
-              >
-                + Add New Sales Order
-              </Link>
+              <>
+                <Link
+                  href="/sales/orders/calendar"
+                  className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Sales Order Calendar
+                </Link>
+                <Link
+                  href="/sales/orders/new"
+                  className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600"
+                >
+                  + Add New Sales Order
+                </Link>
+              </>
             ) : null}
           </div>
         </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <div className="md:hidden">
+          {visibleItems.length === 0 ? <p className="px-4 py-8 text-center text-slate-500">No sales orders found.</p> : null}
+          <div className="divide-y divide-slate-100">
+            {visibleItems.map((so) => (
+              <article key={so.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/sales/orders/${so.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
+                    {so.orderNumber}
+                  </Link>
+                  <StatusChip value={so.status || 'Unknown'} />
+                </div>
+                <p className="text-sm font-semibold text-slate-800">{so.title || '—'}</p>
+                <p className="text-xs text-slate-600">{so.customer}</p>
+                <p className="text-xs text-slate-500">{so.opportunity}</p>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-slate-500">{new Date(so.createdAt).toLocaleDateString()}</p>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => handleArchive(so.id)}
+                      disabled={archivingId === so.id}
+                      className="rounded-lg border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-60"
+                    >
+                      {archivingId === so.id ? (showArchived ? 'Restoring…' : 'Archiving…') : (showArchived ? 'Restore' : 'Archive')}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <table className="hidden w-full text-left text-sm md:table">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
               <th className="px-4 py-3 font-semibold">Order #</th>

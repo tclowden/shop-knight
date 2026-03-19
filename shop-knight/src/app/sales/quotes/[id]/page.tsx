@@ -6,10 +6,13 @@ import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
 import { ModuleNotesTasks } from '@/components/module-notes-tasks';
 import { StatusChip } from '@/components/status-chip';
+import { ClockInButton } from '@/components/clock-in-button';
 import { useUnsavedGuard } from '@/components/use-unsaved-guard';
 import { useToast } from '@/components/toast-provider';
+import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
 
-type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number };
+type ProductAttribute = { id: string; code: string; name: string; inputType: 'TEXT' | 'NUMBER' | 'SELECT' | 'BOOLEAN'; defaultValue: string | null; options: string[] | null; required?: boolean };
+type Product = { id: string; sku: string; name: string; category?: string | null; salePrice: string | number; pricingFormula?: string | null; attributes?: ProductAttribute[] };
 type User = { id: string; name: string; type: string };
 type OpportunityOption = { id: string; name: string; customer: string };
 type Proof = {
@@ -47,7 +50,7 @@ type Quote = {
   quoteNumber: string;
   status?: string | null;
   workflowState?: string | null;
-  opportunity: { name: string; customer: { name: string } };
+  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null } };
   customerContactRole?: string | null;
   billingAddress?: string | null;
   billingAttentionTo?: string | null;
@@ -72,6 +75,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [users, setUsers] = useState<User[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityOption[]>([]);
   const [filterText, setFilterText] = useState('');
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>([]);
+  const [bulkParentId, setBulkParentId] = useState('');
   const [savingHeader, setSavingHeader] = useState(false);
   const [editingHeader, setEditingHeader] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -90,6 +95,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [newTaxable, setNewTaxable] = useState(true);
   const [newUnitCost, setNewUnitCost] = useState('0.00');
   const [newGpmPercent, setNewGpmPercent] = useState('35');
+  const [newAttributeValues, setNewAttributeValues] = useState<Record<string, string>>({});
 
   const [customerContactRole, setCustomerContactRole] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
@@ -227,18 +233,51 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
     const cost = Number(unitCost || 0);
-    const gpm = Number(gpmPercent || 0) / 100;
-    if (!Number.isFinite(cost) || !Number.isFinite(gpm) || gpm >= 1) return '0.00';
-    return (cost / (1 - gpm)).toFixed(2);
+    const baseGpm = Number(gpmPercent || 0);
+    const additionalFee = Number(quote?.opportunity?.customer?.additionalFeePercent || 0);
+    const effectiveGpm = (baseGpm + additionalFee) / 100;
+    if (!Number.isFinite(cost) || !Number.isFinite(effectiveGpm) || effectiveGpm >= 1) return '0.00';
+    return (cost / (1 - effectiveGpm)).toFixed(2);
+  }
+
+  function applySelectCostToUnitCost(value: string) {
+    const parts = String(value || '').split('|').map((p) => p.trim());
+    if (parts.length >= 3) {
+      const n = Number(parts[2]);
+      if (Number.isFinite(n)) setNewUnitCost(n.toFixed(2));
+    }
+  }
+
+  function recalcNewLinePrice(productId: string, qty: string, attrs: Record<string, string>) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    const basePrice = Number(p.salePrice || 0);
+    const vars = buildPricingVars(Number(qty || 1), basePrice, attrs);
+    setNewUnitPrice(String(computeUnitPrice(basePrice, p.pricingFormula, vars)));
   }
 
   async function addLine(e: React.FormEvent) {
     e.preventDefault();
+
+    const selected = products.find((p) => p.id === newProductId);
+    if (selected?.attributes?.length) {
+      const missing = selected.attributes.filter((attr) => {
+        if (!attr.required) return false;
+        const raw = newAttributeValues[attr.code] || '';
+        if (attr.inputType === 'BOOLEAN') return raw.toLowerCase() !== 'true';
+        return !String(raw).trim();
+      });
+      if (missing.length > 0) {
+        push(`Please fill required attributes: ${missing.map((m) => m.name).join(', ')}`, 'error');
+        return;
+      }
+    }
+
     await fetch(`/api/quotes/${id}/lines`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0 }),
+      body: JSON.stringify({ productId: newProductId || null, description: newDescription, qty: Number(newQty), unitPrice: Number(newUnitPrice), taxable: newTaxable, taxRate: newTaxable ? 0.075 : 0, attributeValues: { ...newAttributeValues, _unitCost: newUnitCost, _gpmPercent: newGpmPercent, _taxable: newTaxable ? 'true' : 'false' } }),
     });
-    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35');
+    setNewProductId(''); setNewDescription(''); setNewQty('1'); setNewUnitPrice('0'); setNewTaxable(true); setNewUnitCost('0.00'); setNewGpmPercent('35'); setNewAttributeValues({});
     await load(id);
   }
 
@@ -288,6 +327,18 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     const line = (quote?.lines || []).find((l) => l.id === childId);
     if (!line) return;
     await saveLine({ ...line, parentLineId: parentId });
+  }
+
+  async function bulkMakeChild(parentId: string | null) {
+    if (selectedLineIds.length === 0) { push('Select one or more lines first', 'error'); return; }
+    const selected = (quote?.lines || []).filter((l) => selectedLineIds.includes(l.id));
+    await Promise.all(selected.map((line) => fetch(`/api/quote-lines/${line.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...line, parentLineId: parentId }),
+    })));
+    setSelectedLineIds([]);
+    setBulkParentId('');
+    await load(id);
+    push('Updated rollup parent for selected lines', 'success');
   }
 
   const roots = useMemo(() => (quote?.lines || []).filter((l) => !l.parentLineId), [quote?.lines]);
@@ -369,6 +420,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
 
       <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <ClockInButton sourceType="QUOTE" sourceId={id} />
         <button
           onClick={convertToSalesOrder}
           disabled={converting}
@@ -391,6 +443,8 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Quote Info</summary>
         {!editingHeader ? (
           <>
             <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
@@ -426,21 +480,24 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
           </form>
         )}
+        </details>
       </div>
 
       <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
+        <details open>
+          <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
           <label className="text-xs text-zinc-300">Product
-            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); setNewUnitPrice(String(p.salePrice)); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setNewAttributeValues(defaults); recalcNewLinePrice(pid, newQty, defaults); } else { setNewAttributeValues({}); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
           </label>
           <label className="text-xs text-zinc-300">Description
             <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           </label>
           <label className="text-xs text-zinc-300">Quantity
-            <input value={newQty} onChange={(e) => setNewQty(e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+            <input value={newQty} onChange={(e) => { const q = e.target.value; setNewQty(q); recalcNewLinePrice(newProductId, q, newAttributeValues); }} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           </label>
-          <label className="text-xs text-zinc-300">Unit Price
-            <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          <label className="text-xs text-zinc-300">Unit Cost
+            <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </label>
           <label className="text-xs text-zinc-300">Taxable
             <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span>
@@ -448,20 +505,78 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex items-end"><button className="w-full rounded bg-blue-600 px-3 py-2">+ Add Line</button></div>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <label className="text-xs text-zinc-300">Unit Cost
-            <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <label className="text-xs text-zinc-300">Unit Price
+            <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
           </label>
           <label className="text-xs text-zinc-300">GPM %
             <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <span className="mt-1 block text-[11px] text-zinc-500">+ Fee {Number(quote?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%</span>
           </label>
           <label className="text-xs text-zinc-300">Extended Price
             <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
           </label>
         </div>
+        {(() => {
+          const selected = products.find((p) => p.id === newProductId);
+          if (!selected?.attributes?.length) return null;
+          return (
+            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+              {selected.attributes.map((attr) => (
+                <label key={attr.id} className="text-xs text-zinc-300">
+                  {attr.name}
+                  {['width', 'height'].includes(attr.code.toLowerCase()) ? <span className="ml-1 text-[10px] text-zinc-500">(in inches)</span> : null}
+                  {attr.inputType === 'SELECT' ? (
+                    <select
+                      value={newAttributeValues[attr.code] || ''}
+                      required={Boolean(attr.required)}
+                      onChange={(e) => {
+                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                        setNewAttributeValues(next);
+                        applySelectCostToUnitCost(e.target.value);
+                        recalcNewLinePrice(newProductId, newQty, next);
+                      }}
+                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                    >
+                      <option value="">Select</option>
+                      {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  ) : attr.inputType === 'BOOLEAN' ? (
+                    <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+                      <input
+                        type="checkbox"
+                        checked={(newAttributeValues[attr.code] || '').toLowerCase() === 'true'}
+                        onChange={(e) => {
+                          const next = { ...newAttributeValues, [attr.code]: e.target.checked ? 'true' : 'false' };
+                          setNewAttributeValues(next);
+                          recalcNewLinePrice(newProductId, newQty, next);
+                        }}
+                      />
+                    </span>
+                  ) : (
+                    <input
+                      value={newAttributeValues[attr.code] || ''}
+                      onChange={(e) => {
+                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                        setNewAttributeValues(next);
+                        recalcNewLinePrice(newProductId, newQty, next);
+                      }}
+                      type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+                      required={Boolean(attr.required)}
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          );
+        })()}
+        </details>
       </form>
 
-      <div className="mb-3 rounded border border-zinc-700 p-3">
-        <p className="text-xs text-zinc-400">Batch proof approvals</p>
+      <div className="mb-3 hidden rounded border border-zinc-700 p-3">
+        <details open>
+          <summary className="cursor-pointer list-none text-sm font-semibold">Batch Proof Approvals</summary>
+        <p className="mt-2 text-xs text-zinc-400">Batch proof approvals</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input value={batchProofRecipient} onChange={(e) => setBatchProofRecipient(e.target.value)} placeholder="recipient@email.com" className="w-full max-w-sm rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           <button type="button" onClick={async () => { await loadUnsentProofOptions(); setShowProofPicker(true); }} className="rounded border border-zinc-600 px-3 py-2 text-xs">Select Proofs</button>
@@ -487,13 +602,25 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             {unsentProofOptions.length === 0 ? <p className="text-xs text-zinc-400">No unsent proofs found.</p> : null}
           </div>
         ) : null}
+        </details>
       </div>
 
-      <div className="mb-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
+      <details open className="mb-3 rounded border border-zinc-700 p-3">
+        <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
+      <div className="mb-3 mt-2"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-zinc-700 p-2 text-xs">
+        <span className="text-zinc-400">Selected: {selectedLineIds.length}</span>
+        <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
+          <option value="">Top level</option>
+          {roots.filter((r) => !selectedLineIds.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
+        </select>
+        <button onClick={() => bulkMakeChild(bulkParentId || null)} className="rounded border border-zinc-600 px-2 py-1">Apply rollup</button>
+        <button onClick={() => setSelectedLineIds([])} className="rounded border border-zinc-600 px-2 py-1">Clear</button>
+      </div>
 
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Sel</th><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
               <QuoteLineRow
@@ -517,11 +644,16 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                     return prev.filter((id) => id !== proofId);
                   });
                 }}
+                selectedLineIds={selectedLineIds}
+                onToggleLineSelection={(lineId, selected) => {
+                  setSelectedLineIds((prev) => selected ? (prev.includes(lineId) ? prev : [...prev, lineId]) : prev.filter((id) => id !== lineId));
+                }}
               />
             ))}
           </tbody>
         </table>
       </div>
+      </details>
 
       <div className="fixed bottom-4 right-4 z-40 w-[min(24rem,calc(100vw-1rem))] rounded border border-zinc-300 bg-white p-3 text-sm text-zinc-900 shadow-lg">
         <p className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></p>
@@ -534,7 +666,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   );
 }
 
-function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void }) {
+function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, onDelete, onMove, onDragMove, onToggleCollapse, onMakeChild, toast, selectedProofIds, onToggleProofSelection, selectedLineIds, onToggleLineSelection }: { line: Line; depth: number; roots: Line[]; displayTotal: number; hasChildren: boolean; onSave: (line: Line) => void; onDelete: (id: string) => void; onMove: (id: string, dir: -1 | 1) => void; onDragMove: (sourceId: string, targetId: string) => void; onToggleCollapse: (line: Line) => void; onMakeChild: (id: string, parentId: string | null) => void; toast: (message: string, variant?: 'success' | 'error' | 'info') => void; selectedProofIds: string[]; onToggleProofSelection: (proofId: string, selected: boolean) => void; selectedLineIds: string[]; onToggleLineSelection: (lineId: string, selected: boolean) => void }) {
   const [draft, setDraft] = useState<Line>(line);
   const [dirty, setDirty] = useState(false);
   const [showProofs, setShowProofs] = useState(false);
@@ -619,6 +751,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
   return (
     <>
     <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="p-3 align-top"><input type="checkbox" checked={selectedLineIds.includes(line.id)} onChange={(e) => onToggleLineSelection(line.id, e.target.checked)} /></td>
       <td className="p-3 align-top">
         <span
           draggable
@@ -647,19 +780,6 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
         <button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button>
         <button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button>
         <button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button>
-        <button
-          onClick={() => setShowProofs((v) => !v)}
-          className={`rounded border px-2 py-1 ${
-            proofState === 'NONE' ? 'border-slate-400 text-slate-400' :
-            proofState === 'UNSENT' ? 'border-sky-700 text-sky-300' :
-            proofState === 'PENDING' ? 'border-amber-500 text-amber-400' :
-            proofState === 'RESEND_NEEDED' ? 'border-orange-500 text-orange-400' :
-            proofState === 'APPROVED' ? 'border-emerald-600 text-emerald-400' :
-            'border-rose-600 text-rose-400'
-          }`}
-        >
-          {showProofs ? 'Hide Proofs' : 'Proofs'}
-        </button>
         <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
           <option value="">Top level</option>
           {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
@@ -668,7 +788,7 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
     </tr>
     {showProofs ? (
       <tr className="border-t border-zinc-800 bg-zinc-950/30">
-        <td className="p-3" colSpan={7}>
+        <td className="p-3" colSpan={8}>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <label className="text-xs text-zinc-300 md:col-span-2">Upload proof
               <div className="mt-1 flex gap-2">

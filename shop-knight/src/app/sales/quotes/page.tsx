@@ -47,7 +47,8 @@ export default function QuotesPage() {
 
   async function load() {
     const res = await fetch('/api/quotes');
-    setItems(await res.json());
+    const payload = await res.json().catch(() => null);
+    setItems(Array.isArray(payload) ? payload : []);
   }
 
   async function handleDelete(quoteId: string) {
@@ -77,25 +78,34 @@ export default function QuotesPage() {
 
   return (
     <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Quotes</h1>
-      <p className="text-sm text-slate-500">All quotes in the system.</p>
+      <div className="mb-3">
+        <h1 className="text-3xl font-semibold tracking-tight">Quotes</h1>
+        <p className="mt-1 text-sm text-slate-500">All quotes in the system.</p>
+      </div>
       <Nav />
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex w-full flex-col gap-2 md:max-w-2xl md:flex-row">
+          <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search quotes..."
-              className="field"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-sky-400 focus:outline-none"
             />
-            <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="field min-w-48">
+            <select
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+              className="h-11 min-w-48 rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-sky-400 focus:outline-none"
+            >
               {states.map((s) => <option key={s} value={s}>{s === 'ALL' ? 'All States' : s}</option>)}
             </select>
           </div>
+
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}</div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              Showing <span className="font-semibold text-slate-700">{visibleItems.length}</span> of {items.length}
+            </div>
             <Link href="/sales/quotes/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">
               + New Quote
             </Link>
@@ -104,7 +114,39 @@ export default function QuotesPage() {
       </section>
 
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <div className="md:hidden">
+          {visibleItems.length === 0 ? <p className="px-4 py-8 text-center text-slate-500">No quotes found.</p> : null}
+          <div className="divide-y divide-slate-100">
+            {visibleItems.map((qRow) => (
+              <article key={qRow.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href={`/sales/quotes/${qRow.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
+                    {qRow.quoteNumber}
+                  </Link>
+                  <StatusChip value={qRow.workflowState || qRow.status} />
+                </div>
+                <p className="text-sm font-semibold text-slate-800">{qRow.title || '—'}</p>
+                <p className="text-xs text-slate-600">{qRow.customer}</p>
+                <p className="text-xs text-slate-500">{qRow.opportunity}</p>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-slate-500">{new Date(qRow.createdAt).toLocaleDateString()}</p>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(qRow.id)}
+                      disabled={deletingId === qRow.id}
+                      className="rounded-lg border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-700 disabled:opacity-60"
+                    >
+                      {deletingId === qRow.id ? 'Archiving…' : 'Archive'}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <table className="hidden w-full text-left text-sm md:table">
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
               <th className="px-4 py-3 font-semibold">Quote #</th>
@@ -120,11 +162,15 @@ export default function QuotesPage() {
           <tbody>
             {visibleItems.map((qRow) => (
               <tr key={qRow.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-4"><Link href={`/sales/quotes/${qRow.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">{qRow.quoteNumber}</Link></td>
+                <td className="px-4 py-4">
+                  <Link href={`/sales/quotes/${qRow.id}`} className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-200">
+                    {qRow.quoteNumber}
+                  </Link>
+                </td>
                 <td className="px-4 py-4">{qRow.title || '—'}</td>
                 <td className="px-4 py-4"><StatusChip value={qRow.workflowState || qRow.status} /></td>
-                <td className="px-4 py-4">{qRow.opportunity}</td>
-                <td className="px-4 py-4">{qRow.customer}</td>
+                <td className="px-4 py-4 text-slate-600">{qRow.opportunity}</td>
+                <td className="px-4 py-4 text-slate-600">{qRow.customer}</td>
                 <td className="px-4 py-4">{qRow.totalPriceWithTaxInDollars ?? '—'}</td>
                 <td className="px-4 py-4 text-slate-500">{new Date(qRow.createdAt).toLocaleDateString()}</td>
                 {isAdmin ? (

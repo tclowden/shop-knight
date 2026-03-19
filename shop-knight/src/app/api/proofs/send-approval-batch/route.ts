@@ -5,7 +5,7 @@ import { requireRoles } from '@/lib/api-auth';
 import { sendMail } from '@/lib/mailer';
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

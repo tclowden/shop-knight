@@ -24,7 +24,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const opportunity = await prisma.opportunity.findFirst({
     where: withCompany(companyId, { id }),
-    include: { customer: true, salesRep: true, projectManager: true },
+    include: { customer: true, salesRep: true, projectManager: true, department: true },
   });
 
   if (!opportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
@@ -47,6 +47,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     projectManagerId: opportunity.projectManagerId,
     projectManagerName: opportunity.projectManager?.name ?? null,
     description: opportunity.description,
+    departmentId: opportunity.departmentId,
+    departmentName: opportunity.department?.name ?? null,
   });
 }
 
@@ -92,9 +94,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       inHandDate: body?.inHandDate !== undefined ? toDate(body.inHandDate) : undefined,
       salesRepId: body?.salesRepId !== undefined ? (body.salesRepId ? String(body.salesRepId) : null) : undefined,
       projectManagerId: body?.projectManagerId !== undefined ? (body.projectManagerId ? String(body.projectManagerId) : null) : undefined,
+      departmentId: body?.departmentId !== undefined ? (body.departmentId ? String(body.departmentId) : null) : undefined,
       description: body?.description !== undefined ? String(body.description || '') : undefined,
     },
-    include: { customer: true, salesRep: true, projectManager: true },
+    include: { customer: true, salesRep: true, projectManager: true, department: true },
   });
 
   return NextResponse.json({
@@ -114,6 +117,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     salesRepName: updated.salesRep?.name ?? null,
     projectManagerId: updated.projectManagerId,
     projectManagerName: updated.projectManager?.name ?? null,
+    departmentId: updated.departmentId,
+    departmentName: updated.department?.name ?? null,
     description: updated.description,
   });
 }

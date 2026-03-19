@@ -14,51 +14,126 @@ function toNumber(value: unknown) {
   return Number.isNaN(n) ? null : n;
 }
 
+async function buildSalesOrderPayload(id: string, companyId: string) {
+  try {
+    const so = await prisma.salesOrder.findFirst({
+      where: { id, companyId },
+      include: {
+        status: true,
+        salesRep: true,
+        projectManager: true,
+        designer: true,
+        department: true,
+        lines: { include: { product: true }, orderBy: { id: 'asc' } },
+      },
+    });
+
+    if (!so) return null;
+
+    const opportunity = await prisma.opportunity.findUnique({
+      where: { id: so.opportunityId },
+      include: { customer: true },
+    });
+
+    return {
+      ...so,
+      opportunity: opportunity ?? {
+        id: so.opportunityId,
+        name: 'Missing Opportunity',
+        customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
+      },
+    };
+  } catch {
+    const rawRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      'SELECT id, "companyId", "orderNumber", title, "opportunityId", "statusId", "salesRepId", "projectManagerId", "designerId", "billingAddress", "shippingAddress", "installAddress", "salesOrderDate", "dueDate", "createdAt", "updatedAt" FROM "SalesOrder" WHERE id = $1 AND "companyId" = $2 LIMIT 1',
+      id,
+      companyId,
+    );
+    const so = rawRows[0];
+    if (!so) return null;
+
+    const [lines, opportunity, status, salesRep, projectManager, designer] = await Promise.all([
+      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        'SELECT id, description, qty, "unitPrice", "productId", "sortOrder", "parentLineId", collapsed FROM "SalesOrderLine" WHERE "salesOrderId" = $1 ORDER BY "sortOrder" ASC, id ASC',
+        id,
+      ),
+      prisma.opportunity.findUnique({ where: { id: String(so.opportunityId || '') }, include: { customer: true } }).catch(() => null),
+      so.statusId ? prisma.salesOrderStatus.findUnique({ where: { id: String(so.statusId) } }).catch(() => null) : Promise.resolve(null),
+      so.salesRepId ? prisma.user.findUnique({ where: { id: String(so.salesRepId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+      so.projectManagerId ? prisma.user.findUnique({ where: { id: String(so.projectManagerId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+      so.designerId ? prisma.user.findUnique({ where: { id: String(so.designerId) }, select: { id: true, name: true } }).catch(() => null) : Promise.resolve(null),
+    ]);
+
+    return {
+      ...so,
+      lines,
+      status,
+      salesRep,
+      projectManager,
+      designer,
+      department: null,
+      opportunity: opportunity ?? {
+        id: String(so.opportunityId || ''),
+        name: 'Missing Opportunity',
+        customer: { id: '', name: 'Unknown Customer', additionalFeePercent: null },
+      },
+    };
+  }
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
-  if (!auth.ok) return auth.response;
+  try {
+    const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
+    if (!auth.ok) return auth.response;
 
-  const companyId = getSessionCompanyId(auth.session);
-  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+    const companyId = getSessionCompanyId(auth.session);
+    if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
-  const { id } = await params;
-  const so = await prisma.salesOrder.findFirst({
-    where: { id, companyId },
-    include: {
-      opportunity: { include: { customer: true } },
-      status: true,
-      salesRep: true,
-      projectManager: true,
-      designer: true,
-      lines: { include: { product: true }, orderBy: { id: 'asc' } },
-    },
-  });
+    const { id } = await params;
+    const so = await buildSalesOrderPayload(id, companyId);
 
-  if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
-  return NextResponse.json(so);
+    if (!so) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
+    const soOrderNumber = String((so as { orderNumber?: string }).orderNumber || '');
+    let linkedTrips: Array<unknown> = [];
+    try {
+      linkedTrips = await prisma.trip.findMany({
+        where: { companyId, salesOrderRef: soOrderNumber },
+        include: { travelers: { include: { traveler: true } } },
+        orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+      });
+    } catch {
+      linkedTrips = [];
+    }
+
+    return NextResponse.json({ ...so, linkedTrips });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unexpected sales order load error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES']);
+  const auth = await requireRoles(['ADMIN', 'SALES', 'SALES_REP', 'OPERATIONS', 'PROJECT_MANAGER', 'PURCHASING']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const { id } = await params;
-  const existing = await prisma.salesOrder.findFirst({ where: { id, companyId }, select: { id: true } });
+  const existing = await prisma.salesOrder.findUnique({ where: { id }, select: { id: true } });
   if (!existing) return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
 
   const body = await req.json();
 
   let opportunityId: string | undefined;
   if (body?.opportunityId !== undefined) {
-    if (!body.opportunityId) {
-      return NextResponse.json({ error: 'opportunityId cannot be empty' }, { status: 400 });
+    if (body.opportunityId) {
+      const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
+      opportunityId = nextOpportunity?.id;
+    } else {
+      // Keep existing opportunity assignment when blank is submitted.
+      opportunityId = undefined;
     }
-    const nextOpportunity = await prisma.opportunity.findFirst({ where: { id: String(body.opportunityId), companyId } });
-    if (!nextOpportunity) return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
-    opportunityId = nextOpportunity.id;
   }
 
   let statusId: string | undefined;
@@ -76,7 +151,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
-  const updated = await prisma.salesOrder.update({
+  await prisma.salesOrder.update({
     where: { id },
     data: {
       opportunityId,
@@ -95,24 +170,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       dueDate: body?.dueDate !== undefined ? toDate(body.dueDate) : undefined,
       installDate: body?.installDate !== undefined ? toDate(body.installDate) : undefined,
       shippingDate: body?.shippingDate !== undefined ? toDate(body.shippingDate) : undefined,
+      earlyBirdDiscountDate: body?.earlyBirdDiscountDate !== undefined ? toDate(body.earlyBirdDiscountDate) : undefined,
+      advancedReceivingDeadline: body?.advancedReceivingDeadline !== undefined ? toDate(body.advancedReceivingDeadline) : undefined,
+      shipFromRoarkDate: body?.shipFromRoarkDate !== undefined ? toDate(body.shipFromRoarkDate) : undefined,
+      travelToSiteStart: body?.travelToSiteStart !== undefined ? toDate(body.travelToSiteStart) : undefined,
+      travelToSiteEnd: body?.travelToSiteEnd !== undefined ? toDate(body.travelToSiteEnd) : undefined,
+      outboundShippingFromShowDate: body?.outboundShippingFromShowDate !== undefined ? toDate(body.outboundShippingFromShowDate) : undefined,
+      estimatedInvoiceDate: body?.estimatedInvoiceDate !== undefined ? toDate(body.estimatedInvoiceDate) : undefined,
       paymentTerms: body?.paymentTerms !== undefined ? String(body.paymentTerms || '') : undefined,
       downPaymentType: body?.downPaymentType !== undefined ? String(body.downPaymentType || '') : undefined,
       downPaymentValue: body?.downPaymentValue !== undefined ? toNumber(body.downPaymentValue) : undefined,
       salesRepId: body?.salesRepId !== undefined ? (body.salesRepId ? String(body.salesRepId) : null) : undefined,
       projectManagerId: body?.projectManagerId !== undefined ? (body.projectManagerId ? String(body.projectManagerId) : null) : undefined,
       designerId: body?.designerId !== undefined ? (body.designerId ? String(body.designerId) : null) : undefined,
-    },
-    include: {
-      opportunity: { include: { customer: true } },
-      status: true,
-      salesRep: true,
-      projectManager: true,
-      designer: true,
-      lines: { include: { product: true }, orderBy: { id: 'asc' } },
+      departmentId: body?.departmentId !== undefined ? (body.departmentId ? String(body.departmentId) : null) : undefined,
     },
   });
 
-  return NextResponse.json(updated);
+  const updated = await buildSalesOrderPayload(id, companyId);
+  if (!updated) return NextResponse.json({ error: 'Sales order not found after update' }, { status: 404 });
+  const updatedOrderNumber = String((updated as { orderNumber?: string }).orderNumber || '');
+  let linkedTrips: Array<unknown> = [];
+  try {
+    linkedTrips = await prisma.trip.findMany({
+      where: { companyId, salesOrderRef: updatedOrderNumber },
+      include: { travelers: { include: { traveler: true } } },
+      orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+    });
+  } catch {
+    linkedTrips = [];
+  }
+
+  return NextResponse.json({ ...updated, linkedTrips });
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {

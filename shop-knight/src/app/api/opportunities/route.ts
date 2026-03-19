@@ -35,7 +35,7 @@ export async function GET(req: Request) {
               { source: { not: 'ARCHIVED' } },
             ],
           }),
-    include: { customer: true, salesRep: true, projectManager: true },
+    include: { customer: true, salesRep: true, projectManager: true, department: true },
     orderBy: { name: 'asc' },
   });
 
@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       name: o.name,
       customer: o.customer.name,
       customerId: o.customerId,
+      customerAdditionalFeePercent: o.customer.additionalFeePercent,
       stage: o.stage,
       source: o.source,
       priority: o.priority,
@@ -57,6 +58,8 @@ export async function GET(req: Request) {
       salesRepName: o.salesRep?.name ?? null,
       projectManagerId: o.projectManagerId,
       projectManagerName: o.projectManager?.name ?? null,
+      departmentId: o.departmentId,
+      departmentName: o.department?.name ?? null,
       description: o.description,
     }))
   );
@@ -73,6 +76,9 @@ export async function POST(req: Request) {
   if (!body?.name || (!body?.customerId && !body?.customer)) {
     return NextResponse.json({ error: 'name and customer/customerId required' }, { status: 400 });
   }
+
+  const sessionUserId = (auth.session.user as { id?: string } | undefined)?.id;
+  const creator = sessionUserId ? await prisma.user.findUnique({ where: { id: sessionUserId }, select: { departmentId: true } }) : null;
 
   let customer;
   if (body?.customerId) {
@@ -104,8 +110,9 @@ export async function POST(req: Request) {
       inHandDate: toDate(body?.inHandDate),
       salesRepId: body?.salesRepId ? String(body.salesRepId) : null,
       projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : null,
+      departmentId: body?.departmentId ? String(body.departmentId) : (creator?.departmentId || null),
     },
-    include: { customer: true, salesRep: true, projectManager: true },
+    include: { customer: true, salesRep: true, projectManager: true, department: true },
   });
 
   return NextResponse.json(
@@ -114,6 +121,7 @@ export async function POST(req: Request) {
       name: opportunity.name,
       customer: opportunity.customer.name,
       customerId: opportunity.customerId,
+      customerAdditionalFeePercent: opportunity.customer.additionalFeePercent,
       stage: opportunity.stage,
       source: opportunity.source,
       priority: opportunity.priority,
@@ -126,6 +134,8 @@ export async function POST(req: Request) {
       salesRepName: opportunity.salesRep?.name ?? null,
       projectManagerId: opportunity.projectManagerId,
       projectManagerName: opportunity.projectManager?.name ?? null,
+      departmentId: opportunity.departmentId,
+      departmentName: opportunity.department?.name ?? null,
       description: opportunity.description,
     },
     { status: 201 }

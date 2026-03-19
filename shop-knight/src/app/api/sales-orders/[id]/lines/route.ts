@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const body = await req.json();
 
-  if (!body?.description || !body?.qty || !body?.unitPrice) {
+  if (!body?.description || !body?.qty || body?.unitPrice === undefined) {
     return NextResponse.json({ error: 'description, qty, unitPrice required' }, { status: 400 });
   }
 

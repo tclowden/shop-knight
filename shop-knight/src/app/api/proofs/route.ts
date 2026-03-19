@@ -3,16 +3,30 @@ import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/api-auth';
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const lineType = String(searchParams.get('lineType') || '');
   const lineId = String(searchParams.get('lineId') || '');
-  if (!lineType || !lineId) return NextResponse.json({ error: 'lineType and lineId required' }, { status: 400 });
+  const salesOrderId = String(searchParams.get('salesOrderId') || '');
 
-  const where = lineType === 'QUOTE_LINE' ? { quoteLineId: lineId } : lineType === 'SALES_ORDER_LINE' ? { salesOrderLineId: lineId } : null;
-  if (!where) return NextResponse.json({ error: 'Invalid lineType' }, { status: 400 });
+  if (!lineType) return NextResponse.json({ error: 'lineType required' }, { status: 400 });
+
+  const where =
+    lineType === 'QUOTE_LINE'
+      ? (lineId ? { quoteLineId: lineId } : null)
+      : lineType === 'SALES_ORDER_LINE'
+        ? (lineId
+            ? { salesOrderLineId: lineId }
+            : salesOrderId
+              ? { salesOrderLine: { salesOrderId } }
+              : null)
+        : null;
+
+  if (!where) {
+    return NextResponse.json({ error: 'Provide lineId (or salesOrderId for SALES_ORDER_LINE)' }, { status: 400 });
+  }
 
   const proofs = await prisma.proof.findMany({
     where,
@@ -31,6 +45,8 @@ export async function GET(req: Request) {
       approvedAt: p.approvedAt,
       createdAt: p.createdAt,
       hasFile: !!p.fileData,
+      quoteLineId: p.quoteLineId,
+      salesOrderLineId: p.salesOrderLineId,
       lastRequest: p.requests[0]
         ? {
             id: p.requests[0].id,
@@ -45,7 +61,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
@@ -60,8 +76,8 @@ export async function POST(req: Request) {
   }
 
   const fileBuffer = Buffer.from(base64Data, 'base64');
-  if (fileBuffer.byteLength > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'Proof file too large. Max 10MB.' }, { status: 400 });
+  if (fileBuffer.byteLength > 25 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Proof file too large. Max 25MB.' }, { status: 400 });
   }
 
   let quoteLineId: string | null = null;

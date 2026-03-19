@@ -11,6 +11,7 @@ declare module 'next-auth' {
       companies: Array<{ id: string; name: string; slug: string }>;
       name?: string | null;
       email?: string | null;
+      image?: string | null;
     };
   }
 }
@@ -23,5 +24,6 @@ declare module 'next-auth/jwt' {
     permissions?: string[];
     companyId?: string;
     companies?: Array<{ id: string; name: string; slug: string }>;
+    image?: string;
   }
 }

@@ -77,6 +77,7 @@ export async function GET() {
       },
       salesRep: true,
       projectManager: true,
+      department: true,
       lines: true,
     },
     orderBy: { quoteNumber: 'asc' },
@@ -103,6 +104,8 @@ export async function GET() {
       salesRepName: q.salesRep?.name ?? null,
       projectManagerId: q.projectManagerId,
       projectManagerName: q.projectManager?.name ?? null,
+      departmentId: q.departmentId,
+      departmentName: q.department?.name ?? null,
       totalPriceInDollars: q.totalPriceInDollars,
       totalTaxInDollars: q.totalTaxInDollars,
       totalPriceWithTaxInDollars: q.totalPriceWithTaxInDollars,
@@ -135,6 +138,8 @@ export async function POST(req: Request) {
   }
 
   const lineItems = Array.isArray(body?.lineItems) ? body.lineItems : [];
+  const sessionUserId = (auth.session.user as { id?: string } | undefined)?.id;
+  const creator = sessionUserId ? await prisma.user.findUnique({ where: { id: sessionUserId }, select: { departmentId: true } }) : null;
 
   try {
     const quoteNumber = providedQuoteNumber || await generateNextQuoteNumber();
@@ -158,6 +163,7 @@ export async function POST(req: Request) {
         installAddress: body?.installAddress ? String(body.installAddress) : null,
         salesRepId: body?.salesRepId ? String(body.salesRepId) : null,
         projectManagerId: body?.projectManagerId ? String(body.projectManagerId) : null,
+        departmentId: body?.departmentId ? String(body.departmentId) : (creator?.departmentId || null),
         totalPriceInDollars: toNumber(body?.totalPriceInDollars),
         totalTaxInDollars: toNumber(body?.totalTaxInDollars),
         totalPriceWithTaxInDollars: toNumber(body?.totalPriceWithTaxInDollars),

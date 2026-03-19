@@ -45,6 +45,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       name: body?.name !== undefined ? String(body.name || '') : undefined,
       projectRef: body?.projectRef !== undefined ? (body.projectRef ? String(body.projectRef) : null) : undefined,
       destinations: body?.destinations !== undefined ? (body.destinations ? String(body.destinations) : null) : undefined,
+      destinationCity: body?.destinationCity !== undefined ? (body.destinationCity ? String(body.destinationCity) : null) : undefined,
+      destinationState: body?.destinationState !== undefined ? (body.destinationState ? String(body.destinationState).toUpperCase() : null) : undefined,
       purpose: body?.purpose !== undefined ? (body.purpose ? String(body.purpose) : null) : undefined,
       startDate: body?.startDate !== undefined ? toDate(body.startDate) : undefined,
       endDate: body?.endDate !== undefined ? toDate(body.endDate) : undefined,

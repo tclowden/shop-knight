@@ -1,0 +1,2 @@
+ALTER TABLE "Customer"
+ADD COLUMN "additionalFeePercent" DECIMAL(5,2) NOT NULL DEFAULT 0;

@@ -24,31 +24,68 @@ export async function GET() {
   const auth = await requirePermissions(['admin.users.manage']);
   if (!auth.ok) return auth.response;
 
-  const users = await prisma.user.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      type: true,
-      phone: true,
-      knownTravelerNumber: true,
-      rewardMarriottNumber: true,
-      rewardUnitedNumber: true,
-      rewardDeltaNumber: true,
-      rewardAmericanNumber: true,
-      active: true,
-      createdAt: true,
-      customRoles: {
-        select: {
-          roleId: true,
-          role: { select: { id: true, name: true } },
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        phone: true,
+        knownTravelerNumber: true,
+        rewardMarriottNumber: true,
+        rewardUnitedNumber: true,
+        rewardDeltaNumber: true,
+        rewardAmericanNumber: true,
+        active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        titleId: true,
+        title: { select: { id: true, name: true } },
+        reportsToId: true,
+        reportsTo: { select: { id: true, name: true } },
+        isEmployee: true,
+        createdAt: true,
+        customRoles: {
+          select: {
+            roleId: true,
+            role: { select: { id: true, name: true } },
+          },
         },
       },
-    },
-  });
+    });
 
-  return NextResponse.json(users);
+    return NextResponse.json(users);
+  } catch {
+    const users = await prisma.user.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        type: true,
+        phone: true,
+        knownTravelerNumber: true,
+        rewardMarriottNumber: true,
+        rewardUnitedNumber: true,
+        rewardDeltaNumber: true,
+        rewardAmericanNumber: true,
+        active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        createdAt: true,
+        customRoles: {
+          select: {
+            roleId: true,
+            role: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(users);
+  }
 }
 
 export async function POST(req: Request) {
@@ -63,6 +100,9 @@ export async function POST(req: Request) {
   const type = String(body?.type || 'SALES') as UserTypeValue;
   const customRoleIds = normalizeRoleIds(body?.customRoleIds);
   const companyId = String(body?.companyId || '').trim();
+  const titleId = body?.titleId ? String(body.titleId).trim() : null;
+  const reportsToId = body?.reportsToId ? String(body.reportsToId).trim() : null;
+  const isEmployee = body?.isEmployee === undefined ? true : Boolean(body.isEmployee);
 
   if (!name || !email || !password || !companyId) {
     return NextResponse.json({ error: 'name, email, password, and company are required' }, { status: 400 });
@@ -78,6 +118,36 @@ export async function POST(req: Request) {
   const company = await prisma.company.findUnique({ where: { id: companyId }, select: { id: true } });
   if (!company) {
     return NextResponse.json({ error: 'invalid company' }, { status: 400 });
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, active: true },
+  });
+
+  if (existing) {
+    return NextResponse.json(
+      {
+        error: `User already exists: ${existing.name} (${existing.email}). Open their user record and update/reactivate instead.`,
+        userId: existing.id,
+        active: existing.active,
+      },
+      { status: 409 }
+    );
+  }
+
+  if (titleId) {
+    const title = await prisma.title.findFirst({ where: { id: titleId, companyId } });
+    if (!title) {
+      return NextResponse.json({ error: 'invalid title' }, { status: 400 });
+    }
+  }
+
+  if (reportsToId) {
+    const manager = await prisma.user.findFirst({ where: { id: reportsToId, activeCompanyId: companyId, active: true } });
+    if (!manager) {
+      return NextResponse.json({ error: 'invalid reportsTo user' }, { status: 400 });
+    }
   }
 
   const passwordHash = await hash(password, 10);
@@ -97,6 +167,10 @@ export async function POST(req: Request) {
         rewardAmericanNumber: body?.rewardAmericanNumber ? String(body.rewardAmericanNumber) : null,
         active: true,
         activeCompanyId: companyId,
+        departmentId: body?.departmentId ? String(body.departmentId) : null,
+        titleId,
+        reportsToId,
+        isEmployee,
         companyMemberships: {
           create: [{ companyId }],
         },
@@ -116,6 +190,13 @@ export async function POST(req: Request) {
         rewardDeltaNumber: true,
         rewardAmericanNumber: true,
         active: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+        titleId: true,
+        title: { select: { id: true, name: true } },
+        reportsToId: true,
+        reportsTo: { select: { id: true, name: true } },
+        isEmployee: true,
         createdAt: true,
         customRoles: {
           select: {
