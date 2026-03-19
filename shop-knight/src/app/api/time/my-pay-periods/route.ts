@@ -5,9 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 const PAY_PERIOD_DAYS = 14;
 const WEEK_DAYS = 7;
-// Monday anchor for bi-weekly periods
 const ANCHOR_UTC = new Date(Date.UTC(2026, 0, 5, 0, 0, 0));
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function startOfUtcDay(d: Date) {
@@ -22,6 +20,28 @@ function getCurrentPeriodStart(now: Date) {
 
 function addDays(base: Date, days: number) {
   return new Date(base.getTime() + days * DAY_MS);
+}
+
+type GroupMap = Map<string, { key: string; label: string; sourceType: string; minutes: number }>;
+
+function addToGroup(group: GroupMap, entry: {
+  sourceType: string;
+  salesOrderId: string | null;
+  quoteId: string | null;
+  jobId: string | null;
+  salesOrder: { orderNumber: string | null } | null;
+  quote: { quoteNumber: string | null } | null;
+  job: { name: string | null } | null;
+}, minutes: number) {
+  const sourceType = entry.sourceType;
+  const key = `${sourceType}:${entry.salesOrderId || entry.quoteId || entry.jobId || 'unknown'}`;
+  const label = entry.salesOrder?.orderNumber || entry.quote?.quoteNumber || entry.job?.name || sourceType;
+  const existing = group.get(key);
+  if (existing) {
+    existing.minutes += minutes;
+    return;
+  }
+  group.set(key, { key, label: String(label), sourceType, minutes });
 }
 
 export async function GET(request: Request) {
@@ -48,9 +68,16 @@ export async function GET(request: Request) {
     orderBy: { clockInAt: 'desc' },
     select: {
       id: true,
+      sourceType: true,
+      salesOrderId: true,
+      quoteId: true,
+      jobId: true,
       clockInAt: true,
       clockOutAt: true,
       minutesWorked: true,
+      salesOrder: { select: { orderNumber: true } },
+      quote: { select: { quoteNumber: true } },
+      job: { select: { name: true } },
     },
   });
 
@@ -61,13 +88,22 @@ export async function GET(request: Request) {
 
     let week1Minutes = 0;
     let week2Minutes = 0;
+    const week1Groups: GroupMap = new Map();
+    const week2Groups: GroupMap = new Map();
 
     for (const entry of entries) {
       if (entry.clockInAt < periodStart || entry.clockInAt >= periodEnd) continue;
       const minutes = entry.minutesWorked ?? (entry.clockOutAt ? Math.max(0, Math.round((entry.clockOutAt.getTime() - entry.clockInAt.getTime()) / 60000)) : 0);
-      if (entry.clockInAt < week1End) week1Minutes += minutes;
-      else week2Minutes += minutes;
+      if (entry.clockInAt < week1End) {
+        week1Minutes += minutes;
+        addToGroup(week1Groups, entry, minutes);
+      } else {
+        week2Minutes += minutes;
+        addToGroup(week2Groups, entry, minutes);
+      }
     }
+
+    const sortByHoursDesc = (a: { minutes: number }, b: { minutes: number }) => b.minutes - a.minutes;
 
     return {
       periodIndex: idx,
@@ -79,12 +115,14 @@ export async function GET(request: Request) {
         endExclusive: week1End.toISOString(),
         minutes: week1Minutes,
         hours: Number((week1Minutes / 60).toFixed(2)),
+        records: [...week1Groups.values()].sort(sortByHoursDesc).map((r) => ({ ...r, hours: Number((r.minutes / 60).toFixed(2)) })),
       },
       week2: {
         start: week1End.toISOString(),
         endExclusive: periodEnd.toISOString(),
         minutes: week2Minutes,
         hours: Number((week2Minutes / 60).toFixed(2)),
+        records: [...week2Groups.values()].sort(sortByHoursDesc).map((r) => ({ ...r, hours: Number((r.minutes / 60).toFixed(2)) })),
       },
       totalMinutes: week1Minutes + week2Minutes,
       totalHours: Number(((week1Minutes + week2Minutes) / 60).toFixed(2)),

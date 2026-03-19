@@ -30,14 +30,15 @@ type TimeEntry = {
   job?: { name?: string | null } | null;
 };
 
+type WeekRecordSummary = { key: string; label: string; sourceType: string; hours: number };
 type PayPeriodSummary = {
   periodIndex: number;
   isCurrent: boolean;
   start: string;
   endExclusive: string;
   totalHours: number;
-  week1: { start: string; endExclusive: string; hours: number };
-  week2: { start: string; endExclusive: string; hours: number };
+  week1: { start: string; endExclusive: string; hours: number; records: WeekRecordSummary[] };
+  week2: { start: string; endExclusive: string; hours: number; records: WeekRecordSummary[] };
 };
 
 const notificationLabels: Record<string, string> = {
@@ -80,6 +81,7 @@ export default function ProfilePage() {
   const [clockErr, setClockErr] = useState('');
   const [payPeriods, setPayPeriods] = useState<PayPeriodSummary[]>([]);
   const [periodsToShow, setPeriodsToShow] = useState(6);
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
 
   const initials = useMemo(() => {
     const source = name || session?.user?.name || '';
@@ -312,16 +314,37 @@ export default function ProfilePage() {
                 <p className="text-sm font-semibold text-sky-700">Total: {period.totalHours.toFixed(2)} hrs</p>
               </div>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
-                <div className="rounded border border-slate-200 bg-white p-2">
-                  <p className="font-medium text-slate-700">Week 1</p>
-                  <p className="text-slate-500">{new Date(period.week1.start).toLocaleDateString()} - {new Date(new Date(period.week1.endExclusive).getTime() - 86400000).toLocaleDateString()}</p>
-                  <p className="mt-1 font-semibold text-slate-800">{period.week1.hours.toFixed(2)} hrs</p>
-                </div>
-                <div className="rounded border border-slate-200 bg-white p-2">
-                  <p className="font-medium text-slate-700">Week 2</p>
-                  <p className="text-slate-500">{new Date(period.week2.start).toLocaleDateString()} - {new Date(new Date(period.week2.endExclusive).getTime() - 86400000).toLocaleDateString()}</p>
-                  <p className="mt-1 font-semibold text-slate-800">{period.week2.hours.toFixed(2)} hrs</p>
-                </div>
+                {[
+                  { key: `${period.start}-week1`, label: 'Week 1', week: period.week1 },
+                  { key: `${period.start}-week2`, label: 'Week 2', week: period.week2 },
+                ].map((wk) => (
+                  <button
+                    key={wk.key}
+                    type="button"
+                    onClick={() => setExpandedWeeks((prev) => ({ ...prev, [wk.key]: !prev[wk.key] }))}
+                    className="rounded border border-slate-200 bg-white p-2 text-left hover:border-sky-300"
+                  >
+                    <p className="font-medium text-slate-700">{wk.label}</p>
+                    <p className="text-slate-500">{new Date(wk.week.start).toLocaleDateString()} - {new Date(new Date(wk.week.endExclusive).getTime() - 86400000).toLocaleDateString()}</p>
+                    <p className="mt-1 font-semibold text-slate-800">{wk.week.hours.toFixed(2)} hrs</p>
+                    <p className="mt-1 text-xs text-sky-700">{expandedWeeks[wk.key] ? 'Hide details' : 'Show jobs/records worked'}</p>
+
+                    {expandedWeeks[wk.key] ? (
+                      <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
+                        {wk.week.records.length === 0 ? (
+                          <p className="text-xs text-slate-500">No hours logged this week.</p>
+                        ) : (
+                          wk.week.records.map((record) => (
+                            <div key={record.key} className="flex items-center justify-between text-xs">
+                              <p className="text-slate-700">{record.label} <span className="text-slate-400">({record.sourceType})</span></p>
+                              <p className="font-semibold text-slate-800">{record.hours.toFixed(2)} hrs</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </button>
+                ))}
               </div>
             </div>
           ))}
