@@ -79,9 +79,16 @@ export default function InventoryAdminPage() {
                 <td className="px-4 py-4">{i.location || '—'}</td>
                 <td className="px-4 py-4">{i.totalQty}</td>
                 <td className="px-4 py-4 text-right">
-                  <button type="button" onClick={() => toggleArchive(i.id)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
-                    {showArchived ? 'Restore' : 'Archive'}
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    {!showArchived ? (
+                      <Link href={`/admin/inventory/${i.id}`} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                        Edit
+                      </Link>
+                    ) : null}
+                    <button type="button" onClick={() => toggleArchive(i.id)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                      {showArchived ? 'Restore' : 'Archive'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
