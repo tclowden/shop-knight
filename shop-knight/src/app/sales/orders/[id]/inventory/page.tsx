@@ -32,6 +32,8 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
   const [error, setError] = useState('');
 
   const selectedItem = useMemo(() => items.find((i) => i.id === inventoryItemId), [items, inventoryItemId]);
+  const selectedLine = useMemo(() => salesOrderLines.find((l) => l.id === selectedLineId), [salesOrderLines, selectedLineId]);
+  const [lineRequirementsPreview, setLineRequirementsPreview] = useState<Array<{ inventoryItemId: string; inventoryItemName: string; qtyPerUnit: number; qtyNeeded: number }>>([]);
 
   async function load(id: string) {
     const [itemsRes, reservationsRes, soRes] = await Promise.all([
@@ -146,6 +148,24 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inventoryItemId, reservedFrom, reservedTo]);
 
+  useEffect(() => {
+    const run = async () => {
+      setLineRequirementsPreview([]);
+      if (!selectedLine?.productId) return;
+      const reqRes = await fetch(`/api/products/${selectedLine.productId}/inventory-requirements`);
+      if (!reqRes.ok) return;
+      const requirements = (await reqRes.json()) as Requirement[];
+      const preview = (requirements || []).map((r) => ({
+        inventoryItemId: r.inventoryItemId,
+        inventoryItemName: `${r.inventoryItem?.itemNumber || ''} — ${r.inventoryItem?.name || 'Item'}`,
+        qtyPerUnit: Number(r.qtyPerUnit || 0),
+        qtyNeeded: Number(selectedLine.qty || 0) * Number(r.qtyPerUnit || 0),
+      }));
+      setLineRequirementsPreview(preview.filter((p) => p.qtyNeeded > 0));
+    };
+    run();
+  }, [selectedLine]);
+
   return (
     <main className="mx-auto max-w-6xl p-8">
       <h1 className="text-2xl font-semibold">Sales Order Inventory Reservations</h1>
@@ -171,6 +191,24 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
               <button type="button" onClick={reserveFromSelectedLine} className="rounded bg-blue-600 px-3 py-2 text-sm text-white">Reserve Required Inventory for Line</button>
             </div>
           </div>
+
+          {selectedLineId ? (
+            <div className="mt-2 rounded border border-zinc-700 bg-zinc-900/20 p-2 text-xs text-zinc-300">
+              <p className="font-medium">Reservation Preview</p>
+              {lineRequirementsPreview.length > 0 ? (
+                <ul className="mt-1 space-y-1">
+                  {lineRequirementsPreview.map((r) => (
+                    <li key={`${r.inventoryItemId}-${r.qtyPerUnit}`} className="flex items-center justify-between">
+                      <span>{r.inventoryItemName}</span>
+                      <span>{r.qtyNeeded} (line qty × {r.qtyPerUnit})</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-zinc-400">No inventory requirements configured for this product line.</p>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
