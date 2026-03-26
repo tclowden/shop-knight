@@ -49,6 +49,7 @@ export default function NewProductPage() {
   const [showAttributeForm, setShowAttributeForm] = useState(false);
   const [attributeWizardStep, setAttributeWizardStep] = useState(1);
 
+  const [editingAttributeCode, setEditingAttributeCode] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -87,7 +88,7 @@ export default function NewProductPage() {
       return;
     }
 
-    if (attributes.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
+    if (attributes.some((item) => item.code.toLowerCase() === code.toLowerCase() && item.code !== editingAttributeCode)) {
       setError('Attribute code must be unique.');
       return;
     }
@@ -102,17 +103,22 @@ export default function NewProductPage() {
       return;
     }
 
-    setAttributes((prev) => [
-      ...prev,
-      {
+    setAttributes((prev) => {
+      const nextItem = {
         code,
         name: label,
         inputType: attrInputType,
         required: attrRequired,
         defaultValue: attrDefaultValue.trim(),
         optionsCsv: parsedOptions.join('\n'),
-      },
-    ]);
+      };
+
+      if (editingAttributeCode) {
+        return prev.map((item) => (item.code === editingAttributeCode ? nextItem : item));
+      }
+
+      return [...prev, nextItem];
+    });
 
     setAttrCode('');
     setAttrName('');
@@ -122,12 +128,33 @@ export default function NewProductPage() {
     setAttrOptionsCsv('');
     setShowAttributeAdvanced(false);
     setAttributeWizardStep(1);
+    setEditingAttributeCode(null);
     setShowAttributeForm(false);
     setError('');
   }
 
   function removeAttributeDraft(code: string) {
     setAttributes((prev) => prev.filter((item) => item.code !== code));
+    if (editingAttributeCode === code) {
+      setEditingAttributeCode(null);
+      setShowAttributeForm(false);
+    }
+  }
+
+  function startEditAttribute(code: string) {
+    const item = attributes.find((a) => a.code === code);
+    if (!item) return;
+    setAttrCode(item.code);
+    setAttrName(item.name);
+    setAttrInputType(item.inputType);
+    setAttrRequired(item.required);
+    setAttrDefaultValue(item.defaultValue || '');
+    setAttrOptionsCsv(item.optionsCsv || '');
+    setEditingAttributeCode(item.code);
+    setShowAttributeForm(true);
+    setAttributeWizardStep(1);
+    setShowAttributeAdvanced(true);
+    setError('');
   }
 
   async function createProduct(e: FormEvent) {
@@ -325,9 +352,14 @@ export default function NewProductPage() {
                     <td className="px-3 py-2">{a.inputType === 'SELECT' ? (a.optionsCsv || '—') : '—'}</td>
                     <td className="px-3 py-2">{a.required ? 'Yes' : 'No'}</td>
                     <td className="px-3 py-2 text-right">
-                      <button type="button" onClick={() => removeAttributeDraft(a.code)} className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
-                        Remove
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => startEditAttribute(a.code)} className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => removeAttributeDraft(a.code)} className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -344,13 +376,21 @@ export default function NewProductPage() {
             <button
               type="button"
               onClick={() => {
+                setAttrCode('');
+                setAttrName('');
+                setAttrInputType('NUMBER');
+                setAttrRequired(false);
+                setAttrDefaultValue('');
+                setAttrOptionsCsv('');
+                setShowAttributeAdvanced(false);
+                setEditingAttributeCode(null);
                 setShowAttributeForm(true);
                 setAttributeWizardStep(1);
                 setError('');
               }}
               className="mt-3 inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
-              Add Attribute
+              {editingAttributeCode ? 'Edit Attribute' : 'Add Attribute'}
             </button>
           ) : (
             <div className="mt-3 space-y-3">
@@ -444,7 +484,7 @@ export default function NewProductPage() {
                   disabled={attributeWizardStep !== 3}
                   className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Save Attribute
+                  {editingAttributeCode ? 'Update Attribute' : 'Save Attribute'}
                 </button>
                 <button
                   type="button"
@@ -458,6 +498,7 @@ export default function NewProductPage() {
                     setAttrOptionsCsv('');
                     setShowAttributeAdvanced(false);
                     setAttributeWizardStep(1);
+                    setEditingAttributeCode(null);
                     setError('');
                   }}
                   className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
