@@ -7,7 +7,6 @@ import { Nav } from '@/components/nav';
 
 export default function NewInventoryItemPage() {
   const router = useRouter();
-  const [itemNumber, setItemNumber] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
@@ -25,7 +24,7 @@ export default function NewInventoryItemPage() {
     const res = await fetch('/api/admin/inventory-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemNumber, name, category, location, totalQty, notes }),
+      body: JSON.stringify({ name, category, location, totalQty, notes }),
     });
 
     setSaving(false);
@@ -52,7 +51,7 @@ export default function NewInventoryItemPage() {
 
       <form onSubmit={createItem} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="text-sm font-medium text-slate-700">Item Number<input value={itemNumber} onChange={(e) => setItemNumber(e.target.value)} className="field mt-1" required /></label>
+          <label className="text-sm font-medium text-slate-700">Item Number<input value="Auto-assigned when saved" disabled className="field mt-1 bg-slate-100 text-slate-600" /></label>
           <label className="text-sm font-medium text-slate-700">Item Name<input value={name} onChange={(e) => setName(e.target.value)} className="field mt-1" required /></label>
           <label className="text-sm font-medium text-slate-700">Category<input value={category} onChange={(e) => setCategory(e.target.value)} className="field mt-1" /></label>
           <label className="text-sm font-medium text-slate-700">Location<input value={location} onChange={(e) => setLocation(e.target.value)} className="field mt-1" /></label>
