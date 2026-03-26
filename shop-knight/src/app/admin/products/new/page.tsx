@@ -9,6 +9,8 @@ type Department = { id: string; name: string; active: boolean };
 type ProductCategory = { id: string; name: string; active: boolean };
 type IncomeAccount = { id: string; code: string; name: string; active: boolean };
 
+type PricingImpact = 'NONE' | 'FIXED_ADD' | 'PER_SQ_UNIT' | 'MULTIPLIER';
+
 type DraftAttribute = {
   code: string;
   name: string;
@@ -16,6 +18,7 @@ type DraftAttribute = {
   required: boolean;
   defaultValue: string;
   optionsCsv: string;
+  pricingImpact: PricingImpact;
 };
 
 export default function NewProductPage() {
@@ -46,6 +49,7 @@ export default function NewProductPage() {
   const [attrRequired, setAttrRequired] = useState(false);
   const [attrDefaultValue, setAttrDefaultValue] = useState('');
   const [attrOptionsCsv, setAttrOptionsCsv] = useState('');
+  const [attrPricingImpact, setAttrPricingImpact] = useState<PricingImpact>('NONE');
   const [showAttributeForm, setShowAttributeForm] = useState(false);
   const [attributeWizardStep, setAttributeWizardStep] = useState(1);
 
@@ -62,6 +66,11 @@ export default function NewProductPage() {
       .slice(0, 40);
     return base || '';
   }, [attrName]);
+
+  const draftPricingFormula = useMemo(() => {
+    if (attributes.length === 0) return 'basePrice';
+    return buildPricingFormulaFromAttributes(attributes);
+  }, [attributes]);
 
   useEffect(() => {
     async function loadOptions() {
@@ -111,6 +120,7 @@ export default function NewProductPage() {
         required: attrRequired,
         defaultValue: attrDefaultValue.trim(),
         optionsCsv: parsedOptions.join('\n'),
+        pricingImpact: attrPricingImpact,
       };
 
       if (editingAttributeCode) {
@@ -126,6 +136,7 @@ export default function NewProductPage() {
     setAttrRequired(false);
     setAttrDefaultValue('');
     setAttrOptionsCsv('');
+    setAttrPricingImpact('NONE');
     setShowAttributeAdvanced(false);
     setAttributeWizardStep(1);
     setEditingAttributeCode(null);
@@ -150,11 +161,41 @@ export default function NewProductPage() {
     setAttrRequired(item.required);
     setAttrDefaultValue(item.defaultValue || '');
     setAttrOptionsCsv(item.optionsCsv || '');
+    setAttrPricingImpact(item.pricingImpact || 'NONE');
     setEditingAttributeCode(item.code);
     setShowAttributeForm(true);
     setAttributeWizardStep(1);
     setShowAttributeAdvanced(true);
     setError('');
+  }
+
+  function buildPricingFormulaFromAttributes(items: DraftAttribute[]) {
+    const lowerCodes = new Set(items.map((a) => a.code.toLowerCase()));
+    const hasWidth = lowerCodes.has('width');
+    const hasHeight = lowerCodes.has('height');
+    const areaExpr = hasWidth && hasHeight ? '(width * height)' : null;
+
+    let baseExpr = areaExpr ? `(basePrice * ${areaExpr})` : 'basePrice';
+
+    const addTerms: string[] = [];
+    const multiplierTerms: string[] = [];
+
+    for (const a of items) {
+      const code = a.code;
+      if (a.pricingImpact === 'FIXED_ADD') addTerms.push(code);
+      if (a.pricingImpact === 'PER_SQ_UNIT') addTerms.push(areaExpr ? `(${code} * ${areaExpr})` : code);
+      if (a.pricingImpact === 'MULTIPLIER') multiplierTerms.push(code);
+    }
+
+    if (multiplierTerms.length > 0) {
+      baseExpr = `(${baseExpr} * ${multiplierTerms.join(' * ')})`;
+    }
+
+    if (addTerms.length > 0) {
+      baseExpr = `(${baseExpr} + ${addTerms.join(' + ')})`;
+    }
+
+    return baseExpr;
   }
 
   async function createProduct(e: FormEvent) {
@@ -226,6 +267,16 @@ export default function NewProductPage() {
             );
             return;
           }
+        }
+
+        const formula = buildPricingFormulaFromAttributes(attributes);
+        const hasPricingImpacts = attributes.some((a) => a.pricingImpact !== 'NONE');
+        if (hasPricingImpacts) {
+          await fetch(`/api/admin/products/${productId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pricingFormula: formula, category, uom }),
+          });
         }
       }
 
@@ -327,7 +378,8 @@ export default function NewProductPage() {
 
         <section className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <h2 className="text-sm font-semibold text-slate-800">Attributes</h2>
-          <p className="mt-1 text-xs text-slate-500">Add optional product attributes now (width, height, material, finish, etc.). For SELECT options, you can use <span className="font-mono">Label|Number</span> (example: <span className="font-mono">Rush|25</span>) so formulas can use the numeric value.</p>
+          <p className="mt-1 text-xs text-slate-500">Add optional product attributes now (width, height, material, finish, etc.). For pricing-aware dropdowns, use <span className="font-mono">Label|Number</span> (example: <span className="font-mono">Rush|25</span>).</p>
+          <p className="mt-2 text-xs text-slate-600">Auto formula preview: <span className="font-mono">{draftPricingFormula}</span></p>
 
           <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
@@ -338,6 +390,7 @@ export default function NewProductPage() {
                   <th className="px-3 py-2 font-semibold">Type</th>
                   <th className="px-3 py-2 font-semibold">Default</th>
                   <th className="px-3 py-2 font-semibold">Options</th>
+                  <th className="px-3 py-2 font-semibold">Pricing Impact</th>
                   <th className="px-3 py-2 font-semibold">Required</th>
                   <th className="px-3 py-2 text-right font-semibold">Actions</th>
                 </tr>
@@ -350,6 +403,7 @@ export default function NewProductPage() {
                     <td className="px-3 py-2">{a.inputType}</td>
                     <td className="px-3 py-2">{a.defaultValue || '—'}</td>
                     <td className="px-3 py-2">{a.inputType === 'SELECT' ? (a.optionsCsv || '—') : '—'}</td>
+                    <td className="px-3 py-2">{a.pricingImpact === 'NONE' ? 'No impact' : a.pricingImpact === 'FIXED_ADD' ? 'Add selected value' : a.pricingImpact === 'PER_SQ_UNIT' ? 'Per sq unit × area' : 'Multiplier'}</td>
                     <td className="px-3 py-2">{a.required ? 'Yes' : 'No'}</td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex justify-end gap-2">
@@ -365,7 +419,7 @@ export default function NewProductPage() {
                 ))}
                 {attributes.length === 0 ? (
                   <tr>
-                    <td className="px-3 py-4 text-center text-slate-500" colSpan={7}>No attributes added yet.</td>
+                    <td className="px-3 py-4 text-center text-slate-500" colSpan={8}>No attributes added yet.</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -382,6 +436,7 @@ export default function NewProductPage() {
                 setAttrRequired(false);
                 setAttrDefaultValue('');
                 setAttrOptionsCsv('');
+                setAttrPricingImpact('NONE');
                 setShowAttributeAdvanced(false);
                 setEditingAttributeCode(null);
                 setShowAttributeForm(true);
@@ -432,6 +487,15 @@ export default function NewProductPage() {
                         Must be selected
                       </span>
                     </label>
+                    <label className="text-xs font-medium text-slate-700 md:col-span-2">
+                      Pricing Impact
+                      <select value={attrPricingImpact} onChange={(e) => setAttrPricingImpact(e.target.value as PricingImpact)} className="field mt-1">
+                        <option value="NONE">No pricing impact</option>
+                        <option value="FIXED_ADD">Add selected value to price</option>
+                        <option value="PER_SQ_UNIT">Per sq unit × width × height</option>
+                        <option value="MULTIPLIER">Multiply price by selected value</option>
+                      </select>
+                    </label>
                     {attrInputType === 'SELECT' ? (
                       <label className="text-xs font-medium text-slate-700 md:col-span-2">
                         Dropdown Choices (one per line)
@@ -448,6 +512,7 @@ export default function NewProductPage() {
                     <p><span className="font-semibold">Type:</span> {attrInputType}</p>
                     <p><span className="font-semibold">Starting Value:</span> {attrDefaultValue || '—'}</p>
                     <p><span className="font-semibold">Required:</span> {attrRequired ? 'Yes' : 'No'}</p>
+                    <p><span className="font-semibold">Pricing Impact:</span> {attrPricingImpact === 'NONE' ? 'No impact' : attrPricingImpact === 'FIXED_ADD' ? 'Add selected value' : attrPricingImpact === 'PER_SQ_UNIT' ? 'Per sq unit × area' : 'Multiplier'}</p>
                     {attrInputType === 'SELECT' ? <p><span className="font-semibold">Choices:</span> {(attrOptionsCsv || '—').split('\n').filter(Boolean).join(', ') || '—'}</p> : null}
                   </div>
                 ) : null}
@@ -496,6 +561,7 @@ export default function NewProductPage() {
                     setAttrRequired(false);
                     setAttrDefaultValue('');
                     setAttrOptionsCsv('');
+                    setAttrPricingImpact('NONE');
                     setShowAttributeAdvanced(false);
                     setAttributeWizardStep(1);
                     setEditingAttributeCode(null);
