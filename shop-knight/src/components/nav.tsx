@@ -30,6 +30,7 @@ const adminLinks = [
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/machines', label: 'Machines' },
   { href: '/admin/substrates', label: 'Substrates' },
+  { href: '/admin/inventory', label: 'Inventory' },
   { href: '/admin/job-workflows', label: 'Job Workflows' },
   { href: '/admin/custom-roles', label: 'Roles' },
   { href: '/admin/departments', label: 'Departments' },

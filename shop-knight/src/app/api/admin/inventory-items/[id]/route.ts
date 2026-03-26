@@ -1,0 +1,47 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
+
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function DELETE(_req: Request, ctx: Ctx) {
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  if (!auth.ok) return auth.response;
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const { id } = await ctx.params;
+  const existing = await prisma.inventoryItem.findFirst({ where: withCompany(companyId, { id }) });
+  if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+
+  const updated = await prisma.inventoryItem.update({ where: { id }, data: { active: false } });
+  return NextResponse.json(updated);
+}
+
+export async function POST(req: Request, ctx: Ctx) {
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  if (!auth.ok) return auth.response;
+  const companyId = getSessionCompanyId(auth.session);
+  if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
+
+  const body = await req.json().catch(() => ({}));
+  const { id } = await ctx.params;
+
+  if (body?.action === 'restore') {
+    const existing = await prisma.inventoryItem.findFirst({ where: withCompany(companyId, { id }) });
+    if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    const updated = await prisma.inventoryItem.update({ where: { id }, data: { active: true } });
+    return NextResponse.json(updated);
+  }
+
+  if (body?.action === 'updateQty') {
+    const qty = Number(body?.totalQty);
+    if (!Number.isFinite(qty) || qty < 0) return NextResponse.json({ error: 'totalQty must be >= 0' }, { status: 400 });
+    const existing = await prisma.inventoryItem.findFirst({ where: withCompany(companyId, { id }) });
+    if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    const updated = await prisma.inventoryItem.update({ where: { id }, data: { totalQty: Math.floor(qty) } });
+    return NextResponse.json(updated);
+  }
+
+  return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
+}

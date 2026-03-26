@@ -146,6 +146,8 @@ model Company {
   products             Product[]
   machines             Machine[]
   substrates           Substrate[]
+  inventoryItems       InventoryItem[]
+  inventoryReservations InventoryReservation[]
   salesOrderStatuses   SalesOrderStatus[]
   taskTemplates        TaskTemplate[]
   jobWorkflowTemplates JobWorkflowTemplate[]
@@ -569,6 +571,47 @@ model Substrate {
   @@index([companyId, active, name])
 }
 
+model InventoryItem {
+  id            String    @id @default(cuid())
+  companyId     String?
+  itemNumber    String
+  name          String
+  category      String?
+  location      String?
+  totalQty      Int       @default(0)
+  notes         String?
+  active        Boolean   @default(true)
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  reservations  InventoryReservation[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([companyId, itemNumber])
+  @@index([companyId, active, name])
+}
+
+model InventoryReservation {
+  id              String          @id @default(cuid())
+  companyId       String?
+  inventoryItemId String
+  salesOrderId    String
+  salesOrderLineId String?
+  quantity        Int
+  reservedFrom    DateTime
+  reservedTo      DateTime
+  notes           String?
+  active          Boolean         @default(true)
+  company         Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem   @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  salesOrder      SalesOrder      @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  salesOrderLine  SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([companyId, inventoryItemId, reservedFrom, reservedTo])
+  @@index([companyId, salesOrderId, active])
+}
+
 model SalesOrder {
   id                     String            @id @default(cuid())
   companyId              String?
@@ -618,6 +661,7 @@ model SalesOrder {
   jobs                   Job[]
   tasks                  Task[]
   timeEntries            TimeEntry[]
+  inventoryReservations  InventoryReservation[]
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
@@ -656,6 +700,7 @@ model SalesOrderLine {
   proofs          Proof[]
   jobs            Job[]
   loadListItems   LoadListItem[]
+  inventoryReservations InventoryReservation[]
 }
 
 model SalesOrderPurchaseItem {
