@@ -45,6 +45,7 @@ export default function NewProductPage() {
   const [attrRequired, setAttrRequired] = useState(false);
   const [attrDefaultValue, setAttrDefaultValue] = useState('');
   const [attrOptionsCsv, setAttrOptionsCsv] = useState('');
+  const [showAttributeForm, setShowAttributeForm] = useState(false);
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -105,6 +106,7 @@ export default function NewProductPage() {
     setAttrRequired(false);
     setAttrDefaultValue('');
     setAttrOptionsCsv('');
+    setShowAttributeForm(false);
     setError('');
   }
 
@@ -322,30 +324,63 @@ export default function NewProductPage() {
             </table>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-6">
-            <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder="code (e.g. width)" className="field md:col-span-1" />
-            <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="Label" className="field md:col-span-1" />
-            <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field md:col-span-1">
-              <option value="NUMBER">NUMBER</option>
-              <option value="TEXT">TEXT</option>
-              <option value="SELECT">SELECT</option>
-              <option value="BOOLEAN">BOOLEAN</option>
-            </select>
-            <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="default value" className="field md:col-span-1" />
-            <input value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder="options (a,b,c)" className="field md:col-span-1" />
-            <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 md:col-span-1">
-              <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
-              Required
-            </label>
-          </div>
+          {!showAttributeForm ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowAttributeForm(true);
+                setError('');
+              }}
+              className="mt-3 inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Add Attribute
+            </button>
+          ) : (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
+                <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder="code (e.g. width)" className="field md:col-span-1" />
+                <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="Label" className="field md:col-span-1" />
+                <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field md:col-span-1">
+                  <option value="NUMBER">NUMBER</option>
+                  <option value="TEXT">TEXT</option>
+                  <option value="SELECT">SELECT</option>
+                  <option value="BOOLEAN">BOOLEAN</option>
+                </select>
+                <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="default value" className="field md:col-span-1" />
+                <input value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder="options (a,b,c)" className="field md:col-span-1" />
+                <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 md:col-span-1">
+                  <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
+                  Required
+                </label>
+              </div>
 
-          <button
-            type="button"
-            onClick={addAttributeDraft}
-            className="mt-3 inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Add Attribute
-          </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={addAttributeDraft}
+                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Save Attribute
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAttributeForm(false);
+                    setAttrCode('');
+                    setAttrName('');
+                    setAttrInputType('NUMBER');
+                    setAttrRequired(false);
+                    setAttrDefaultValue('');
+                    setAttrOptionsCsv('');
+                    setError('');
+                  }}
+                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
