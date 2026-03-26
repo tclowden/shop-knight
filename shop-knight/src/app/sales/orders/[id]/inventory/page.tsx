@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Nav } from '@/components/nav';
 
 type Item = { id: string; itemNumber: string; name: string; totalQty: number };
+type SalesOrderLine = { id: string; description: string; qty: number; productId?: string | null };
+type Requirement = { id: string; inventoryItemId: string; qtyPerUnit: number; inventoryItem: Item };
 type Reservation = {
   id: string;
   inventoryItemId: string;
@@ -19,6 +21,8 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
   const [salesOrderId, setSalesOrderId] = useState('');
   const [items, setItems] = useState<Item[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [salesOrderLines, setSalesOrderLines] = useState<SalesOrderLine[]>([]);
+  const [selectedLineId, setSelectedLineId] = useState('');
   const [inventoryItemId, setInventoryItemId] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [reservedFrom, setReservedFrom] = useState('');
@@ -30,12 +34,17 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
   const selectedItem = useMemo(() => items.find((i) => i.id === inventoryItemId), [items, inventoryItemId]);
 
   async function load(id: string) {
-    const [itemsRes, reservationsRes] = await Promise.all([
+    const [itemsRes, reservationsRes, soRes] = await Promise.all([
       fetch('/api/admin/inventory-items'),
       fetch(`/api/sales-orders/${id}/inventory-reservations`),
+      fetch(`/api/sales-orders/${id}`),
     ]);
     if (itemsRes.ok) setItems(await itemsRes.json());
     if (reservationsRes.ok) setReservations(await reservationsRes.json());
+    if (soRes.ok) {
+      const so = await soRes.json();
+      setSalesOrderLines(Array.isArray(so?.lines) ? so.lines : []);
+    }
   }
 
   async function loadAvailability() {
@@ -79,6 +88,52 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
     }
   }
 
+  async function reserveFromSelectedLine() {
+    if (!salesOrderId || !selectedLineId || !reservedFrom || !reservedTo) return;
+    const line = salesOrderLines.find((l) => l.id === selectedLineId);
+    if (!line?.productId) {
+      setError('Selected line has no linked product.');
+      return;
+    }
+
+    setError('');
+    const reqRes = await fetch(`/api/products/${line.productId}/inventory-requirements`);
+    if (!reqRes.ok) {
+      setError('Could not load product inventory requirements.');
+      return;
+    }
+    const requirements = (await reqRes.json()) as Requirement[];
+    if (!Array.isArray(requirements) || requirements.length === 0) {
+      setError('No inventory requirements are configured for this product.');
+      return;
+    }
+
+    for (const req of requirements) {
+      const qtyNeeded = Number(line.qty || 0) * Number(req.qtyPerUnit || 0);
+      if (qtyNeeded <= 0) continue;
+      const res = await fetch(`/api/sales-orders/${salesOrderId}/inventory-reservations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inventoryItemId: req.inventoryItemId,
+          salesOrderLineId: line.id,
+          quantity: qtyNeeded,
+          reservedFrom,
+          reservedTo,
+          notes: notes || `Auto-reserved from line ${line.description}`,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(typeof data?.error === 'string' ? data.error : `Failed while reserving ${req.inventoryItem?.name || 'item'}`);
+        return;
+      }
+    }
+
+    await load(salesOrderId);
+    await loadAvailability();
+  }
+
   useEffect(() => {
     params.then((p) => {
       setSalesOrderId(p.id);
@@ -103,6 +158,21 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
 
       <section className="rounded border border-zinc-800 p-4">
         <h2 className="mb-2 font-medium">Reserve Inventory</h2>
+        <div className="mb-3 rounded border border-zinc-700 p-2">
+          <p className="text-xs font-medium text-zinc-300">Reserve by Product Line</p>
+          <div className="mt-1 grid grid-cols-1 gap-2 md:grid-cols-3">
+            <label className="text-xs text-zinc-300">Sales Order Line
+              <select value={selectedLineId} onChange={(e) => setSelectedLineId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+                <option value="">Select line</option>
+                {salesOrderLines.map((l) => <option key={l.id} value={l.id}>{l.description} (Qty {l.qty})</option>)}
+              </select>
+            </label>
+            <div className="md:col-span-2 flex items-end">
+              <button type="button" onClick={reserveFromSelectedLine} className="rounded bg-blue-600 px-3 py-2 text-sm text-white">Reserve Required Inventory for Line</button>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
           <label className="text-xs text-zinc-300">Item
             <select value={inventoryItemId} onChange={(e) => setInventoryItemId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">

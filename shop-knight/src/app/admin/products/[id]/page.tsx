@@ -38,6 +38,19 @@ type Substrate = {
   addOnPrice: string | number;
 };
 
+type InventoryItem = {
+  id: string;
+  itemNumber: string;
+  name: string;
+};
+
+type ProductInventoryRequirement = {
+  id: string;
+  inventoryItemId: string;
+  qtyPerUnit: number;
+  inventoryItem: InventoryItem;
+};
+
 export default function ProductDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
@@ -60,6 +73,10 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderMachineRateFallback, setBuilderMachineRateFallback] = useState('0.00');
   const [machines, setMachines] = useState<Machine[]>([]);
   const [substrates, setSubstrates] = useState<Substrate[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryRequirements, setInventoryRequirements] = useState<ProductInventoryRequirement[]>([]);
+  const [requirementInventoryItemId, setRequirementInventoryItemId] = useState('');
+  const [requirementQtyPerUnit, setRequirementQtyPerUnit] = useState('1');
   const [builderSegRate, setBuilderSegRate] = useState('3.50');
   const [builderGrommetRate, setBuilderGrommetRate] = useState('0.90');
   const [builderHemRate, setBuilderHemRate] = useState('1.25');
@@ -68,17 +85,21 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderSaving, setBuilderSaving] = useState(false);
 
   async function load(productId: string) {
-    const [productsRes, attrsRes, machinesRes, substratesRes] = await Promise.all([
+    const [productsRes, attrsRes, machinesRes, substratesRes, inventoryItemsRes, requirementsRes] = await Promise.all([
       fetch('/api/admin/products'),
       fetch(`/api/admin/products/${productId}/attributes`),
       fetch('/api/admin/machines'),
       fetch('/api/admin/substrates'),
+      fetch('/api/admin/inventory-items'),
+      fetch(`/api/admin/products/${productId}/inventory-requirements`),
     ]);
     const products = await productsRes.json();
     const p = products.find((x: Product) => x.id === productId) || null;
     const attrs = await attrsRes.json();
     const machineRows = await machinesRes.json();
     const substrateRows = await substratesRes.json();
+    const inventoryRows = await inventoryItemsRes.json();
+    const requirementRows = await requirementsRes.json();
 
     setProduct(p);
     setPricingFormula(p?.pricingFormula || 'basePrice');
@@ -87,6 +108,8 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setAttributes(attrs);
     setMachines(Array.isArray(machineRows) ? machineRows : []);
     setSubstrates(Array.isArray(substrateRows) ? substrateRows : []);
+    setInventoryItems(Array.isArray(inventoryRows) ? inventoryRows : []);
+    setInventoryRequirements(Array.isArray(requirementRows) ? requirementRows : []);
     setPreviewValues(Object.fromEntries(attrs.map((a: Attribute) => [a.code, a.defaultValue || ''])));
   }
 
@@ -325,6 +348,25 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     );
   }
 
+  async function addInventoryRequirement(e: FormEvent) {
+    e.preventDefault();
+    if (!id || !requirementInventoryItemId) return;
+    await fetch(`/api/admin/products/${id}/inventory-requirements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inventoryItemId: requirementInventoryItemId, qtyPerUnit: Number(requirementQtyPerUnit || 1) }),
+    });
+    setRequirementQtyPerUnit('1');
+    setRequirementInventoryItemId('');
+    await load(id);
+  }
+
+  async function removeInventoryRequirement(requirementId: string) {
+    if (!id) return;
+    await fetch(`/api/admin/products/${id}/inventory-requirements/${requirementId}`, { method: 'DELETE' });
+    await load(id);
+  }
+
   const previewPrice = useMemo(() => {
     const basePrice = Number(product?.salePrice || 0);
     const qty = Number(previewQty || 1);
@@ -502,6 +544,42 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <tbody>{attributes.map((a) => (<tr key={a.id} className="border-t border-zinc-800"><td className="p-3">{a.code}</td><td className="p-3">{a.name}</td><td className="p-3">{a.inputType}</td><td className="p-3">{a.defaultValue || '—'}</td><td className="p-3">{a.options?.join(', ') || '—'}</td><td className="p-3">{a.required ? 'Yes' : 'No'}</td></tr>))}</tbody>
         </table>
       </div>
+
+      <section className="mt-4 rounded border border-zinc-800 p-3">
+        <h2 className="text-sm font-semibold text-zinc-200">Inventory Requirements</h2>
+        <p className="text-xs text-zinc-400">Tie this product to inventory items with quantity required per product unit.</p>
+
+        <form onSubmit={addInventoryRequirement} className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+          <label className="text-xs text-zinc-300 md:col-span-2">Inventory Item
+            <select value={requirementInventoryItemId} onChange={(e) => setRequirementInventoryItemId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required>
+              <option value="">Select item</option>
+              {inventoryItems.map((item) => <option key={item.id} value={item.id}>{item.itemNumber} — {item.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-300">Qty per Product Unit
+            <input value={requirementQtyPerUnit} onChange={(e) => setRequirementQtyPerUnit(e.target.value)} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          </label>
+          <div className="flex items-end">
+            <button className="rounded bg-emerald-600 px-3 py-2 text-sm text-white">Add Requirement</button>
+          </div>
+        </form>
+
+        <div className="mt-3 overflow-hidden rounded border border-zinc-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Inventory Item</th><th className="p-3">Qty / Unit</th><th className="p-3 text-right">Actions</th></tr></thead>
+            <tbody>
+              {inventoryRequirements.map((r) => (
+                <tr key={r.id} className="border-t border-zinc-800">
+                  <td className="p-3">{r.inventoryItem.itemNumber} — {r.inventoryItem.name}</td>
+                  <td className="p-3">{r.qtyPerUnit}</td>
+                  <td className="p-3 text-right"><button type="button" onClick={() => removeInventoryRequirement(r.id)} className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700">Remove</button></td>
+                </tr>
+              ))}
+              {inventoryRequirements.length === 0 ? <tr><td className="p-3 text-zinc-500" colSpan={3}>No inventory requirements yet.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <ModuleNotesTasks entityType="PRODUCT" entityId={id} />
     </main>

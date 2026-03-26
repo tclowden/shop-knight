@@ -148,6 +148,7 @@ model Company {
   substrates           Substrate[]
   inventoryItems       InventoryItem[]
   inventoryReservations InventoryReservation[]
+  productInventoryRequirements ProductInventoryRequirement[]
   salesOrderStatuses   SalesOrderStatus[]
   taskTemplates        TaskTemplate[]
   jobWorkflowTemplates JobWorkflowTemplate[]
@@ -506,6 +507,7 @@ model Product {
   taxable          Boolean            @default(true)
   active           Boolean            @default(true)
   attributes       ProductAttribute[]
+  inventoryRequirements ProductInventoryRequirement[]
   quoteLines       QuoteLine[]
   salesOrderLines  SalesOrderLine[]
   createdAt        DateTime           @default(now())
@@ -584,11 +586,28 @@ model InventoryItem {
   active        Boolean   @default(true)
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   reservations  InventoryReservation[]
+  productRequirements ProductInventoryRequirement[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@unique([companyId, itemNumber])
   @@index([companyId, active, name])
+}
+
+model ProductInventoryRequirement {
+  id              String        @id @default(cuid())
+  companyId       String?
+  productId       String
+  inventoryItemId String
+  qtyPerUnit      Int           @default(1)
+  company         Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([companyId, productId, inventoryItemId])
+  @@index([companyId, productId])
 }
 
 model InventoryReservation {
