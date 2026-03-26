@@ -32,6 +32,12 @@ type Machine = {
   costPerMinute: string | number;
 };
 
+type Substrate = {
+  id: string;
+  name: string;
+  addOnPrice: string | number;
+};
+
 export default function ProductDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
@@ -53,6 +59,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderSubstrates, setBuilderSubstrates] = useState('Blockout Fabric|1.35, Standard Knit|1.00, Backlit Fabric|1.55');
   const [builderMachineRateFallback, setBuilderMachineRateFallback] = useState('0.00');
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [substrates, setSubstrates] = useState<Substrate[]>([]);
   const [builderSegRate, setBuilderSegRate] = useState('3.50');
   const [builderGrommetRate, setBuilderGrommetRate] = useState('0.90');
   const [builderHemRate, setBuilderHemRate] = useState('1.25');
@@ -61,15 +68,17 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderSaving, setBuilderSaving] = useState(false);
 
   async function load(productId: string) {
-    const [productsRes, attrsRes, machinesRes] = await Promise.all([
+    const [productsRes, attrsRes, machinesRes, substratesRes] = await Promise.all([
       fetch('/api/admin/products'),
       fetch(`/api/admin/products/${productId}/attributes`),
       fetch('/api/admin/machines'),
+      fetch('/api/admin/substrates'),
     ]);
     const products = await productsRes.json();
     const p = products.find((x: Product) => x.id === productId) || null;
     const attrs = await attrsRes.json();
     const machineRows = await machinesRes.json();
+    const substrateRows = await substratesRes.json();
 
     setProduct(p);
     setPricingFormula(p?.pricingFormula || 'basePrice');
@@ -77,6 +86,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setUom(p?.uom || 'EA');
     setAttributes(attrs);
     setMachines(Array.isArray(machineRows) ? machineRows : []);
+    setSubstrates(Array.isArray(substrateRows) ? substrateRows : []);
     setPreviewValues(Object.fromEntries(attrs.map((a: Attribute) => [a.code, a.defaultValue || ''])));
   }
 
@@ -227,13 +237,19 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setBuilderSaving(true);
     setBuilderMessage('');
 
-    const substrateOptions = builderSubstrates
-      .split(',')
-      .map((s) => s.trim())
+    const substrateOptionsFromAdmin = (substrates || [])
+      .map((s) => `${s.name}|${Number(s.addOnPrice || 0).toFixed(2)}`)
       .filter(Boolean);
 
+    const substrateOptions = substrateOptionsFromAdmin.length > 0
+      ? substrateOptionsFromAdmin
+      : builderSubstrates
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+
     if (substrateOptions.length === 0) {
-      setBuilderMessage('Please provide at least one substrate option.');
+      setBuilderMessage('Please add at least one substrate in Admin → Substrates (or provide fallback options).');
       setBuilderSaving(false);
       return;
     }
@@ -370,8 +386,9 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
             <input value={builderMachineRateFallback} onChange={(e) => setBuilderMachineRateFallback(e.target.value)} type="number" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </label>
           <div className="rounded border border-zinc-700 bg-zinc-900/30 p-2 text-xs text-zinc-400">
-            <p className="font-medium text-zinc-300">Machine pricing source</p>
-            <p>Uses active Admin → Machines entries as <code>Name|costPerMinute</code> add-ons.</p>
+            <p className="font-medium text-zinc-300">Pricing sources</p>
+            <p>Machine options: active Admin → Machines entries as <code>Name|costPerMinute</code>.</p>
+            <p>Substrate options: active Admin → Substrates entries as <code>Name|addOnPrice</code> (fallback to typed list if none exist).</p>
             <p>Formula set by this builder: <code>(basePrice * width * height) + machine + substrate</code></p>
           </div>
         </div>

@@ -145,6 +145,7 @@ model Company {
   jobs                 Job[]
   products             Product[]
   machines             Machine[]
+  substrates           Substrate[]
   salesOrderStatuses   SalesOrderStatus[]
   taskTemplates        TaskTemplate[]
   jobWorkflowTemplates JobWorkflowTemplate[]
@@ -548,6 +549,21 @@ model Machine {
   company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
+model Substrate {
+  id            String    @id @default(cuid())
+  companyId     String?
+  name          String
+  addOnPrice    Decimal   @db.Decimal(12, 2)
+  notes         String?
+  active        Boolean   @default(true)
+  company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([companyId, name])
   @@index([companyId, active, name])
