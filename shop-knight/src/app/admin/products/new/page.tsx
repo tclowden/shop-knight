@@ -47,6 +47,7 @@ export default function NewProductPage() {
   const [attrDefaultValue, setAttrDefaultValue] = useState('');
   const [attrOptionsCsv, setAttrOptionsCsv] = useState('');
   const [showAttributeForm, setShowAttributeForm] = useState(false);
+  const [attributeWizardStep, setAttributeWizardStep] = useState(1);
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -120,6 +121,7 @@ export default function NewProductPage() {
     setAttrDefaultValue('');
     setAttrOptionsCsv('');
     setShowAttributeAdvanced(false);
+    setAttributeWizardStep(1);
     setShowAttributeForm(false);
     setError('');
   }
@@ -343,6 +345,7 @@ export default function NewProductPage() {
               type="button"
               onClick={() => {
                 setShowAttributeForm(true);
+                setAttributeWizardStep(1);
                 setError('');
               }}
               className="mt-3 inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -351,38 +354,68 @@ export default function NewProductPage() {
             </button>
           ) : (
             <div className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <label className="text-xs font-medium text-slate-700">
-                  Attribute Name
-                  <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="e.g. Width" className="field mt-1" />
-                </label>
-                <label className="text-xs font-medium text-slate-700">
-                  Field Type
-                  <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field mt-1">
-                    <option value="NUMBER">Number (for dimensions/pricing)</option>
-                    <option value="TEXT">Text (free entry)</option>
-                    <option value="SELECT">Dropdown (pick from list)</option>
-                    <option value="BOOLEAN">Yes / No</option>
-                  </select>
-                </label>
-                <label className="text-xs font-medium text-slate-700">
-                  Starting Value (optional)
-                  <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="optional" className="field mt-1" />
-                </label>
-                <label className="text-xs font-medium text-slate-700">
-                  Required
-                  <span className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
-                    <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
-                    Must be selected
-                  </span>
-                </label>
-                {attrInputType === 'SELECT' ? (
-                  <label className="text-xs font-medium text-slate-700 md:col-span-2">
-                    Dropdown Choices (one per line)
-                    <textarea value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder={"Standard\nPremium\nRush|25"} rows={4} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring" />
-                    <span className="mt-1 block text-[11px] text-slate-500">Tip: Use <span className="font-mono">Label|Number</span> if this choice should change pricing (example: <span className="font-mono">Rush|25</span>).</span>
-                  </label>
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Step {attributeWizardStep} of 3</p>
+
+                {attributeWizardStep === 1 ? (
+                  <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <label className="text-xs font-medium text-slate-700 md:col-span-2">
+                      Attribute Name
+                      <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="e.g. Width" className="field mt-1" />
+                    </label>
+                    <label className="text-xs font-medium text-slate-700">
+                      Field Type
+                      <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field mt-1">
+                        <option value="NUMBER">Number (for dimensions/pricing)</option>
+                        <option value="TEXT">Text (free entry)</option>
+                        <option value="SELECT">Dropdown (pick from list)</option>
+                        <option value="BOOLEAN">Yes / No</option>
+                      </select>
+                    </label>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600">
+                      <p className="font-semibold text-slate-700">Quick tip</p>
+                      <p>Use <b>Number</b> for width/height/quantities, <b>Dropdown</b> for pick-lists, and <b>Yes/No</b> for toggles.</p>
+                    </div>
+                  </div>
                 ) : null}
+
+                {attributeWizardStep === 2 ? (
+                  <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <label className="text-xs font-medium text-slate-700">
+                      Starting Value (optional)
+                      <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="optional" className="field mt-1" />
+                    </label>
+                    <label className="text-xs font-medium text-slate-700">
+                      Required
+                      <span className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
+                        <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
+                        Must be selected
+                      </span>
+                    </label>
+                    {attrInputType === 'SELECT' ? (
+                      <label className="text-xs font-medium text-slate-700 md:col-span-2">
+                        Dropdown Choices (one per line)
+                        <textarea value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder={"Standard\nPremium\nRush|25"} rows={5} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring" />
+                        <span className="mt-1 block text-[11px] text-slate-500">Tip: Use <span className="font-mono">Label|Number</span> if this choice should change pricing.</span>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {attributeWizardStep === 3 ? (
+                  <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <p><span className="font-semibold">Name:</span> {attrName || '—'}</p>
+                    <p><span className="font-semibold">Type:</span> {attrInputType}</p>
+                    <p><span className="font-semibold">Starting Value:</span> {attrDefaultValue || '—'}</p>
+                    <p><span className="font-semibold">Required:</span> {attrRequired ? 'Yes' : 'No'}</p>
+                    {attrInputType === 'SELECT' ? <p><span className="font-semibold">Choices:</span> {(attrOptionsCsv || '—').split('\n').filter(Boolean).join(', ') || '—'}</p> : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button type="button" onClick={() => setAttributeWizardStep((s) => Math.max(1, s - 1))} disabled={attributeWizardStep === 1} className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">Back</button>
+                  <button type="button" onClick={() => setAttributeWizardStep((s) => Math.min(3, s + 1))} disabled={attributeWizardStep === 3} className="inline-flex h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">Next</button>
+                </div>
               </div>
 
               <div>
@@ -408,7 +441,8 @@ export default function NewProductPage() {
                 <button
                   type="button"
                   onClick={addAttributeDraft}
-                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  disabled={attributeWizardStep !== 3}
+                  className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Save Attribute
                 </button>
@@ -423,6 +457,7 @@ export default function NewProductPage() {
                     setAttrDefaultValue('');
                     setAttrOptionsCsv('');
                     setShowAttributeAdvanced(false);
+                    setAttributeWizardStep(1);
                     setError('');
                   }}
                   className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
