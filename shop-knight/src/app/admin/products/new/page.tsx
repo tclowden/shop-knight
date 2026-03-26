@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 
@@ -41,6 +41,7 @@ export default function NewProductPage() {
   const [attributes, setAttributes] = useState<DraftAttribute[]>([]);
   const [attrCode, setAttrCode] = useState('');
   const [attrName, setAttrName] = useState('');
+  const [showAttributeAdvanced, setShowAttributeAdvanced] = useState(false);
   const [attrInputType, setAttrInputType] = useState<DraftAttribute['inputType']>('NUMBER');
   const [attrRequired, setAttrRequired] = useState(false);
   const [attrDefaultValue, setAttrDefaultValue] = useState('');
@@ -49,6 +50,16 @@ export default function NewProductPage() {
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const suggestedAttrCode = useMemo(() => {
+    const base = attrName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 40);
+    return base || '';
+  }, [attrName]);
 
   useEffect(() => {
     async function loadOptions() {
@@ -67,7 +78,7 @@ export default function NewProductPage() {
   function addAttributeDraft(e: FormEvent) {
     e.preventDefault();
 
-    const code = attrCode.trim();
+    const code = (attrCode.trim() || suggestedAttrCode).trim();
     const label = attrName.trim();
 
     if (!code || !label) {
@@ -80,12 +91,14 @@ export default function NewProductPage() {
       return;
     }
 
-    if (attrInputType === 'SELECT') {
-      const options = attrOptionsCsv.split(',').map((s) => s.trim()).filter(Boolean);
-      if (options.length === 0) {
-        setError('Select attributes need at least one option.');
-        return;
-      }
+    const parsedOptions = attrOptionsCsv
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (attrInputType === 'SELECT' && parsedOptions.length === 0) {
+      setError('Dropdown attributes need at least one choice.');
+      return;
     }
 
     setAttributes((prev) => [
@@ -96,7 +109,7 @@ export default function NewProductPage() {
         inputType: attrInputType,
         required: attrRequired,
         defaultValue: attrDefaultValue.trim(),
-        optionsCsv: attrOptionsCsv,
+        optionsCsv: parsedOptions.join('\n'),
       },
     ]);
 
@@ -106,6 +119,7 @@ export default function NewProductPage() {
     setAttrRequired(false);
     setAttrDefaultValue('');
     setAttrOptionsCsv('');
+    setShowAttributeAdvanced(false);
     setShowAttributeForm(false);
     setError('');
   }
@@ -169,7 +183,7 @@ export default function NewProductPage() {
               defaultValue: attr.defaultValue || null,
               sortOrder: index,
               options: attr.inputType === 'SELECT'
-                ? attr.optionsCsv.split(',').map((s) => s.trim()).filter(Boolean)
+                ? attr.optionsCsv.split('\n').map((s) => s.trim()).filter(Boolean)
                 : null,
             }),
           });
@@ -337,39 +351,57 @@ export default function NewProductPage() {
             </button>
           ) : (
             <div className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
-                  Code
-                  <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder="e.g. width" className="field mt-1" />
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <label className="text-xs font-medium text-slate-700">
+                  Attribute Name
+                  <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="e.g. Width" className="field mt-1" />
                 </label>
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
-                  Label
-                  <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="Width" className="field mt-1" />
-                </label>
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
-                  Type
+                <label className="text-xs font-medium text-slate-700">
+                  Field Type
                   <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field mt-1">
-                    <option value="NUMBER">NUMBER</option>
-                    <option value="TEXT">TEXT</option>
-                    <option value="SELECT">SELECT</option>
-                    <option value="BOOLEAN">BOOLEAN</option>
+                    <option value="NUMBER">Number (for dimensions/pricing)</option>
+                    <option value="TEXT">Text (free entry)</option>
+                    <option value="SELECT">Dropdown (pick from list)</option>
+                    <option value="BOOLEAN">Yes / No</option>
                   </select>
                 </label>
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
-                  Default Value
+                <label className="text-xs font-medium text-slate-700">
+                  Starting Value (optional)
                   <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="optional" className="field mt-1" />
                 </label>
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
-                  Options (CSV)
-                  <input value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder="a,b,c" className="field mt-1" />
-                </label>
-                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                <label className="text-xs font-medium text-slate-700">
                   Required
                   <span className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
                     <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
-                    Yes
+                    Must be selected
                   </span>
                 </label>
+                {attrInputType === 'SELECT' ? (
+                  <label className="text-xs font-medium text-slate-700 md:col-span-2">
+                    Dropdown Choices (one per line)
+                    <textarea value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder={"Standard\nPremium\nRush|25"} rows={4} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring" />
+                    <span className="mt-1 block text-[11px] text-slate-500">Tip: Use <span className="font-mono">Label|Number</span> if this choice should change pricing (example: <span className="font-mono">Rush|25</span>).</span>
+                  </label>
+                ) : null}
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAttributeAdvanced((prev) => !prev)}
+                  className="text-xs font-medium text-slate-600 underline underline-offset-2"
+                >
+                  {showAttributeAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+                </button>
+                {showAttributeAdvanced ? (
+                  <div className="mt-2 max-w-md rounded-lg border border-slate-200 bg-white p-2">
+                    <label className="text-xs font-medium text-slate-700">
+                      Attribute Code (advanced)
+                      <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder={suggestedAttrCode || 'auto-generated from name'} className="field mt-1" />
+                    </label>
+                    <p className="mt-1 text-[11px] text-slate-500">If left blank, code auto-generates from the attribute name.</p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex items-center gap-2">
@@ -390,6 +422,7 @@ export default function NewProductPage() {
                     setAttrRequired(false);
                     setAttrDefaultValue('');
                     setAttrOptionsCsv('');
+                    setShowAttributeAdvanced(false);
                     setError('');
                   }}
                   className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
