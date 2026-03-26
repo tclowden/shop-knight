@@ -338,19 +338,37 @@ export default function NewProductPage() {
           ) : (
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder="code (e.g. width)" className="field md:col-span-1" />
-                <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="Label" className="field md:col-span-1" />
-                <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field md:col-span-1">
-                  <option value="NUMBER">NUMBER</option>
-                  <option value="TEXT">TEXT</option>
-                  <option value="SELECT">SELECT</option>
-                  <option value="BOOLEAN">BOOLEAN</option>
-                </select>
-                <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="default value" className="field md:col-span-1" />
-                <input value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder="options (a,b,c)" className="field md:col-span-1" />
-                <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 md:col-span-1">
-                  <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                  Code
+                  <input value={attrCode} onChange={(e) => setAttrCode(e.target.value)} placeholder="e.g. width" className="field mt-1" />
+                </label>
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                  Label
+                  <input value={attrName} onChange={(e) => setAttrName(e.target.value)} placeholder="Width" className="field mt-1" />
+                </label>
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                  Type
+                  <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field mt-1">
+                    <option value="NUMBER">NUMBER</option>
+                    <option value="TEXT">TEXT</option>
+                    <option value="SELECT">SELECT</option>
+                    <option value="BOOLEAN">BOOLEAN</option>
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                  Default Value
+                  <input value={attrDefaultValue} onChange={(e) => setAttrDefaultValue(e.target.value)} placeholder="optional" className="field mt-1" />
+                </label>
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
+                  Options (CSV)
+                  <input value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder="a,b,c" className="field mt-1" />
+                </label>
+                <label className="text-xs font-medium text-slate-700 md:col-span-1">
                   Required
+                  <span className="mt-1 flex h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700">
+                    <input checked={attrRequired} onChange={(e) => setAttrRequired(e.target.checked)} type="checkbox" />
+                    Yes
+                  </span>
                 </label>
               </div>
 
