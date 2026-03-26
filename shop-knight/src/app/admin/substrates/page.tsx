@@ -59,7 +59,7 @@ export default function SubstratesAdminPage() {
       <div className="mb-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Substrate Admin</h1>
-          <p className="text-sm text-slate-500">Manage substrate options and pricing add-ons used by product pricing builders.</p>
+          <p className="text-sm text-slate-500">Manage substrate options and square-unit pricing used by product pricing builders.</p>
         </div>
         {!showArchived ? (
           <Link href="/admin/substrates/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">
@@ -85,7 +85,7 @@ export default function SubstratesAdminPage() {
           <thead className="bg-[#eaf6fd] text-slate-600">
             <tr>
               <th className="px-4 py-3 font-semibold">Substrate</th>
-              <th className="px-4 py-3 font-semibold">Add-on Price</th>
+              <th className="px-4 py-3 font-semibold">Price / Sq Unit</th>
               <th className="px-4 py-3 font-semibold">Notes</th>
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>

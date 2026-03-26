@@ -44,7 +44,7 @@ export default function NewSubstratePage() {
       <div className="mb-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Create Substrate</h1>
-          <p className="text-sm text-slate-500">Add a substrate option with an add-on price used by product pricing.</p>
+          <p className="text-sm text-slate-500">Add a substrate option with a square-unit price used by product pricing.</p>
         </div>
         <Link href="/admin/substrates" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Back to Substrates
@@ -61,7 +61,7 @@ export default function NewSubstratePage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            Add-on Price
+            Price per Sq Unit
             <input value={addOnPrice} onChange={(e) => setAddOnPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="0.00" className="field mt-1" required />
           </label>
 

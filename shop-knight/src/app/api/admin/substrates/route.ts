@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const addOnPrice = toNumber(body?.addOnPrice);
 
   if (!name || addOnPrice === null) {
-    return NextResponse.json({ error: 'name and addOnPrice are required' }, { status: 400 });
+    return NextResponse.json({ error: 'name and pricePerSqUnit are required' }, { status: 400 });
   }
 
   try {

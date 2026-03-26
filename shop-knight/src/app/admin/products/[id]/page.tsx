@@ -308,7 +308,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
       if (res.ok) createdCodes.push(attr.code);
     }
 
-    const formula = '(basePrice * width * height) + machine + substrate';
+    const formula = '((basePrice + substrate) * width * height) + machine';
 
     await fetch(`/api/admin/products/${id}`, {
       method: 'PATCH',
@@ -388,8 +388,8 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <div className="rounded border border-zinc-700 bg-zinc-900/30 p-2 text-xs text-zinc-400">
             <p className="font-medium text-zinc-300">Pricing sources</p>
             <p>Machine options: active Admin → Machines entries as <code>Name|costPerMinute</code>.</p>
-            <p>Substrate options: active Admin → Substrates entries as <code>Name|addOnPrice</code> (fallback to typed list if none exist).</p>
-            <p>Formula set by this builder: <code>(basePrice * width * height) + machine + substrate</code></p>
+            <p>Substrate options: active Admin → Substrates entries as <code>Name|pricePerSqUnit</code> (fallback to typed list if none exist).</p>
+            <p>Formula set by this builder: <code>((basePrice + substrate) * width * height) + machine</code></p>
           </div>
         </div>
         {builderMessage ? <p className="mt-2 text-xs text-zinc-300">{builderMessage}</p> : null}

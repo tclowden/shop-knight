@@ -91,17 +91,21 @@ export function computePriceBreakdown(basePrice: number, formula: string | null 
   const normalized = (formula || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
   // Preferred fabric print formula:
-  // (basePrice * width * height) + machine + substrate
-  if (normalized === '(baseprice * width * height) + machine + substrate' || normalized === 'baseprice * width * height + machine + substrate') {
+  // ((basePrice + substrate) * width * height) + machine
+  if (
+    normalized === '((baseprice + substrate) * width * height) + machine' ||
+    normalized === '(baseprice + substrate) * width * height + machine'
+  ) {
     const width = toNumber(vars.width);
     const height = toNumber(vars.height);
     const machine = toNumber(vars.machine);
     const substrate = toNumber(vars.substrate);
+    const area = width * height;
 
     return [
-      { label: 'Base × Width × Height', amount: Number((toNumber(basePrice) * width * height).toFixed(2)) },
+      { label: 'Base × Width × Height', amount: Number((toNumber(basePrice) * area).toFixed(2)) },
+      { label: 'Substrate (per sq unit) × Area', amount: Number((substrate * area).toFixed(2)) },
       { label: 'Machine Add-on', amount: Number(machine.toFixed(2)) },
-      { label: 'Substrate Add-on', amount: Number(substrate.toFixed(2)) },
     ];
   }
 
