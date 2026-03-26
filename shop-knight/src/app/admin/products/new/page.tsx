@@ -23,7 +23,6 @@ type DraftAttribute = {
 
 export default function NewProductPage() {
   const router = useRouter();
-  const [sku, setSku] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState('PRINT');
   const [departmentId, setDepartmentId] = useState('');
@@ -214,7 +213,6 @@ export default function NewProductPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sku,
           name,
           type,
           departmentId,
@@ -307,8 +305,8 @@ export default function NewProductPage() {
       <form onSubmit={createProduct} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="text-sm font-medium text-slate-700">
-            SKU
-            <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" className="field mt-1" required />
+            Product Number
+            <input value="Auto-assigned when saved" disabled className="field mt-1 bg-slate-100 text-slate-600" />
           </label>
 
           <label className="text-sm font-medium text-slate-700">
