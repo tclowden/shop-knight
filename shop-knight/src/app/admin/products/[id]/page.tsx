@@ -26,6 +26,12 @@ type Attribute = {
   sortOrder?: number;
 };
 
+type Machine = {
+  id: string;
+  name: string;
+  costPerMinute: string | number;
+};
+
 export default function ProductDetailAdminPage({ params }: { params: Promise<{ id: string }> }) {
   const [id, setId] = useState('');
   const [product, setProduct] = useState<Product | null>(null);
@@ -45,6 +51,8 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
 
   const [builderSubstrates, setBuilderSubstrates] = useState('Blockout Fabric|1.35, Standard Knit|1.00, Backlit Fabric|1.55');
+  const [builderMachineRateFallback, setBuilderMachineRateFallback] = useState('0.00');
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [builderSegRate, setBuilderSegRate] = useState('3.50');
   const [builderGrommetRate, setBuilderGrommetRate] = useState('0.90');
   const [builderHemRate, setBuilderHemRate] = useState('1.25');
@@ -53,19 +61,22 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderSaving, setBuilderSaving] = useState(false);
 
   async function load(productId: string) {
-    const [productsRes, attrsRes] = await Promise.all([
+    const [productsRes, attrsRes, machinesRes] = await Promise.all([
       fetch('/api/admin/products'),
       fetch(`/api/admin/products/${productId}/attributes`),
+      fetch('/api/admin/machines'),
     ]);
     const products = await productsRes.json();
     const p = products.find((x: Product) => x.id === productId) || null;
     const attrs = await attrsRes.json();
+    const machineRows = await machinesRes.json();
 
     setProduct(p);
     setPricingFormula(p?.pricingFormula || 'basePrice');
     setCategory(p?.category || '');
     setUom(p?.uom || 'EA');
     setAttributes(attrs);
+    setMachines(Array.isArray(machineRows) ? machineRows : []);
     setPreviewValues(Object.fromEntries(attrs.map((a: Attribute) => [a.code, a.defaultValue || ''])));
   }
 
@@ -211,6 +222,93 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     );
   }
 
+  async function applyFabricPrintMachineSubstrateBuilder() {
+    if (!id || builderSaving) return;
+    setBuilderSaving(true);
+    setBuilderMessage('');
+
+    const substrateOptions = builderSubstrates
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (substrateOptions.length === 0) {
+      setBuilderMessage('Please provide at least one substrate option.');
+      setBuilderSaving(false);
+      return;
+    }
+
+    const machineOptions = (machines || [])
+      .map((m) => {
+        const n = Number(m.costPerMinute);
+        const safe = Number.isFinite(n) ? n.toFixed(2) : builderMachineRateFallback;
+        return `${m.name}|${safe}`;
+      })
+      .filter(Boolean);
+
+    if (machineOptions.length === 0) {
+      machineOptions.push(`Default Machine|${Number(builderMachineRateFallback || 0).toFixed(2)}`);
+    }
+
+    const targetAttrs: Array<{
+      code: string;
+      name: string;
+      inputType: 'NUMBER' | 'SELECT';
+      required: boolean;
+      defaultValue: string | null;
+      options: string[] | null;
+    }> = [
+      { code: 'width', name: 'Width', inputType: 'NUMBER', required: true, defaultValue: '1', options: null },
+      { code: 'height', name: 'Height', inputType: 'NUMBER', required: true, defaultValue: '1', options: null },
+      { code: 'machine', name: 'Machine', inputType: 'SELECT', required: true, defaultValue: machineOptions[0] || null, options: machineOptions },
+      { code: 'substrate', name: 'Substrate', inputType: 'SELECT', required: true, defaultValue: substrateOptions[0] || null, options: substrateOptions },
+    ];
+
+    const existingByCode = new Map(attributes.map((a) => [a.code.toLowerCase(), a]));
+    const createdCodes: string[] = [];
+    const skippedCodes: string[] = [];
+
+    for (let index = 0; index < targetAttrs.length; index += 1) {
+      const attr = targetAttrs[index];
+      if (existingByCode.has(attr.code.toLowerCase())) {
+        skippedCodes.push(attr.code);
+        continue;
+      }
+
+      const res = await fetch(`/api/admin/products/${id}/attributes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: attr.code,
+          name: attr.name,
+          inputType: attr.inputType,
+          required: attr.required,
+          defaultValue: attr.defaultValue,
+          sortOrder: attributes.length + index,
+          options: attr.options,
+        }),
+      });
+
+      if (res.ok) createdCodes.push(attr.code);
+    }
+
+    const formula = '(basePrice * width * height) + machine + substrate';
+
+    await fetch(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pricingFormula: formula, category, uom }),
+    });
+
+    setPricingFormula(formula);
+    await load(id);
+
+    setBuilderSaving(false);
+    setBuilderMessage(
+      `Fabric print pricing builder applied. Created: ${createdCodes.length ? createdCodes.join(', ') : 'none'}. Existing kept: ${skippedCodes.length ? skippedCodes.join(', ') : 'none'}.`
+    );
+  }
+
   const previewPrice = useMemo(() => {
     const basePrice = Number(product?.salePrice || 0);
     const qty = Number(previewQty || 1);
@@ -258,9 +356,25 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
             </label>
           </div>
         </div>
-        <button onClick={applyFabricRollPrintBuilder} disabled={builderSaving} className="mt-3 rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60">
-          {builderSaving ? 'Applying…' : 'Apply Fabric Roll Print Builder'}
-        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={applyFabricRollPrintBuilder} disabled={builderSaving} className="rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-60">
+            {builderSaving ? 'Applying…' : 'Apply Fabric Roll Print Builder'}
+          </button>
+          <button onClick={applyFabricPrintMachineSubstrateBuilder} disabled={builderSaving} className="rounded bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-60">
+            {builderSaving ? 'Applying…' : 'Apply Base + Machine + Substrate + Dimensions'}
+          </button>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <label className="text-xs text-zinc-300">
+            Machine fallback add-on (used when no active machines are configured)
+            <input value={builderMachineRateFallback} onChange={(e) => setBuilderMachineRateFallback(e.target.value)} type="number" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <div className="rounded border border-zinc-700 bg-zinc-900/30 p-2 text-xs text-zinc-400">
+            <p className="font-medium text-zinc-300">Machine pricing source</p>
+            <p>Uses active Admin → Machines entries as <code>Name|costPerMinute</code> add-ons.</p>
+            <p>Formula set by this builder: <code>(basePrice * width * height) + machine + substrate</code></p>
+          </div>
+        </div>
         {builderMessage ? <p className="mt-2 text-xs text-zinc-300">{builderMessage}</p> : null}
       </section>
 
