@@ -45,6 +45,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'name and pricePerSqUnit are required' }, { status: 400 });
   }
 
+  const existing = await prisma.substrate.findFirst({ where: withCompany(companyId, { name }) });
+
+  if (existing) {
+    if (existing.active) {
+      return NextResponse.json({ error: 'A substrate with that name already exists. Edit or archive/restore it instead.' }, { status: 409 });
+    }
+
+    const restored = await prisma.substrate.update({
+      where: { id: existing.id },
+      data: {
+        active: true,
+        addOnPrice,
+        notes: body?.notes ? String(body.notes) : null,
+      },
+    });
+
+    return NextResponse.json(restored, { status: 200 });
+  }
+
   try {
     const created = await prisma.substrate.create({
       data: {
@@ -57,6 +76,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(created, { status: 201 });
   } catch {
-    return NextResponse.json({ error: 'Substrate already exists or could not be created' }, { status: 409 });
+    return NextResponse.json({ error: 'Could not create substrate. Please try again.' }, { status: 409 });
   }
 }
