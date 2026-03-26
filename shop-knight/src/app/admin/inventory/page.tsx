@@ -11,6 +11,9 @@ type Item = {
   category: string | null;
   location: string | null;
   totalQty: number;
+  reservedQty: number;
+  checkedOutQty: number;
+  availableQty: number;
   active: boolean;
 };
 
@@ -66,7 +69,10 @@ export default function InventoryAdminPage() {
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Category</th>
               <th className="px-4 py-3 font-semibold">Location</th>
-              <th className="px-4 py-3 font-semibold">On Hand Qty</th>
+              <th className="px-4 py-3 font-semibold">Total Qty</th>
+              <th className="px-4 py-3 font-semibold">Reserved Qty</th>
+              <th className="px-4 py-3 font-semibold">Checked Out Qty</th>
+              <th className="px-4 py-3 font-semibold">Available Qty</th>
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
@@ -78,6 +84,9 @@ export default function InventoryAdminPage() {
                 <td className="px-4 py-4">{i.category || '—'}</td>
                 <td className="px-4 py-4">{i.location || '—'}</td>
                 <td className="px-4 py-4">{i.totalQty}</td>
+                <td className="px-4 py-4">{i.reservedQty}</td>
+                <td className="px-4 py-4">{i.checkedOutQty}</td>
+                <td className="px-4 py-4">{i.availableQty}</td>
                 <td className="px-4 py-4 text-right">
                   <div className="flex justify-end gap-2">
                     {!showArchived ? (
@@ -92,7 +101,7 @@ export default function InventoryAdminPage() {
                 </td>
               </tr>
             ))}
-            {items.length === 0 ? <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={6}>No inventory items yet.</td></tr> : null}
+            {items.length === 0 ? <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={9}>No inventory items yet.</td></tr> : null}
           </tbody>
         </table>
       </section>

@@ -12,6 +12,9 @@ type Item = {
   category: string | null;
   location: string | null;
   totalQty: number;
+  checkedOutQty: number;
+  reservedQty?: number;
+  availableQty?: number;
   notes: string | null;
 };
 
@@ -23,6 +26,9 @@ export default function EditInventoryItemPage({ params }: { params: Promise<{ id
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [totalQty, setTotalQty] = useState('0');
+  const [checkedOutQty, setCheckedOutQty] = useState('0');
+  const [reservedQty, setReservedQty] = useState('0');
+  const [availableQty, setAvailableQty] = useState('0');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,6 +45,9 @@ export default function EditInventoryItemPage({ params }: { params: Promise<{ id
     setCategory(item.category || '');
     setLocation(item.location || '');
     setTotalQty(String(item.totalQty ?? 0));
+    setCheckedOutQty(String(item.checkedOutQty ?? 0));
+    setReservedQty(String(item.reservedQty ?? 0));
+    setAvailableQty(String(item.availableQty ?? 0));
     setNotes(item.notes || '');
   }
 
@@ -51,7 +60,7 @@ export default function EditInventoryItemPage({ params }: { params: Promise<{ id
     const res = await fetch(`/api/admin/inventory-items/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, category, location, totalQty, notes }),
+      body: JSON.stringify({ name, category, location, totalQty, checkedOutQty, notes }),
     });
 
     setSaving(false);
@@ -90,7 +99,10 @@ export default function EditInventoryItemPage({ params }: { params: Promise<{ id
           <label className="text-sm font-medium text-slate-700">Item Name<input value={name} onChange={(e) => setName(e.target.value)} className="field mt-1" required /></label>
           <label className="text-sm font-medium text-slate-700">Category<input value={category} onChange={(e) => setCategory(e.target.value)} className="field mt-1" /></label>
           <label className="text-sm font-medium text-slate-700">Location<input value={location} onChange={(e) => setLocation(e.target.value)} className="field mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">On Hand Quantity<input value={totalQty} onChange={(e) => setTotalQty(e.target.value)} type="number" min="0" className="field mt-1" required /></label>
+          <label className="text-sm font-medium text-slate-700">Total Quantity<input value={totalQty} onChange={(e) => setTotalQty(e.target.value)} type="number" min="0" className="field mt-1" required /></label>
+          <label className="text-sm font-medium text-slate-700">Reserved Quantity (calculated)<input value={reservedQty} disabled className="field mt-1 bg-slate-100 text-slate-600" /></label>
+          <label className="text-sm font-medium text-slate-700">Checked Out Quantity<input value={checkedOutQty} onChange={(e) => setCheckedOutQty(e.target.value)} type="number" min="0" className="field mt-1" required /></label>
+          <label className="text-sm font-medium text-slate-700">Available Quantity (calculated)<input value={availableQty} disabled className="field mt-1 bg-slate-100 text-slate-600" /></label>
           <label className="text-sm font-medium text-slate-700 md:col-span-2">Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring" /></label>
         </div>
         {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}

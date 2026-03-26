@@ -13,7 +13,24 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const existing = await prisma.inventoryItem.findFirst({ where: withCompany(companyId, { id }) });
   if (!existing) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-  return NextResponse.json(existing);
+
+  const now = new Date();
+  const overlap = await prisma.inventoryReservation.aggregate({
+    where: withCompany(companyId, {
+      inventoryItemId: id,
+      active: true,
+      reservedFrom: { lte: now },
+      reservedTo: { gte: now },
+    }),
+    _sum: { quantity: true },
+  });
+
+  const reservedQty = Number(overlap._sum.quantity || 0);
+  const checkedOutQty = Number(existing.checkedOutQty || 0);
+  const totalQty = Number(existing.totalQty || 0);
+  const availableQty = totalQty - reservedQty - checkedOutQty;
+
+  return NextResponse.json({ ...existing, reservedQty, availableQty });
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -32,10 +49,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const location = body?.location === '' ? null : body?.location !== undefined ? String(body.location) : existing.location;
   const notes = body?.notes === '' ? null : body?.notes !== undefined ? String(body.notes) : existing.notes;
   const totalQtyRaw = body?.totalQty;
+  const checkedOutQtyRaw = body?.checkedOutQty;
   const totalQty = totalQtyRaw === undefined ? existing.totalQty : Number(totalQtyRaw);
+  const checkedOutQty = checkedOutQtyRaw === undefined ? existing.checkedOutQty : Number(checkedOutQtyRaw);
 
-  if (!name || !Number.isFinite(totalQty) || totalQty < 0) {
-    return NextResponse.json({ error: 'name and totalQty (>=0) are required' }, { status: 400 });
+  if (!name || !Number.isFinite(totalQty) || totalQty < 0 || !Number.isFinite(checkedOutQty) || checkedOutQty < 0) {
+    return NextResponse.json({ error: 'name, totalQty (>=0), and checkedOutQty (>=0) are required' }, { status: 400 });
   }
 
   const updated = await prisma.inventoryItem.update({
@@ -46,6 +65,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       location,
       notes,
       totalQty: Math.floor(totalQty),
+      checkedOutQty: Math.floor(checkedOutQty),
     },
   });
 

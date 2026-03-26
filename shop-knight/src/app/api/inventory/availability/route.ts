@@ -32,12 +32,14 @@ export async function GET(req: Request) {
 
   const reservedQty = reservations.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
   const onHandQty = Number(item.totalQty || 0);
-  const availableQty = onHandQty - reservedQty;
+  const checkedOutQty = Number(item.checkedOutQty || 0);
+  const availableQty = onHandQty - reservedQty - checkedOutQty;
 
   return NextResponse.json({
     itemId,
     onHandQty,
     reservedQty,
+    checkedOutQty,
     availableQty,
     from: from.toISOString(),
     to: to.toISOString(),

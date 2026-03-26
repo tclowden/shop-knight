@@ -53,7 +53,8 @@ export async function POST(req: Request, ctx: Ctx) {
   });
 
   const reservedQty = overlapReservations.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-  const availableQty = Number(item.totalQty || 0) - reservedQty;
+  const checkedOutQty = Number(item.checkedOutQty || 0);
+  const availableQty = Number(item.totalQty || 0) - reservedQty - checkedOutQty;
 
   if (quantity > availableQty) {
     return NextResponse.json({ error: `Insufficient availability. Requested ${quantity}, available ${availableQty}.` }, { status: 400 });

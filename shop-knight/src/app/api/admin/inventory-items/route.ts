@@ -33,7 +33,32 @@ export async function GET(req: Request) {
     orderBy: { name: 'asc' },
   });
 
-  return NextResponse.json(items);
+  const now = new Date();
+  const itemIds = items.map((i) => i.id);
+  const reservations = itemIds.length
+    ? await prisma.inventoryReservation.groupBy({
+        by: ['inventoryItemId'],
+        where: withCompany(companyId, {
+          active: true,
+          inventoryItemId: { in: itemIds },
+          reservedFrom: { lte: now },
+          reservedTo: { gte: now },
+        }),
+        _sum: { quantity: true },
+      })
+    : [];
+
+  const reservedByItem = new Map(reservations.map((r) => [r.inventoryItemId, Number(r._sum.quantity || 0)]));
+
+  const payload = items.map((item) => {
+    const reservedQty = reservedByItem.get(item.id) || 0;
+    const checkedOutQty = Number(item.checkedOutQty || 0);
+    const totalQty = Number(item.totalQty || 0);
+    const availableQty = totalQty - reservedQty - checkedOutQty;
+    return { ...item, reservedQty, availableQty };
+  });
+
+  return NextResponse.json(payload);
 }
 
 export async function POST(req: Request) {

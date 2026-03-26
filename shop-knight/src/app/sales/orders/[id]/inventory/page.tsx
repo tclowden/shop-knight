@@ -24,7 +24,7 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
   const [reservedFrom, setReservedFrom] = useState('');
   const [reservedTo, setReservedTo] = useState('');
   const [notes, setNotes] = useState('');
-  const [availability, setAvailability] = useState<{ onHandQty: number; reservedQty: number; availableQty: number } | null>(null);
+  const [availability, setAvailability] = useState<{ onHandQty: number; reservedQty: number; checkedOutQty: number; availableQty: number } | null>(null);
   const [error, setError] = useState('');
 
   const selectedItem = useMemo(() => items.find((i) => i.id === inventoryItemId), [items, inventoryItemId]);
@@ -49,7 +49,7 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
       return;
     }
     const data = await res.json();
-    setAvailability({ onHandQty: Number(data.onHandQty || 0), reservedQty: Number(data.reservedQty || 0), availableQty: Number(data.availableQty || 0) });
+    setAvailability({ onHandQty: Number(data.onHandQty || 0), reservedQty: Number(data.reservedQty || 0), checkedOutQty: Number(data.checkedOutQty || 0), availableQty: Number(data.availableQty || 0) });
   }
 
   async function createReservation() {
@@ -125,7 +125,7 @@ export default function SalesOrderInventoryPage({ params }: { params: Promise<{ 
         </div>
 
         {selectedItem ? <p className="mt-2 text-xs text-zinc-400">On hand for {selectedItem.name}: {selectedItem.totalQty}</p> : null}
-        {availability ? <p className="mt-1 text-xs text-zinc-300">For selected date range → Reserved: {availability.reservedQty}, Available: {availability.availableQty}</p> : null}
+        {availability ? <p className="mt-1 text-xs text-zinc-300">For selected date range → Reserved: {availability.reservedQty}, Checked Out: {availability.checkedOutQty}, Available: {availability.availableQty}</p> : null}
         {error ? <p className="mt-2 text-sm text-rose-400">{error}</p> : null}
 
         <button type="button" onClick={createReservation} className="mt-3 rounded bg-emerald-600 px-3 py-2 text-sm text-white">Reserve Inventory</button>
