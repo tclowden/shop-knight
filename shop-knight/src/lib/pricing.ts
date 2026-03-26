@@ -81,3 +81,29 @@ export function buildPricingVars(
   }
   return vars;
 }
+
+export type PriceBreakdownItem = {
+  label: string;
+  amount: number;
+};
+
+export function computePriceBreakdown(basePrice: number, formula: string | null | undefined, vars: Vars): PriceBreakdownItem[] {
+  const normalized = (formula || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // Preferred fabric print formula:
+  // (basePrice * width * height) + machine + substrate
+  if (normalized === '(baseprice * width * height) + machine + substrate' || normalized === 'baseprice * width * height + machine + substrate') {
+    const width = toNumber(vars.width);
+    const height = toNumber(vars.height);
+    const machine = toNumber(vars.machine);
+    const substrate = toNumber(vars.substrate);
+
+    return [
+      { label: 'Base × Width × Height', amount: Number((toNumber(basePrice) * width * height).toFixed(2)) },
+      { label: 'Machine Add-on', amount: Number(machine.toFixed(2)) },
+      { label: 'Substrate Add-on', amount: Number(substrate.toFixed(2)) },
+    ];
+  }
+
+  return [{ label: 'Calculated Unit Price', amount: computeUnitPrice(basePrice, formula, vars) }];
+}

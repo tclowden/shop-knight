@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
-import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
+import { buildPricingVars, computePriceBreakdown, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = {
   id: string;
@@ -81,6 +81,14 @@ export default function NewSalesOrderPage() {
   const sortedSalesReps = useMemo(() => [...users].filter((u) => ['SALES_REP', 'SALES', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedProjectManagers = useMemo(() => [...users].filter((u) => ['PROJECT_MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
   const sortedDesigners = useMemo(() => [...users].filter((u) => ['DESIGNER', 'ADMIN'].includes(u.type)).sort((a, b) => a.name.localeCompare(b.name)), [users]);
+
+  const linePriceBreakdown = useMemo(() => {
+    const selected = products.find((p) => p.id === lineProductId);
+    if (!selected) return [];
+    const basePrice = Number(selected.salePrice || 0);
+    const vars = buildPricingVars(Number(lineQty || 1), basePrice, lineAttributeValues);
+    return computePriceBreakdown(basePrice, selected.pricingFormula, vars);
+  }, [products, lineProductId, lineQty, lineAttributeValues]);
 
   function applyOpportunityDefaults(nextOpportunityId: string, opportunitiesList: Opportunity[], customerList: Customer[]) {
     const opp = opportunitiesList.find((o) => o.id === nextOpportunityId);
@@ -339,6 +347,20 @@ export default function NewSalesOrderPage() {
               <input value={(Number(lineQty || 0) * Number(lineUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
             </label>
           </div>
+          {linePriceBreakdown.length > 0 ? (
+            <div className="mt-2 rounded border border-zinc-700 bg-zinc-900/20 p-2 text-xs text-zinc-300">
+              <p className="mb-1 font-medium">Pricing Breakdown (Unit)</p>
+              <ul className="space-y-1">
+                {linePriceBreakdown.map((item) => (
+                  <li key={item.label} className="flex items-center justify-between">
+                    <span>{item.label}</span>
+                    <span>${Number(item.amount || 0).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {(() => {
             const selected = products.find((p) => p.id === lineProductId);
             if (!selected?.attributes?.length) return null;

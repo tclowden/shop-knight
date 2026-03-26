@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/nav';
 import { AddressAutocomplete } from '@/components/address-autocomplete';
-import { buildPricingVars, computeUnitPrice } from '@/lib/pricing';
+import { buildPricingVars, computePriceBreakdown, computeUnitPrice } from '@/lib/pricing';
 
 type Opportunity = {
   id: string;
@@ -318,6 +318,13 @@ export default function NewQuotePage() {
           <div className="space-y-2">
             {lineItems.map((line, i) => {
               const selectedProduct = products.find((p) => p.id === line.productId);
+              const lineBreakdown = selectedProduct
+                ? computePriceBreakdown(
+                    Number(selectedProduct.salePrice || 0),
+                    selectedProduct.pricingFormula,
+                    buildPricingVars(Number(line.quantity || 1), Number(selectedProduct.salePrice || 0), line.attributeValues)
+                  )
+                : [];
               return (
                 <div key={i} className="space-y-2 rounded border border-zinc-700 p-2">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
@@ -384,6 +391,20 @@ export default function NewQuotePage() {
                       <input value={(Number(line.quantity || 0) * Number(line.priceInDollars || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
                     </label>
                   </div>
+
+                  {lineBreakdown.length > 0 ? (
+                    <div className="rounded border border-zinc-700 bg-zinc-900/20 p-2 text-xs text-zinc-300">
+                      <p className="mb-1 font-medium">Pricing Breakdown (Unit)</p>
+                      <ul className="space-y-1">
+                        {lineBreakdown.map((item) => (
+                          <li key={item.label} className="flex items-center justify-between">
+                            <span>{item.label}</span>
+                            <span>${Number(item.amount || 0).toFixed(2)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
 
                   {selectedProduct?.attributes?.length ? (
                     <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
