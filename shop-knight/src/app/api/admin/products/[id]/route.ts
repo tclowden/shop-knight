@@ -50,7 +50,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const updated = await prisma.product.update({
     where: { id },
     data: {
-      pricingFormula: body?.pricingFormula ? String(body.pricingFormula) : null,
+      pricingFormula: body?.pricingFormula !== undefined ? (body?.pricingFormula ? String(body.pricingFormula) : null) : undefined,
       name: body?.name ? String(body.name) : undefined,
       type: body?.type !== undefined ? String(body.type || '') : undefined,
       description: body?.description !== undefined ? String(body.description || '') : undefined,
@@ -61,6 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       salePrice: salePriceData,
       costPrice: costPriceParsed,
       gpmPercent: gpmParsed,
+      taxable: body?.taxable !== undefined ? Boolean(body.taxable) : undefined,
       uom: body?.uom !== undefined ? String(body.uom || 'EA') : undefined,
     },
   });

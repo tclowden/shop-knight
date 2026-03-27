@@ -9,11 +9,23 @@ type Product = {
   id: string;
   sku: string;
   name: string;
+  type?: string | null;
+  departmentId?: string | null;
+  incomeAccountId?: string | null;
+  categoryId?: string | null;
   category?: string | null;
   uom?: string | null;
+  description?: string | null;
   salePrice?: string | number;
+  costPrice?: string | number | null;
+  gpmPercent?: string | number | null;
+  taxable?: boolean;
   pricingFormula: string | null;
 };
+
+type Department = { id: string; name: string };
+type ProductCategory = { id: string; name: string };
+type IncomeAccount = { id: string; code: string; name: string };
 
 type Attribute = {
   id: string;
@@ -59,6 +71,21 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [category, setCategory] = useState('');
   const [uom, setUom] = useState('EA');
 
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState('');
+  const [editDepartmentId, setEditDepartmentId] = useState('');
+  const [editIncomeAccountId, setEditIncomeAccountId] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSalePrice, setEditSalePrice] = useState('0.00');
+  const [editCostPrice, setEditCostPrice] = useState('');
+  const [editGpmPercent, setEditGpmPercent] = useState('');
+  const [editTaxable, setEditTaxable] = useState(true);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [incomeAccounts, setIncomeAccounts] = useState<IncomeAccount[]>([]);
+
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [inputType, setInputType] = useState('NUMBER');
@@ -85,13 +112,16 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderSaving, setBuilderSaving] = useState(false);
 
   async function load(productId: string) {
-    const [productsRes, attrsRes, machinesRes, substratesRes, inventoryItemsRes, requirementsRes] = await Promise.all([
+    const [productsRes, attrsRes, machinesRes, substratesRes, inventoryItemsRes, requirementsRes, departmentsRes, categoriesRes, incomeAccountsRes] = await Promise.all([
       fetch('/api/admin/products'),
       fetch(`/api/admin/products/${productId}/attributes`),
       fetch('/api/admin/machines'),
       fetch('/api/admin/substrates'),
       fetch('/api/admin/inventory-items'),
       fetch(`/api/admin/products/${productId}/inventory-requirements`),
+      fetch('/api/admin/departments'),
+      fetch('/api/admin/product-categories'),
+      fetch('/api/admin/income-accounts'),
     ]);
     const products = await productsRes.json();
     const p = products.find((x: Product) => x.id === productId) || null;
@@ -100,17 +130,56 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     const substrateRows = await substratesRes.json();
     const inventoryRows = await inventoryItemsRes.json();
     const requirementRows = await requirementsRes.json();
+    const departmentRows = await departmentsRes.json();
+    const categoryRows = await categoriesRes.json();
+    const incomeAccountRows = await incomeAccountsRes.json();
 
     setProduct(p);
     setPricingFormula(p?.pricingFormula || 'basePrice');
     setCategory(p?.category || '');
     setUom(p?.uom || 'EA');
+    setEditName(p?.name || '');
+    setEditType(p?.type || '');
+    setEditDepartmentId(p?.departmentId || '');
+    setEditIncomeAccountId(p?.incomeAccountId || '');
+    setEditCategoryId(p?.categoryId || '');
+    setEditDescription(p?.description || '');
+    setEditSalePrice(String(p?.salePrice ?? '0.00'));
+    setEditCostPrice(p?.costPrice == null ? '' : String(p.costPrice));
+    setEditGpmPercent(p?.gpmPercent == null ? '' : String(p.gpmPercent));
+    setEditTaxable(Boolean(p?.taxable ?? true));
     setAttributes(attrs);
     setMachines(Array.isArray(machineRows) ? machineRows : []);
     setSubstrates(Array.isArray(substrateRows) ? substrateRows : []);
     setInventoryItems(Array.isArray(inventoryRows) ? inventoryRows : []);
     setInventoryRequirements(Array.isArray(requirementRows) ? requirementRows : []);
+    setDepartments(Array.isArray(departmentRows) ? departmentRows.filter((d: { active?: boolean }) => d.active !== false) : []);
+    setCategories(Array.isArray(categoryRows) ? categoryRows.filter((c: { active?: boolean }) => c.active !== false) : []);
+    setIncomeAccounts(Array.isArray(incomeAccountRows) ? incomeAccountRows.filter((a: { active?: boolean }) => a.active !== false) : []);
     setPreviewValues(Object.fromEntries(attrs.map((a: Attribute) => [a.code, a.defaultValue || ''])));
+  }
+
+  async function saveCoreDetails(e: FormEvent) {
+    e.preventDefault();
+    await fetch(`/api/admin/products/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editName,
+        type: editType,
+        departmentId: editDepartmentId || null,
+        incomeAccountId: editIncomeAccountId || null,
+        categoryId: editCategoryId || null,
+        category,
+        uom,
+        description: editDescription,
+        salePrice: editSalePrice,
+        costPrice: editCostPrice,
+        gpmPercent: editGpmPercent,
+        taxable: editTaxable,
+      }),
+    });
+    await load(id);
   }
 
   async function saveFormula(e: FormEvent) {
@@ -386,6 +455,62 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
       <h1 className="text-2xl font-semibold">Product Pricing Rules</h1>
       <p className="text-sm text-zinc-400">{product ? `${product.sku} — ${product.name}` : 'Loading...'}</p>
       <Nav />
+
+      <form onSubmit={saveCoreDetails} className="mb-4 rounded border border-zinc-800 p-4 space-y-3">
+        <h2 className="font-medium">Edit Product Details</h2>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <label className="text-xs text-zinc-300">Product Number
+            <input value={product?.sku || ''} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-600" />
+          </label>
+          <label className="text-xs text-zinc-300">Name
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
+          </label>
+          <label className="text-xs text-zinc-300">Type
+            <input value={editType} onChange={(e) => setEditType(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">Department
+            <select value={editDepartmentId} onChange={(e) => setEditDepartmentId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Select department</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-300">Income Account
+            <select value={editIncomeAccountId} onChange={(e) => setEditIncomeAccountId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Select income account</option>
+              {incomeAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-300">Product Category
+            <select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="">Select category</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-zinc-300">UOM
+            <input value={uom} onChange={(e) => setUom(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">Sale Price
+            <input value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value)} type="number" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">Cost Price
+            <input value={editCostPrice} onChange={(e) => setEditCostPrice(e.target.value)} type="number" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300">GPM %
+            <input value={editGpmPercent} onChange={(e) => setEditGpmPercent(e.target.value)} type="number" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300 md:col-span-2">Description
+            <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </label>
+          <label className="text-xs text-zinc-300 md:col-span-2">
+            <span className="mb-1 block">Taxable</span>
+            <span className="flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
+              <input type="checkbox" checked={editTaxable} onChange={(e) => setEditTaxable(e.target.checked)} />
+              <span className="ml-2">Tax applies</span>
+            </span>
+          </label>
+        </div>
+        <button className="rounded bg-emerald-600 px-3 py-2 text-sm text-white">Save Product</button>
+      </form>
 
       <section className="mb-4 rounded border border-zinc-800 p-4">
         <h2 className="mb-2 font-medium">Config Builder: Fabric Roll Print</h2>

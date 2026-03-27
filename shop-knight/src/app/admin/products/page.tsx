@@ -112,7 +112,7 @@ export default function ProductsAdminPage() {
                 <td className="px-4 py-4">{p.salePrice}</td>
                 <td className="px-4 py-4">{p.costPrice ?? '—'}</td>
                 <td className="px-4 py-4">{p.taxable ? 'Yes' : 'No'}</td>
-                <td className="px-4 py-4"><Link href={`/admin/products/${p.id}`} className="text-sky-700">Manage</Link></td>
+                <td className="px-4 py-4"><Link href={`/admin/products/${p.id}`} className="text-sky-700">Edit / Rules</Link></td>
                 <td className="px-4 py-4 text-right">
                   <button
                     type="button"
