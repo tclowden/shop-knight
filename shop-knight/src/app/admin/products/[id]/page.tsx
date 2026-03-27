@@ -21,11 +21,24 @@ type Product = {
   gpmPercent?: string | number | null;
   taxable?: boolean;
   pricingFormula: string | null;
+  pricingType?: 'BASIC' | 'FORMULA' | 'GRID';
 };
 
 type Department = { id: string; name: string };
 type ProductCategory = { id: string; name: string };
 type IncomeAccount = { id: string; code: string; name: string };
+
+type AttributeOption = {
+  id: string;
+  label: string;
+  value?: string | null;
+  sortOrder: number;
+  priceEffectType: 'NONE' | 'ADD' | 'MULTIPLY' | 'OVERRIDE' | 'FORMULA_VAR';
+  priceEffectValue?: string | number | null;
+  costEffectValue?: string | number | null;
+  formulaVarName?: string | null;
+  active: boolean;
+};
 
 type Attribute = {
   id: string;
@@ -33,7 +46,8 @@ type Attribute = {
   name: string;
   inputType: string;
   required: boolean;
-  options: string[] | null;
+  legacyOptions?: string[] | null;
+  options: AttributeOption[];
   defaultValue: string | null;
   sortOrder?: number;
 };
@@ -68,6 +82,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [product, setProduct] = useState<Product | null>(null);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [pricingFormula, setPricingFormula] = useState('basePrice');
+  const [pricingType, setPricingType] = useState<'BASIC' | 'FORMULA' | 'GRID'>('BASIC');
   const [category, setCategory] = useState('');
   const [uom, setUom] = useState('EA');
 
@@ -91,7 +106,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [inputType, setInputType] = useState('NUMBER');
   const [required, setRequired] = useState(false);
   const [defaultValue, setDefaultValue] = useState('');
-  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; priceValue: string; costValue: string }>>([{ label: '', priceValue: '', costValue: '' }]);
+  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; priceValue: string; costValue: string; effectType: 'NONE' | 'ADD' | 'MULTIPLY' | 'OVERRIDE' | 'FORMULA_VAR'; formulaVarName: string }>>([{ label: '', priceValue: '', costValue: '', effectType: 'ADD', formulaVarName: '' }]);
 
   const [previewQty, setPreviewQty] = useState('1');
   const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
@@ -109,6 +124,11 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
   const [builderHemRate, setBuilderHemRate] = useState('1.25');
   const [builderVelcroRate, setBuilderVelcroRate] = useState('2.10');
   const [builderMessage, setBuilderMessage] = useState('');
+  const [gridXAxisLabel, setGridXAxisLabel] = useState('Width');
+  const [gridYAxisLabel, setGridYAxisLabel] = useState('Height');
+  const [gridXBreaksText, setGridXBreaksText] = useState('');
+  const [gridYBreaksText, setGridYBreaksText] = useState('');
+  const [gridCellsText, setGridCellsText] = useState('');
   const [builderSaving, setBuilderSaving] = useState(false);
 
   async function load(productId: string) {
@@ -136,6 +156,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
 
     setProduct(p);
     setPricingFormula(p?.pricingFormula || 'basePrice');
+    setPricingType((p?.pricingType as 'BASIC' | 'FORMULA' | 'GRID' | undefined) || 'BASIC');
     setCategory(p?.category || '');
     setUom(p?.uom || 'EA');
     setEditName(p?.name || '');
@@ -148,7 +169,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setEditCostPrice(p?.costPrice == null ? '' : String(p.costPrice));
     setEditGpmPercent(p?.gpmPercent == null ? '' : String(p.gpmPercent));
     setEditTaxable(Boolean(p?.taxable ?? true));
-    setAttributes(attrs);
+    setAttributes((Array.isArray(attrs) ? attrs : []).map((a: Attribute & { legacyOptions?: string[] | null }) => ({ ...a, options: Array.isArray(a.options) ? a.options : [], legacyOptions: Array.isArray((a as { legacyOptions?: string[] }).legacyOptions) ? (a as { legacyOptions?: string[] }).legacyOptions : null })));
     setMachines(Array.isArray(machineRows) ? machineRows : []);
     setSubstrates(Array.isArray(substrateRows) ? substrateRows : []);
     setInventoryItems(Array.isArray(inventoryRows) ? inventoryRows : []);
@@ -157,6 +178,43 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setCategories(Array.isArray(categoryRows) ? categoryRows.filter((c: { active?: boolean }) => c.active !== false) : []);
     setIncomeAccounts(Array.isArray(incomeAccountRows) ? incomeAccountRows.filter((a: { active?: boolean }) => a.active !== false) : []);
     setPreviewValues(Object.fromEntries(attrs.map((a: Attribute) => [a.code, a.defaultValue || ''])));
+    await loadGrid(productId);
+  }
+
+  async function loadGrid(productId: string) {
+    const res = await fetch(`/api/admin/products/${productId}/pricing-grid`);
+    if (!res.ok) return;
+    const grid = await res.json();
+    if (!grid) return;
+    setGridXAxisLabel(grid.xAxisLabel || 'Width');
+    setGridYAxisLabel(grid.yAxisLabel || 'Height');
+    setGridXBreaksText(Array.isArray(grid.xBreaks) ? grid.xBreaks.join(',') : '');
+    setGridYBreaksText(Array.isArray(grid.yBreaks) ? grid.yBreaks.join(',') : '');
+    const lines = Array.isArray(grid.cells)
+      ? grid.cells.map((c: { xIndex: number; yIndex: number; unitPrice: string | number }) => `${c.xIndex},${c.yIndex},${c.unitPrice}`)
+      : [];
+    setGridCellsText(lines.join('\n'));
+  }
+
+  async function saveGrid() {
+    const xBreaks = gridXBreaksText.split(',').map((v) => v.trim()).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+    const yBreaks = gridYBreaksText.split(',').map((v) => v.trim()).filter(Boolean).map(Number).filter((n) => Number.isFinite(n));
+    const cells = gridCellsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [xIndex, yIndex, unitPrice] = line.split(',').map((v) => v.trim());
+        return { xIndex: Number(xIndex), yIndex: Number(yIndex), unitPrice: Number(unitPrice) };
+      })
+      .filter((c) => Number.isFinite(c.xIndex) && Number.isFinite(c.yIndex) && Number.isFinite(c.unitPrice));
+
+    await fetch(`/api/admin/products/${id}/pricing-grid`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ xAxisLabel: gridXAxisLabel, yAxisLabel: gridYAxisLabel, xBreaks, yBreaks, cells }),
+    });
+    await loadGrid(id);
   }
 
   async function saveCoreDetails(e: FormEvent) {
@@ -177,6 +235,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         costPrice: editCostPrice,
         gpmPercent: editGpmPercent,
         taxable: editTaxable,
+        pricingType,
       }),
     });
     await load(id);
@@ -187,7 +246,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     await fetch(`/api/admin/products/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pricingFormula, category, uom }),
+      body: JSON.stringify({ pricingFormula, category, uom, pricingType }),
     });
     await load(id);
   }
@@ -203,11 +262,17 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         inputType,
         required,
         defaultValue: defaultValue || null,
-        options: inputType === 'SELECT'
+        options: inputType === 'SELECT' || inputType === 'MULTI_SELECT'
           ? selectOptions
-              .map((opt) => ({ label: opt.label.trim(), price: opt.priceValue.trim(), cost: opt.costValue.trim() }))
-              .filter((opt) => opt.label && opt.price)
-              .map((opt) => (opt.cost ? `${opt.label}|${opt.price}|${opt.cost}` : `${opt.label}|${opt.price}`))
+              .map((opt, index) => ({
+                label: opt.label.trim(),
+                sortOrder: index,
+                priceEffectType: opt.effectType,
+                priceEffectValue: opt.priceValue.trim() || null,
+                costEffectValue: opt.costValue.trim() || null,
+                formulaVarName: opt.formulaVarName.trim() || null,
+              }))
+              .filter((opt) => opt.label)
           : null,
       }),
     });
@@ -217,16 +282,16 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
     setInputType('NUMBER');
     setRequired(false);
     setDefaultValue('');
-    setSelectOptions([{ label: '', priceValue: '', costValue: '' }]);
+    setSelectOptions([{ label: '', priceValue: '', costValue: '', effectType: 'ADD', formulaVarName: '' }]);
     await load(id);
   }
 
-  function updateSelectOption(index: number, patch: { label?: string; priceValue?: string; costValue?: string }) {
+  function updateSelectOption(index: number, patch: { label?: string; priceValue?: string; costValue?: string; effectType?: 'NONE' | 'ADD' | 'MULTIPLY' | 'OVERRIDE' | 'FORMULA_VAR'; formulaVarName?: string }) {
     setSelectOptions((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
   function addSelectOptionRow() {
-    setSelectOptions((prev) => [...prev, { label: '', priceValue: '', costValue: '' }]);
+    setSelectOptions((prev) => [...prev, { label: '', priceValue: '', costValue: '', effectType: 'ADD', formulaVarName: '' }]);
   }
 
   function removeSelectOptionRow(index: number) {
@@ -468,6 +533,13 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           <label className="text-xs text-zinc-300">Type
             <input value={editType} onChange={(e) => setEditType(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
           </label>
+          <label className="text-xs text-zinc-300">Pricing Type
+            <select value={pricingType} onChange={(e) => setPricingType(e.target.value as 'BASIC' | 'FORMULA' | 'GRID')} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
+              <option value="BASIC">BASIC</option>
+              <option value="FORMULA">FORMULA</option>
+              <option value="GRID">GRID</option>
+            </select>
+          </label>
           <label className="text-xs text-zinc-300">Department
             <select value={editDepartmentId} onChange={(e) => setEditDepartmentId(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
               <option value="">Select department</option>
@@ -573,6 +645,21 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         <button className="rounded bg-blue-600 px-3 py-2 text-sm">Save Rules</button>
       </form>
 
+      {pricingType === 'GRID' ? (
+        <section className="mb-4 rounded border border-zinc-800 p-4 space-y-2">
+          <h2 className="font-medium">Pricing Grid Editor</h2>
+          <p className="text-xs text-zinc-400">X/Y breaks are comma-separated. Cells are one per line as: xIndex,yIndex,unitPrice</p>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <input value={gridXAxisLabel} onChange={(e) => setGridXAxisLabel(e.target.value)} placeholder="X Axis Label" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={gridYAxisLabel} onChange={(e) => setGridYAxisLabel(e.target.value)} placeholder="Y Axis Label" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={gridXBreaksText} onChange={(e) => setGridXBreaksText(e.target.value)} placeholder="X breaks e.g. 12,24,36" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+            <input value={gridYBreaksText} onChange={(e) => setGridYBreaksText(e.target.value)} placeholder="Y breaks e.g. 12,24,36" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          </div>
+          <textarea value={gridCellsText} onChange={(e) => setGridCellsText(e.target.value)} rows={6} placeholder="0,0,12.50\n1,0,15.00" className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <button type="button" onClick={saveGrid} className="rounded bg-indigo-600 px-3 py-2 text-sm text-white">Save Grid</button>
+        </section>
+      ) : null}
+
       <div className="mb-4 rounded border border-zinc-800 p-4">
         <h2 className="mb-2 font-medium">Formula Preview</h2>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
@@ -583,10 +670,10 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
           {attributes.map((attr) => (
             <label key={attr.id} className="text-xs text-zinc-300">
               {attr.name}
-              {attr.inputType === 'SELECT' ? (
+              {attr.inputType === 'SELECT' || attr.inputType === 'MULTI_SELECT' ? (
                 <select value={previewValues[attr.code] || ''} onChange={(e) => setPreviewValues((p) => ({ ...p, [attr.code]: e.target.value }))} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900">
                   <option value="">Select</option>
-                  {(attr.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                  {(attr.options || []).map((o) => <option key={o.id} value={o.value || o.label}>{o.label}</option>)}
                 </select>
               ) : attr.inputType === 'BOOLEAN' ? (
                 <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
@@ -609,12 +696,12 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
         <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="code (e.g. width)" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Label" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
         <select value={inputType} onChange={(e) => setInputType(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
-          <option value="NUMBER">NUMBER</option><option value="TEXT">TEXT</option><option value="SELECT">SELECT</option><option value="BOOLEAN">BOOLEAN</option>
+          <option value="NUMBER">NUMBER</option><option value="TEXT">TEXT</option><option value="SELECT">SELECT</option><option value="MULTI_SELECT">MULTI_SELECT</option><option value="BOOLEAN">BOOLEAN</option>
         </select>
         <input value={defaultValue} onChange={(e) => setDefaultValue(e.target.value)} placeholder="default value" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         <label className="flex items-center gap-2 rounded border border-zinc-700 p-2 text-sm"><input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} /> Required</label>
 
-        {inputType === 'SELECT' ? (
+        {inputType === 'SELECT' || inputType === 'MULTI_SELECT' ? (
           <div className="md:col-span-6 rounded border border-zinc-700 p-3">
             <p className="mb-2 text-xs text-zinc-300">Select options with explicit price differentiator</p>
             <div className="space-y-2">
@@ -624,29 +711,33 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
                     value={row.label}
                     onChange={(e) => updateSelectOption(index, { label: e.target.value })}
                     placeholder="Option label (e.g. Backlit Fabric)"
-                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-4"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-3"
                   />
+                  <select value={row.effectType} onChange={(e) => updateSelectOption(index, { effectType: e.target.value as 'NONE' | 'ADD' | 'MULTIPLY' | 'OVERRIDE' | 'FORMULA_VAR' })} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2">
+                    <option value="NONE">NONE</option><option value="ADD">ADD</option><option value="MULTIPLY">MULTIPLY</option><option value="OVERRIDE">OVERRIDE</option><option value="FORMULA_VAR">FORMULA_VAR</option>
+                  </select>
                   <input
                     value={row.priceValue}
                     onChange={(e) => updateSelectOption(index, { priceValue: e.target.value })}
-                    placeholder="Price value (e.g. 1.55)"
+                    placeholder="Price effect"
                     type="number"
                     step="0.01"
-                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-3"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2"
                   />
                   <input
                     value={row.costValue}
                     onChange={(e) => updateSelectOption(index, { costValue: e.target.value })}
-                    placeholder="Cost value (optional, e.g. 0.72)"
+                    placeholder="Cost effect"
                     type="number"
                     step="0.01"
-                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-3"
+                    className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2"
                   />
+                  <input value={row.formulaVarName} onChange={(e) => updateSelectOption(index, { formulaVarName: e.target.value })} placeholder="Formula var" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900 md:col-span-2" />
                   <button
                     type="button"
                     onClick={() => removeSelectOptionRow(index)}
                     disabled={selectOptions.length === 1}
-                    className="rounded border border-zinc-700 px-2 py-1 text-xs md:col-span-2 disabled:opacity-50"
+                    className="rounded border border-zinc-700 px-2 py-1 text-xs md:col-span-1 disabled:opacity-50"
                   >
                     Remove
                   </button>
@@ -656,7 +747,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
             <button type="button" onClick={addSelectOptionRow} className="mt-2 rounded border border-zinc-700 px-2 py-1 text-xs">
               + Add Option
             </button>
-            <p className="mt-2 text-[11px] text-zinc-500">Stored format is Label|Price|Cost (cost optional). Formulas still use the price value.</p>
+            <p className="mt-2 text-[11px] text-zinc-500">Supports ADD, MULTIPLY, OVERRIDE, and FORMULA_VAR effects per option.</p>
           </div>
         ) : null}
 
@@ -666,7 +757,7 @@ export default function ProductDetailAdminPage({ params }: { params: Promise<{ i
       <div className="overflow-hidden rounded border border-zinc-800">
         <table className="w-full text-left text-sm">
           <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Code</th><th className="p-3">Label</th><th className="p-3">Type</th><th className="p-3">Default</th><th className="p-3">Options</th><th className="p-3">Required</th></tr></thead>
-          <tbody>{attributes.map((a) => (<tr key={a.id} className="border-t border-zinc-800"><td className="p-3">{a.code}</td><td className="p-3">{a.name}</td><td className="p-3">{a.inputType}</td><td className="p-3">{a.defaultValue || '—'}</td><td className="p-3">{a.options?.join(', ') || '—'}</td><td className="p-3">{a.required ? 'Yes' : 'No'}</td></tr>))}</tbody>
+          <tbody>{attributes.map((a) => (<tr key={a.id} className="border-t border-zinc-800"><td className="p-3">{a.code}</td><td className="p-3">{a.name}</td><td className="p-3">{a.inputType}</td><td className="p-3">{a.defaultValue || '—'}</td><td className="p-3">{a.options?.map((o) => `${o.label} [${o.priceEffectType}${o.priceEffectValue != null ? `:${o.priceEffectValue}` : ''}]`).join(', ') || a.legacyOptions?.join(', ') || '—'}</td><td className="p-3">{a.required ? 'Yes' : 'No'}</td></tr>))}</tbody>
         </table>
       </div>
 

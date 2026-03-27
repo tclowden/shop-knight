@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ProductPricingType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 
@@ -38,7 +39,10 @@ export async function GET(req: Request) {
           : { active: true }),
     },
     include: {
-      attributes: { orderBy: { sortOrder: 'asc' } },
+      attributes: {
+        orderBy: { sortOrder: 'asc' },
+        include: { options: { where: { active: true }, orderBy: { sortOrder: 'asc' } } },
+      },
       department: { select: { id: true, name: true } },
       incomeAccount: { select: { id: true, code: true, name: true } },
       productCategory: { select: { id: true, name: true } },
@@ -65,6 +69,9 @@ export async function POST(req: Request) {
   const departmentId = body?.departmentId ? String(body.departmentId) : null;
   const incomeAccountId = body?.incomeAccountId ? String(body.incomeAccountId) : null;
   const categoryId = body?.categoryId ? String(body.categoryId) : null;
+  const pricingType = Object.values(ProductPricingType).includes(body?.pricingType)
+    ? (body.pricingType as ProductPricingType)
+    : ProductPricingType.BASIC;
 
   if (!name || salePrice === null) {
     return NextResponse.json({ error: 'name and salePrice are required' }, { status: 400 });
@@ -108,6 +115,7 @@ export async function POST(req: Request) {
             salePrice,
             costPrice,
             gpmPercent,
+            pricingType,
             taxable: body?.taxable === false ? false : true,
             active: true,
           },

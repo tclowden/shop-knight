@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ProductPricingType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requirePermissions } from '@/lib/api-auth';
 
@@ -51,6 +52,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id },
     data: {
       pricingFormula: body?.pricingFormula !== undefined ? (body?.pricingFormula ? String(body.pricingFormula) : null) : undefined,
+      pricingType: body?.pricingType !== undefined && Object.values(ProductPricingType).includes(body.pricingType)
+        ? (body.pricingType as ProductPricingType)
+        : undefined,
       name: body?.name ? String(body.name) : undefined,
       type: body?.type !== undefined ? String(body.type || '') : undefined,
       description: body?.description !== undefined ? String(body.description || '') : undefined,

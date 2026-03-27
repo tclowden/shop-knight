@@ -14,7 +14,7 @@ type PricingImpact = 'NONE' | 'FIXED_ADD' | 'PER_SQ_UNIT' | 'MULTIPLIER';
 type DraftAttribute = {
   code: string;
   name: string;
-  inputType: 'NUMBER' | 'TEXT' | 'SELECT' | 'BOOLEAN';
+  inputType: 'NUMBER' | 'TEXT' | 'SELECT' | 'MULTI_SELECT' | 'BOOLEAN';
   required: boolean;
   defaultValue: string;
   optionsCsv: string;
@@ -35,6 +35,7 @@ export default function NewProductPage() {
   const [costPrice, setCostPrice] = useState('0.00');
   const [gpmPercent, setGpmPercent] = useState('35');
   const [taxable, setTaxable] = useState(true);
+  const [pricingType, setPricingType] = useState<'BASIC' | 'FORMULA' | 'GRID'>('BASIC');
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -106,7 +107,7 @@ export default function NewProductPage() {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    if (attrInputType === 'SELECT' && parsedOptions.length === 0) {
+    if (attrInputType === 'SELECT' || attrInputType === 'MULTI_SELECT' && parsedOptions.length === 0) {
       setError('Dropdown attributes need at least one choice.');
       return;
     }
@@ -225,6 +226,7 @@ export default function NewProductPage() {
           costPrice,
           gpmPercent,
           taxable,
+          pricingType,
         }),
       });
 
@@ -250,7 +252,7 @@ export default function NewProductPage() {
               required: attr.required,
               defaultValue: attr.defaultValue || null,
               sortOrder: index,
-              options: attr.inputType === 'SELECT'
+              options: attr.inputType === 'SELECT' || attr.inputType === 'MULTI_SELECT'
                 ? attr.optionsCsv.split('\n').map((s) => s.trim()).filter(Boolean)
                 : null,
             }),
@@ -317,6 +319,15 @@ export default function NewProductPage() {
           <label className="text-sm font-medium text-slate-700">
             Type
             <input value={type} onChange={(e) => setType(e.target.value)} placeholder="PRINT, LABOR, INSTALL..." className="field mt-1" required />
+          </label>
+
+          <label className="text-sm font-medium text-slate-700">
+            Pricing Type
+            <select value={pricingType} onChange={(e) => setPricingType(e.target.value as 'BASIC' | 'FORMULA' | 'GRID')} className="field mt-1">
+              <option value="BASIC">BASIC</option>
+              <option value="FORMULA">FORMULA</option>
+              <option value="GRID">GRID</option>
+            </select>
           </label>
 
           <label className="text-sm font-medium text-slate-700">
@@ -400,7 +411,7 @@ export default function NewProductPage() {
                     <td className="px-3 py-2">{a.name}</td>
                     <td className="px-3 py-2">{a.inputType}</td>
                     <td className="px-3 py-2">{a.defaultValue || '—'}</td>
-                    <td className="px-3 py-2">{a.inputType === 'SELECT' ? (a.optionsCsv || '—') : '—'}</td>
+                    <td className="px-3 py-2">{a.inputType === 'SELECT' || a.inputType === 'MULTI_SELECT' ? (a.optionsCsv || '—') : '—'}</td>
                     <td className="px-3 py-2">{a.pricingImpact === 'NONE' ? 'No impact' : a.pricingImpact === 'FIXED_ADD' ? 'Add selected value' : a.pricingImpact === 'PER_SQ_UNIT' ? 'Per sq unit × area' : 'Multiplier'}</td>
                     <td className="px-3 py-2">{a.required ? 'Yes' : 'No'}</td>
                     <td className="px-3 py-2 text-right">
@@ -461,7 +472,8 @@ export default function NewProductPage() {
                       <select value={attrInputType} onChange={(e) => setAttrInputType(e.target.value as DraftAttribute['inputType'])} className="field mt-1">
                         <option value="NUMBER">Number (for dimensions/pricing)</option>
                         <option value="TEXT">Text (free entry)</option>
-                        <option value="SELECT">Dropdown (pick from list)</option>
+                        <option value="SELECT">Dropdown (pick one)</option>
+                        <option value="MULTI_SELECT">Dropdown (pick multiple)</option>
                         <option value="BOOLEAN">Yes / No</option>
                       </select>
                     </label>
@@ -494,7 +506,7 @@ export default function NewProductPage() {
                         <option value="MULTIPLIER">Multiply price by selected value</option>
                       </select>
                     </label>
-                    {attrInputType === 'SELECT' ? (
+                    {attrInputType === 'SELECT' || attrInputType === 'MULTI_SELECT' ? (
                       <label className="text-xs font-medium text-slate-700 md:col-span-2">
                         Dropdown Choices (one per line)
                         <textarea value={attrOptionsCsv} onChange={(e) => setAttrOptionsCsv(e.target.value)} placeholder={"Standard\nPremium\nRush|25"} rows={5} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring" />
@@ -511,7 +523,7 @@ export default function NewProductPage() {
                     <p><span className="font-semibold">Starting Value:</span> {attrDefaultValue || '—'}</p>
                     <p><span className="font-semibold">Required:</span> {attrRequired ? 'Yes' : 'No'}</p>
                     <p><span className="font-semibold">Pricing Impact:</span> {attrPricingImpact === 'NONE' ? 'No impact' : attrPricingImpact === 'FIXED_ADD' ? 'Add selected value' : attrPricingImpact === 'PER_SQ_UNIT' ? 'Per sq unit × area' : 'Multiplier'}</p>
-                    {attrInputType === 'SELECT' ? <p><span className="font-semibold">Choices:</span> {(attrOptionsCsv || '—').split('\n').filter(Boolean).join(', ') || '—'}</p> : null}
+                    {attrInputType === 'SELECT' || attrInputType === 'MULTI_SELECT' ? <p><span className="font-semibold">Choices:</span> {(attrOptionsCsv || '—').split('\n').filter(Boolean).join(', ') || '—'}</p> : null}
                   </div>
                 ) : null}
 

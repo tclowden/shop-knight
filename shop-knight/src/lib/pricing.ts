@@ -1,5 +1,20 @@
 type Vars = Record<string, number>;
 
+export type PricingEffectType = 'NONE' | 'ADD' | 'MULTIPLY' | 'OVERRIDE' | 'FORMULA_VAR';
+
+export type OptionPricingEffect = {
+  label?: string;
+  priceEffectType?: PricingEffectType;
+  priceEffectValue?: number | string | null;
+  formulaVarName?: string | null;
+};
+
+export type OptionPricingResult = {
+  unitPrice: number;
+  vars: Vars;
+  applied: Array<{ type: PricingEffectType; value: number; formulaVarName?: string | null }>;
+};
+
 function parseBooleanString(value: string): number | null {
   const lowered = value.trim().toLowerCase();
   if (['true', 'yes', 'y', 'on'].includes(lowered)) return 1;
@@ -8,7 +23,6 @@ function parseBooleanString(value: string): number | null {
 }
 
 function parseNumberFromOptionLabel(value: string): number | null {
-  // Allows option values like: "Standard|0", "Rush|25", "Substrate|1.35|0.72", "Premium (+1.2)", "2.5"
   const parts = value.split('|').map((p) => p.trim());
   if (parts.length >= 2) {
     for (let i = 1; i < parts.length; i += 1) {
@@ -47,6 +61,48 @@ function toNumber(value: unknown): number {
 
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+export function applyOptionPricingEffects(basePrice: number, effects: OptionPricingEffect[] | null | undefined, baseVars?: Vars): OptionPricingResult {
+  const vars: Vars = { ...(baseVars || {}) };
+  const safeBase = toNumber(basePrice);
+  const safeEffects = Array.isArray(effects) ? effects : [];
+
+  let addTotal = 0;
+  let multiplyTotal = 1;
+  let overrideValue: number | null = null;
+  const applied: OptionPricingResult['applied'] = [];
+
+  for (const effect of safeEffects) {
+    const type = effect.priceEffectType || 'NONE';
+    const value = toNumber(effect.priceEffectValue);
+
+    if (type === 'ADD') {
+      addTotal += value;
+      applied.push({ type, value });
+    } else if (type === 'MULTIPLY') {
+      multiplyTotal *= value || 1;
+      applied.push({ type, value });
+    } else if (type === 'OVERRIDE') {
+      overrideValue = value;
+      applied.push({ type, value });
+    } else if (type === 'FORMULA_VAR') {
+      const key = String(effect.formulaVarName || '').trim();
+      if (key && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+        vars[key] = value;
+        applied.push({ type, value, formulaVarName: key });
+      }
+    }
+  }
+
+  let unitPrice = safeBase;
+  if (overrideValue !== null) {
+    unitPrice = overrideValue;
+  } else {
+    unitPrice = (safeBase + addTotal) * multiplyTotal;
+  }
+
+  return { unitPrice: Number(unitPrice.toFixed(2)), vars, applied };
 }
 
 export function computeUnitPrice(basePrice: number, formula: string | null | undefined, vars: Vars) {
@@ -90,8 +146,6 @@ export type PriceBreakdownItem = {
 export function computePriceBreakdown(basePrice: number, formula: string | null | undefined, vars: Vars): PriceBreakdownItem[] {
   const normalized = (formula || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-  // Preferred fabric print formula:
-  // ((basePrice + substrate) * width * height) + machine
   if (
     normalized === '((baseprice + substrate) * width * height) + machine' ||
     normalized === '(baseprice + substrate) * width * height + machine'
