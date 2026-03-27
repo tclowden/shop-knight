@@ -1,17 +1,27 @@
--- CreateEnum
-CREATE TYPE "ProductPricingType" AS ENUM ('BASIC', 'FORMULA', 'GRID');
+-- CreateEnum (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ProductPricingType') THEN
+    CREATE TYPE "ProductPricingType" AS ENUM ('BASIC', 'FORMULA', 'GRID');
+  END IF;
+END $$;
 
 -- AlterEnum
 ALTER TYPE "AttributeInputType" ADD VALUE IF NOT EXISTS 'MULTI_SELECT';
 
--- CreateEnum
-CREATE TYPE "PricingEffectType" AS ENUM ('NONE', 'ADD', 'MULTIPLY', 'OVERRIDE', 'FORMULA_VAR');
+-- CreateEnum (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'PricingEffectType') THEN
+    CREATE TYPE "PricingEffectType" AS ENUM ('NONE', 'ADD', 'MULTIPLY', 'OVERRIDE', 'FORMULA_VAR');
+  END IF;
+END $$;
 
 -- AlterTable
-ALTER TABLE "Product" ADD COLUMN "pricingType" "ProductPricingType" NOT NULL DEFAULT 'BASIC';
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "pricingType" "ProductPricingType" NOT NULL DEFAULT 'BASIC';
 
 -- CreateTable
-CREATE TABLE "ProductAttributeOption" (
+CREATE TABLE IF NOT EXISTS "ProductAttributeOption" (
     "id" TEXT NOT NULL,
     "attributeId" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -26,7 +36,7 @@ CREATE TABLE "ProductAttributeOption" (
 );
 
 -- CreateTable
-CREATE TABLE "ProductPricingGrid" (
+CREATE TABLE IF NOT EXISTS "ProductPricingGrid" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
     "xAxisLabel" TEXT,
@@ -37,7 +47,7 @@ CREATE TABLE "ProductPricingGrid" (
 );
 
 -- CreateTable
-CREATE TABLE "ProductPricingGridCell" (
+CREATE TABLE IF NOT EXISTS "ProductPricingGridCell" (
     "id" TEXT NOT NULL,
     "gridId" TEXT NOT NULL,
     "xIndex" INTEGER NOT NULL,
@@ -47,17 +57,26 @@ CREATE TABLE "ProductPricingGridCell" (
 );
 
 -- Indexes
-CREATE INDEX "ProductAttributeOption_attributeId_sortOrder_idx" ON "ProductAttributeOption"("attributeId", "sortOrder");
-CREATE UNIQUE INDEX "ProductPricingGrid_productId_key" ON "ProductPricingGrid"("productId");
-CREATE UNIQUE INDEX "ProductPricingGridCell_gridId_xIndex_yIndex_key" ON "ProductPricingGridCell"("gridId", "xIndex", "yIndex");
+CREATE INDEX IF NOT EXISTS "ProductAttributeOption_attributeId_sortOrder_idx" ON "ProductAttributeOption"("attributeId", "sortOrder");
+CREATE UNIQUE INDEX IF NOT EXISTS "ProductPricingGrid_productId_key" ON "ProductPricingGrid"("productId");
+CREATE UNIQUE INDEX IF NOT EXISTS "ProductPricingGridCell_gridId_xIndex_yIndex_key" ON "ProductPricingGridCell"("gridId", "xIndex", "yIndex");
 
--- FKs
-ALTER TABLE "ProductAttributeOption" ADD CONSTRAINT "ProductAttributeOption_attributeId_fkey"
-  FOREIGN KEY ("attributeId") REFERENCES "ProductAttribute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "ProductPricingGrid" ADD CONSTRAINT "ProductPricingGrid_productId_fkey"
-  FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "ProductPricingGridCell" ADD CONSTRAINT "ProductPricingGridCell_gridId_fkey"
-  FOREIGN KEY ("gridId") REFERENCES "ProductPricingGrid"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- FKs (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ProductAttributeOption_attributeId_fkey') THEN
+    ALTER TABLE "ProductAttributeOption" ADD CONSTRAINT "ProductAttributeOption_attributeId_fkey"
+      FOREIGN KEY ("attributeId") REFERENCES "ProductAttribute"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ProductPricingGrid_productId_fkey') THEN
+    ALTER TABLE "ProductPricingGrid" ADD CONSTRAINT "ProductPricingGrid_productId_fkey"
+      FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ProductPricingGridCell_gridId_fkey') THEN
+    ALTER TABLE "ProductPricingGridCell" ADD CONSTRAINT "ProductPricingGridCell_gridId_fkey"
+      FOREIGN KEY ("gridId") REFERENCES "ProductPricingGrid"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- Backfill legacy options JSON arrays into ProductAttributeOption
 INSERT INTO "ProductAttributeOption" (
@@ -86,6 +105,12 @@ SELECT
 FROM "ProductAttribute" pa
 CROSS JOIN LATERAL (
   SELECT elem.value AS item, elem.ordinality AS idx
-  FROM jsonb_array_elements_text(COALESCE(pa."options", '[]'::jsonb)) WITH ORDINALITY AS elem(value, ordinality)
+  FROM jsonb_array_elements_text(
+    CASE
+      WHEN jsonb_typeof(COALESCE(pa."options", '[]'::jsonb)) = 'array' THEN COALESCE(pa."options", '[]'::jsonb)
+      ELSE '[]'::jsonb
+    END
+  ) WITH ORDINALITY AS elem(value, ordinality)
 ) opt
-WHERE nullif(trim(split_part(opt.item, '|', 1)), '') IS NOT NULL;
+WHERE nullif(trim(split_part(opt.item, '|', 1)), '') IS NOT NULL
+ON CONFLICT ("id") DO NOTHING;
