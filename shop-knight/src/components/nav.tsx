@@ -69,6 +69,7 @@ export function Nav() {
   const [selectedEmulationUserId, setSelectedEmulationUserId] = useState('');
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
   const avatarUrl = session?.user?.image || null;
@@ -203,17 +204,18 @@ export function Nav() {
     setSelectedEmulationUserId(availableEmulationUsers[0].id);
   }, [profileOpen, selectedEmulationUserId, availableEmulationUsers]);
 
-  function scheduleClose(menu: 'transactions' | 'admin') {
-    const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
+  function scheduleClose(menu: 'transactions' | 'admin' | 'profile') {
+    const timerRef = menu === 'transactions' ? transactionsCloseTimer : menu === 'admin' ? adminCloseTimer : profileCloseTimer;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       if (menu === 'transactions') setTransactionsOpen(false);
-      else setAdminOpen(false);
-    }, 150);
+      else if (menu === 'admin') setAdminOpen(false);
+      else setProfileOpen(false);
+    }, 500);
   }
 
-  function cancelClose(menu: 'transactions' | 'admin') {
-    const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
+  function cancelClose(menu: 'transactions' | 'admin' | 'profile') {
+    const timerRef = menu === 'transactions' ? transactionsCloseTimer : menu === 'admin' ? adminCloseTimer : profileCloseTimer;
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -315,7 +317,7 @@ export function Nav() {
           </Link>
         ) : null}
 
-        <div className="relative ml-auto">
+        <div className="relative ml-auto" onMouseEnter={() => cancelClose('profile')} onMouseLeave={() => scheduleClose('profile')}>
           <button
             type="button"
             onClick={() => setProfileOpen((v) => !v)}
