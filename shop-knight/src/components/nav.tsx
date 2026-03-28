@@ -54,8 +54,18 @@ type EmulationCandidate = {
   activeCompanyId?: string | null;
 };
 
+function DropdownSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
 export function Nav() {
   const { data: session, update } = useSession();
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -68,6 +78,7 @@ export function Nav() {
   const [emulationError, setEmulationError] = useState('');
   const [selectedEmulationUserId, setSelectedEmulationUserId] = useState('');
   const [emulationQuery, setEmulationQuery] = useState('');
+  const workspaceCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,6 +93,9 @@ export function Nav() {
   const sortedTransactionLinks = useMemo(() => [...transactionLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedAdminLinks = useMemo(() => [...adminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedSuperAdminLinks = useMemo(() => [...superAdminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
+
+  const primaryTopLinks = useMemo(() => sortedTopLinks.filter((link) => ['Dashboard', 'Customers', 'Tasks', 'Time', 'Vendors'].includes(link.label)), [sortedTopLinks]);
+  const workspaceLinks = useMemo(() => sortedTopLinks.filter((link) => !['Dashboard', 'Customers', 'Tasks', 'Time', 'Vendors'].includes(link.label)), [sortedTopLinks]);
 
   const availableEmulationUsers = useMemo(() => {
     if (!isAdmin) return [];
@@ -222,18 +236,31 @@ export function Nav() {
     }
   }, [profileOpen, selectedEmulationUserId, filteredEmulationUsers]);
 
-  function scheduleClose(menu: 'transactions' | 'admin' | 'profile') {
-    const timerRef = menu === 'transactions' ? transactionsCloseTimer : menu === 'admin' ? adminCloseTimer : profileCloseTimer;
+  function scheduleClose(menu: 'workspace' | 'transactions' | 'admin' | 'profile') {
+    const timerRef = menu === 'workspace'
+      ? workspaceCloseTimer
+      : menu === 'transactions'
+        ? transactionsCloseTimer
+        : menu === 'admin'
+          ? adminCloseTimer
+          : profileCloseTimer;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      if (menu === 'transactions') setTransactionsOpen(false);
+      if (menu === 'workspace') setWorkspaceOpen(false);
+      else if (menu === 'transactions') setTransactionsOpen(false);
       else if (menu === 'admin') setAdminOpen(false);
       else setProfileOpen(false);
     }, 75);
   }
 
-  function cancelClose(menu: 'transactions' | 'admin' | 'profile') {
-    const timerRef = menu === 'transactions' ? transactionsCloseTimer : menu === 'admin' ? adminCloseTimer : profileCloseTimer;
+  function cancelClose(menu: 'workspace' | 'transactions' | 'admin' | 'profile') {
+    const timerRef = menu === 'workspace'
+      ? workspaceCloseTimer
+      : menu === 'transactions'
+        ? transactionsCloseTimer
+        : menu === 'admin'
+          ? adminCloseTimer
+          : profileCloseTimer;
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -241,9 +268,9 @@ export function Nav() {
   }
 
   return (
-    <nav className="sticky top-0 z-40 mb-6 border-b border-slate-200 bg-[#f5f7fa]/95 pb-3 pt-2 text-sm backdrop-blur">
+    <nav className="sticky top-0 z-40 space-y-2 border-b border-slate-200 bg-[#f5f7fa]/95 pb-3 pt-2 text-sm backdrop-blur">
       {isEmulating ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-amber-900">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-amber-900">
           <p className="text-sm font-semibold">
             Emulation Active: You are currently acting as <span className="underline decoration-amber-400">{session?.user?.name || 'selected user'}</span>
           </p>
@@ -256,19 +283,43 @@ export function Nav() {
           </button>
         </div>
       ) : null}
-      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {sortedTopLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="whitespace-nowrap rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {primaryTopLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="whitespace-nowrap rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="relative" onMouseEnter={() => cancelClose('workspace')} onMouseLeave={() => scheduleClose('workspace')}>
+          <button
+            type="button"
+            onClick={() => setWorkspaceOpen((v) => !v)}
+            className="list-none cursor-pointer rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+          >
+            Workspace ▾
+          </button>
+          {workspaceOpen ? (
+            <div className="absolute left-0 top-full z-20 min-w-56 pt-1">
+              <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                <DropdownSection title="Shortcuts">
+                  {workspaceLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setWorkspaceOpen(false)}>
+                      {link.label}
+                    </Link>
+                  ))}
+                </DropdownSection>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         <div className="relative" onMouseEnter={() => cancelClose('transactions')} onMouseLeave={() => scheduleClose('transactions')}>
           <button
             type="button"
@@ -278,13 +329,15 @@ export function Nav() {
             Transactions ▾
           </button>
           {transactionsOpen ? (
-            <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
+            <div className="absolute left-0 top-full z-20 min-w-56 pt-1">
               <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                {sortedTransactionLinks.map((link) => (
-                  <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
-                    {link.label}
-                  </Link>
-                ))}
+                <DropdownSection title="Sales & Jobs">
+                  {sortedTransactionLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
+                      {link.label}
+                    </Link>
+                  ))}
+                </DropdownSection>
               </div>
             </div>
           ) : null}
@@ -300,21 +353,25 @@ export function Nav() {
               Admin ▾
             </button>
             {adminOpen ? (
-              <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
+              <div className="absolute left-0 top-full z-20 min-w-64 pt-1">
                 <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                  {sortedAdminLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
-                      {link.label}
-                    </Link>
-                  ))}
+                  <DropdownSection title="Configuration">
+                    {sortedAdminLinks.map((link) => (
+                      <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                        {link.label}
+                      </Link>
+                    ))}
+                  </DropdownSection>
                   {isSuperAdmin ? (
                     <>
-                      <div className="my-1 border-t border-slate-200" />
-                      {sortedSuperAdminLinks.map((link) => (
-                        <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
-                          {link.label}
-                        </Link>
-                      ))}
+                      <div className="my-2 border-t border-slate-200" />
+                      <DropdownSection title="Global">
+                        {sortedSuperAdminLinks.map((link) => (
+                          <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
+                            {link.label}
+                          </Link>
+                        ))}
+                      </DropdownSection>
                     </>
                   ) : null}
                 </div>
@@ -323,105 +380,112 @@ export function Nav() {
           </div>
         ) : null}
 
-        <CompanySwitcher />
+        <div className="ml-auto flex items-center gap-2">
+          <CompanySwitcher />
 
-        {clockedInRecord ? (
-          <Link
-            href="/profile"
-            className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
-            title={`Clocked in to ${clockedInRecord}`}
-          >
-            Clocked In: {clockedInRecord}
-          </Link>
-        ) : null}
+          {clockedInRecord ? (
+            <Link
+              href="/profile"
+              className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+              title={`Clocked in to ${clockedInRecord}`}
+            >
+              Clocked In: {clockedInRecord}
+            </Link>
+          ) : null}
 
-        <div className="relative ml-auto" onMouseEnter={() => cancelClose('profile')} onMouseLeave={() => scheduleClose('profile')}>
-          <button
-            type="button"
-            onClick={() => setProfileOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:border-sky-300"
-            title="Profile"
-          >
-            {avatarUrl ? <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
-          </button>
-          {profileOpen ? (
-            <div className="absolute right-0 top-full z-20 min-w-44 pt-1">
-              <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                <Link href="/profile" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setProfileOpen(false)}>
-                  My Profile
-                </Link>
-                <Link href="/time" className="mt-1 block rounded-lg px-3 py-2 text-sky-700 hover:bg-sky-50" onClick={() => setProfileOpen(false)}>
-                  {clockedInRecord ? 'Switch Clock-In Record' : 'Clock In'}
-                </Link>
-                {clockedInRecord ? (
-                  <button
-                    type="button"
-                    onClick={quickClockOut}
-                    disabled={clockBusy}
-                    className="mt-1 w-full rounded-lg px-3 py-2 text-left text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
-                  >
-                    {clockBusy ? 'Clocking out…' : 'Clock Out'}
-                  </button>
-                ) : null}
-                {clockError ? <p className="mt-1 px-3 text-xs text-rose-600">{clockError}</p> : null}
-
-                {isAdmin ? (
-                  <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emulation</p>
-                    {!isEmulating ? (
-                      <>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">Search User</label>
-                        <input
-                          value={emulationQuery}
-                          onChange={(e) => setEmulationQuery(e.target.value)}
-                          placeholder="Type name or email"
-                          className="mb-2 h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
-                          disabled={emulationLoading || emulationBusy || availableEmulationUsers.length === 0}
-                        />
-                        <label className="mb-1 block text-xs font-medium text-slate-600">Emulate User</label>
-                        <select
-                          value={selectedEmulationUserId}
-                          onChange={(e) => setSelectedEmulationUserId(e.target.value)}
-                          className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
-                          disabled={emulationLoading || emulationBusy || filteredEmulationUsers.length === 0}
-                        >
-                          {filteredEmulationUsers.length === 0 ? <option value="">No matching users</option> : null}
-                          {filteredEmulationUsers.map((u) => (
-                            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={startEmulation}
-                          disabled={emulationLoading || emulationBusy || !selectedEmulationUserId || filteredEmulationUsers.length === 0}
-                          className="mt-2 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
-                        >
-                          {emulationBusy ? 'Starting Emulation…' : emulationLoading ? 'Loading Users…' : 'Start Emulation'}
-                        </button>
-                      </>
-                    ) : (
+          <div className="relative" onMouseEnter={() => cancelClose('profile')} onMouseLeave={() => scheduleClose('profile')}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:border-sky-300"
+              title="Profile"
+            >
+              {avatarUrl ? <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+            </button>
+            {profileOpen ? (
+              <div className="absolute right-0 top-full z-20 min-w-64 pt-1">
+                <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  <DropdownSection title="Account">
+                    <Link href="/profile" className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setProfileOpen(false)}>
+                      My Profile
+                    </Link>
+                    <Link href="/time" className="block rounded-lg px-3 py-2 text-sky-700 hover:bg-sky-50" onClick={() => setProfileOpen(false)}>
+                      {clockedInRecord ? 'Switch Clock-In Record' : 'Clock In'}
+                    </Link>
+                    {clockedInRecord ? (
                       <button
                         type="button"
-                        onClick={stopEmulation}
-                        className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                        onClick={quickClockOut}
+                        disabled={clockBusy}
+                        className="w-full rounded-lg px-3 py-2 text-left text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
                       >
-                        Stop Emulation
+                        {clockBusy ? 'Clocking out…' : 'Clock Out'}
                       </button>
-                    )}
-                    {emulationError ? <p className="mt-1 text-xs text-rose-600">{emulationError}</p> : null}
-                  </div>
-                ) : null}
+                    ) : null}
+                  </DropdownSection>
 
-                <button
-                  type="button"
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="mt-1 w-full rounded-lg px-3 py-2 text-left text-rose-700 hover:bg-rose-50"
-                >
-                  Logout
-                </button>
+                  {clockError ? <p className="px-3 py-1 text-xs text-rose-600">{clockError}</p> : null}
+
+                  {isAdmin ? (
+                    <>
+                      <div className="my-2 border-t border-slate-200" />
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                        <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emulation</p>
+                        {!isEmulating ? (
+                          <>
+                            <input
+                              value={emulationQuery}
+                              onChange={(e) => setEmulationQuery(e.target.value)}
+                              placeholder="Search user"
+                              className="mb-2 h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
+                              disabled={emulationLoading || emulationBusy || availableEmulationUsers.length === 0}
+                            />
+                            <select
+                              value={selectedEmulationUserId}
+                              onChange={(e) => setSelectedEmulationUserId(e.target.value)}
+                              className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
+                              disabled={emulationLoading || emulationBusy || filteredEmulationUsers.length === 0}
+                            >
+                              {filteredEmulationUsers.length === 0 ? <option value="">No matching users</option> : null}
+                              {filteredEmulationUsers.map((u) => (
+                                <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={startEmulation}
+                              disabled={emulationLoading || emulationBusy || !selectedEmulationUserId || filteredEmulationUsers.length === 0}
+                              className="mt-2 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                            >
+                              {emulationBusy ? 'Starting Emulation…' : emulationLoading ? 'Loading Users…' : 'Start Emulation'}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={stopEmulation}
+                            className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          >
+                            Stop Emulation
+                          </button>
+                        )}
+                        {emulationError ? <p className="mt-1 text-xs text-rose-600">{emulationError}</p> : null}
+                      </div>
+                    </>
+                  ) : null}
+
+                  <div className="my-2 border-t border-slate-200" />
+                  <button
+                    type="button"
+                    onClick={() => signOut({ callbackUrl: '/login' })}
+                    className="w-full rounded-lg px-3 py-2 text-left text-rose-700 hover:bg-rose-50"
+                  >
+                    Logout
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
     </nav>
