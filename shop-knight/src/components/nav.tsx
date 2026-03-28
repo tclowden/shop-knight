@@ -46,7 +46,7 @@ const adminLinks = [
 const superAdminLinks = [{ href: '/admin/companies', label: 'Companies' }];
 
 export function Nav() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const [transactionsOpen, setTransactionsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -59,6 +59,7 @@ export function Nav() {
   const isAdmin = isSuperAdmin || session?.user?.role === 'ADMIN' || session?.user?.roles?.includes('ADMIN');
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const isEmulating = Boolean(session?.user?.isEmulating);
 
   async function loadClockState() {
     try {
@@ -76,6 +77,13 @@ export function Nav() {
     } catch {
       setClockedInRecord(null);
     }
+  }
+
+  async function stopEmulation() {
+    const res = await fetch('/api/admin/emulation/stop', { method: 'POST' });
+    if (!res.ok) return;
+    await update();
+    window.location.assign('/dashboard');
   }
 
   async function quickClockOut() {
@@ -130,6 +138,20 @@ export function Nav() {
 
   return (
     <nav className="sticky top-0 z-40 mb-6 border-b border-slate-200 bg-[#f5f7fa]/95 pb-3 pt-2 text-sm backdrop-blur">
+      {isEmulating ? (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-amber-900">
+          <p className="text-sm font-semibold">
+            Emulation Active: You are currently acting as <span className="underline decoration-amber-400">{session?.user?.name || 'selected user'}</span>
+          </p>
+          <button
+            type="button"
+            onClick={stopEmulation}
+            className="rounded-lg border border-amber-400 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+          >
+            Stop Emulation
+          </button>
+        </div>
+      ) : null}
       <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {links.map((link) => (
           <Link

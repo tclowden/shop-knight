@@ -129,6 +129,11 @@ enum TimeEntrySourceType {
   JOB
 }
 
+enum EmulationAuditAction {
+  START
+  STOP
+}
+
 model Company {
   id                   String                @id @default(cuid())
   name                 String
@@ -224,6 +229,10 @@ model User {
   approvedTimeEntries         TimeEntry[]           @relation("TimeEntryApprover")
   editedTimeEntries           TimeEntry[]           @relation("TimeEntryEditor")
   payPeriodLocks              PayPeriodLock[]       @relation("PayPeriodLockCreator")
+  emulationSessionAsActor     UserEmulationSession? @relation("EmulationActor")
+  emulationSessionsAsTarget   UserEmulationSession[] @relation("EmulationTarget")
+  emulationAuditAsActor       UserEmulationAudit[]  @relation("EmulationAuditActor")
+  emulationAuditAsTarget      UserEmulationAudit[]  @relation("EmulationAuditTarget")
 }
 
 model Department {
@@ -314,6 +323,34 @@ model UserCustomRole {
   role   CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
+}
+
+model UserEmulationSession {
+  actorId      String   @id
+  targetUserId String
+  startedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  actor        User     @relation("EmulationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser   User     @relation("EmulationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId])
+}
+
+model UserEmulationAudit {
+  id             String               @id @default(cuid())
+  actorId        String
+  targetUserId   String
+  action         EmulationAuditAction
+  actorRole      UserType
+  actorCompanyId String?
+  createdAt      DateTime             @default(now())
+
+  actor          User                 @relation("EmulationAuditActor", fields: [actorId], references: [id], onDelete: Cascade)
+  targetUser     User                 @relation("EmulationAuditTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
+  @@index([targetUserId, createdAt])
 }
 
 model Customer {

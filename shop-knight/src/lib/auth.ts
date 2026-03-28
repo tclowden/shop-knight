@@ -2,8 +2,8 @@ import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { getEffectivePermissions } from '@/lib/rbac';
-import { ensureUserCompanyContext } from '@/lib/company-context';
+import { buildAuthUser } from '@/lib/auth-context';
+import { getEffectiveUserForActor } from '@/lib/emulation';
 
 type AuthUser = {
   id: string;
@@ -35,11 +35,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findFirst({
           where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
-          include: {
-            customRoles: {
-              include: { role: true },
-            },
-          },
+          select: { id: true, email: true, passwordHash: true, active: true },
         });
 
         if (!user || !user.active) return null;
@@ -47,53 +43,51 @@ export const authOptions: NextAuthOptions = {
         const ok = await compare(credentials.password, user.passwordHash);
         if (!ok) return null;
 
-        const context = await ensureUserCompanyContext(user.id);
-        if (!context?.activeCompanyId) return null;
-
-        const customRoleNames = user.customRoles
-          .filter((entry) => !entry.role.companyId || entry.role.companyId === context.activeCompanyId)
-          .map((entry) => entry.role.name);
-        const permissions = getEffectivePermissions(
-          user.type,
-          user.customRoles
-            .filter((entry) => !entry.role.companyId || entry.role.companyId === context.activeCompanyId)
-            .map((entry) => entry.role.permissions)
-        );
-
-        const authUser: AuthUser = {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.avatarUrl,
-          role: user.type,
-          roles: [user.type, ...customRoleNames],
-          permissions,
-          companyId: context.activeCompanyId,
-          companies: context.companies,
-        };
-
-        return authUser;
+        const authUser = await buildAuthUser(user.id);
+        if (!authUser) return null;
+        return authUser as AuthUser;
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {
-        const typed = user as { role?: string; roles?: string[]; permissions?: string[]; companyId?: string; companies?: Array<{ id: string; name: string; slug: string }>; image?: string | null };
-        if (typed.role) token.role = typed.role;
-        token.roles = typed.roles ?? [];
-        token.permissions = typed.permissions ?? [];
-        token.companyId = typed.companyId ?? '';
-        token.companies = typed.companies ?? [];
-        token.image = typed.image || undefined;
-        token.uid = user.id;
-      } else if (token.uid && trigger === 'update') {
-        const context = await ensureUserCompanyContext(String(token.uid));
-        if (context?.activeCompanyId) {
-          token.companyId = context.activeCompanyId;
-          token.companies = context.companies;
-        }
+        const typed = user as AuthUser;
+        token.uid = typed.id;
+        token.actorUid = typed.id;
+        token.actorRole = typed.role;
+        token.actorCompanyId = typed.companyId;
       }
+
+      const actorId = String(token.actorUid || token.uid || '');
+      if (!actorId) return token;
+
+      const actorUser = await buildAuthUser(actorId);
+      if (!actorUser) return token;
+
+      token.actorUid = actorUser.id;
+      token.actorRole = actorUser.role;
+      token.actorCompanyId = actorUser.companyId;
+
+      const { effectiveUser, emulationTargetUserId } = await getEffectiveUserForActor(actorId);
+      const selected = effectiveUser || actorUser;
+
+      token.uid = selected.id;
+      token.role = selected.role;
+      token.roles = selected.roles;
+      token.permissions = selected.permissions;
+      token.companyId = selected.companyId;
+      token.companies = selected.companies;
+      token.image = selected.image || undefined;
+      token.name = selected.name;
+      token.email = selected.email;
+      token.isEmulating = Boolean(emulationTargetUserId);
+      token.emulationTargetUserId = emulationTargetUserId || undefined;
+
+      if (trigger === 'update' && !token.actorUid) {
+        token.actorUid = token.uid;
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -107,6 +101,13 @@ export const authOptions: NextAuthOptions = {
           ? token.companies.map((c) => ({ id: String((c as { id?: string }).id || ''), name: String((c as { name?: string }).name || ''), slug: String((c as { slug?: string }).slug || '') }))
           : [];
         session.user.image = typeof token.image === 'string' ? token.image : null;
+        session.user.name = typeof token.name === 'string' ? token.name : session.user.name;
+        session.user.email = typeof token.email === 'string' ? token.email : session.user.email;
+        session.user.actorId = String(token.actorUid || token.uid || '');
+        session.user.actorRole = String(token.actorRole || token.role || '');
+        session.user.actorCompanyId = String(token.actorCompanyId || '') || null;
+        session.user.isEmulating = Boolean(token.isEmulating);
+        session.user.emulationTargetUserId = typeof token.emulationTargetUserId === 'string' ? token.emulationTargetUserId : null;
       }
       return session;
     },

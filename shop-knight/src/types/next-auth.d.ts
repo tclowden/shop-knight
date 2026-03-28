@@ -12,6 +12,11 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      actorId?: string;
+      actorRole?: string;
+      actorCompanyId?: string | null;
+      isEmulating?: boolean;
+      emulationTargetUserId?: string | null;
     };
   }
 }
@@ -25,5 +30,10 @@ declare module 'next-auth/jwt' {
     companyId?: string;
     companies?: Array<{ id: string; name: string; slug: string }>;
     image?: string;
+    actorUid?: string;
+    actorRole?: string;
+    actorCompanyId?: string;
+    isEmulating?: boolean;
+    emulationTargetUserId?: string;
   }
 }

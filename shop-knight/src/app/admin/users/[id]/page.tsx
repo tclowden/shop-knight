@@ -54,7 +54,7 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
 }
 
 export default function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const [id, setId] = useState('');
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<CustomRole[]>([]);
@@ -83,11 +83,20 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
   const [editing, setEditing] = useState(false);
+  const [emulationBusy, setEmulationBusy] = useState(false);
 
   const role = String(session?.user?.role || '');
   const sessionRoles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
   const isSuperAdmin = role === 'SUPER_ADMIN' || sessionRoles.includes('SUPER_ADMIN');
+  const isAdmin = isSuperAdmin || role === 'ADMIN' || sessionRoles.includes('ADMIN');
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
+
+  const canEmulateThisUser = Boolean(
+    user &&
+    isAdmin &&
+    session?.user?.id !== user.id &&
+    (isSuperAdmin || (user.type !== 'SUPER_ADMIN' && user.activeCompanyId && session?.user?.companyId === user.activeCompanyId))
+  );
 
   async function load(userId: string) {
     const [usersRes, rolesRes, companiesRes, departmentsRes, titlesRes] = await Promise.all([
@@ -204,6 +213,27 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
     setEditing(false);
   }
 
+  async function beginEmulation() {
+    if (!user) return;
+    setError('');
+    setEmulationBusy(true);
+    const res = await fetch('/api/admin/emulation/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId: user.id }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setEmulationBusy(false);
+
+    if (!res.ok) {
+      setError(payload?.error || 'Failed to start emulation');
+      return;
+    }
+
+    await update();
+    window.location.assign('/dashboard');
+  }
+
   useEffect(() => {
     params.then((p) => {
       setId(p.id);
@@ -221,6 +251,16 @@ export default function UserDetailPage({ params }: { params: Promise<{ id: strin
           <h1 className="text-3xl font-semibold tracking-tight">User: {user.name}</h1>
           <p className="text-sm text-slate-500">{user.email} • {user.type}</p>
         </div>
+        {canEmulateThisUser ? (
+          <button
+            type="button"
+            onClick={beginEmulation}
+            disabled={emulationBusy}
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          >
+            {emulationBusy ? 'Starting Emulation…' : 'Emulate This User'}
+          </button>
+        ) : null}
       </header>
 
       <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Nav } from '@/components/nav';
 
@@ -11,6 +11,7 @@ type User = {
   email: string;
   type: string;
   active: boolean;
+  activeCompanyId?: string | null;
   isEmployee?: boolean;
   reportsToId?: string | null;
   reportsTo?: { id: string; name: string } | null;
@@ -25,8 +26,17 @@ type Title = { id: string; name: string; active: boolean };
 
 const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 export default function UsersAdminPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [titles, setTitles] = useState<Title[]>([]);
@@ -42,6 +52,7 @@ export default function UsersAdminPage() {
   const [customRoleIds, setCustomRoleIds] = useState<string[]>([]);
   const [rowTypes, setRowTypes] = useState<Record<string, string>>({});
   const [savingUserId, setSavingUserId] = useState('');
+  const [emulatingUserId, setEmulatingUserId] = useState('');
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
@@ -49,7 +60,18 @@ export default function UsersAdminPage() {
   const role = String(session?.user?.role || '');
   const sessionRoles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
   const isSuperAdmin = role === 'SUPER_ADMIN' || sessionRoles.includes('SUPER_ADMIN');
+  const isAdmin = isSuperAdmin || role === 'ADMIN' || sessionRoles.includes('ADMIN');
   const availableUserTypes = isSuperAdmin ? userTypes : userTypes.filter((t) => t !== 'SUPER_ADMIN');
+
+  function canEmulateUser(target: User) {
+    if (!isAdmin || !session?.user?.id) return false;
+    if (session.user.id === target.id) return false;
+    if (target.type === 'SUPER_ADMIN' && !isSuperAdmin) return false;
+    if (!isSuperAdmin) {
+      if (!session.user.companyId || !target.activeCompanyId || target.activeCompanyId !== session.user.companyId) return false;
+    }
+    return true;
+  }
 
   async function loadTitles(nextCompanyId: string) {
     if (!nextCompanyId) {
@@ -137,6 +159,28 @@ export default function UsersAdminPage() {
     await load();
   }
 
+  async function beginEmulation(targetUserId: string) {
+    setError('');
+    setEmulatingUserId(targetUserId);
+
+    const res = await fetch('/api/admin/emulation/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId }),
+    });
+
+    const payload = await res.json().catch(() => ({}));
+    setEmulatingUserId('');
+
+    if (!res.ok) {
+      setError(payload?.error || 'Failed to start emulation');
+      return;
+    }
+
+    await update();
+    window.location.assign('/dashboard');
+  }
+
   async function createUser(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -203,24 +247,24 @@ export default function UsersAdminPage() {
 
       <form onSubmit={createUser} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="field" required />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="field" required />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temp password" type="password" className="field" required />
-          <select value={type} onChange={(e) => setType(e.target.value)} className="field">{availableUserTypes.map((t) => (<option key={t} value={t}>{t}</option>))}</select>
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="field" required>
+          <FormField label="Name"><input value={name} onChange={(e) => setName(e.target.value)} className="field" required /></FormField>
+          <FormField label="Email"><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="field" required /></FormField>
+          <FormField label="Temporary Password"><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="field" required /></FormField>
+          <FormField label="Base Role"><select value={type} onChange={(e) => setType(e.target.value)} className="field">{availableUserTypes.map((t) => (<option key={t} value={t}>{t}</option>))}</select></FormField>
+          <FormField label="Company"><select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className="field" required>
             <option value="" disabled>Select company</option>
             {companies.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-          </select>
-          <select value={titleId} onChange={(e) => setTitleId(e.target.value)} className="field">
+          </select></FormField>
+          <FormField label="Title"><select value={titleId} onChange={(e) => setTitleId(e.target.value)} className="field">
             <option value="">No title</option>
             {titles.filter((t) => t.active).map((t) => (<option key={t.id} value={t.id}>{t.name}</option>))}
-          </select>
-          <label className="field inline-flex items-center gap-2"><input type="checkbox" checked={isEmployee} onChange={(e) => { setIsEmployee(e.target.checked); if (!e.target.checked) setReportsToId(''); }} /> Is Employee</label>
-          <select value={reportsToId} onChange={(e) => setReportsToId(e.target.value)} className="field" disabled={!isEmployee}>
+          </select></FormField>
+          <FormField label="Employee Status"><label className="field inline-flex items-center gap-2"><input type="checkbox" checked={isEmployee} onChange={(e) => { setIsEmployee(e.target.checked); if (!e.target.checked) setReportsToId(''); }} /> Is Employee</label></FormField>
+          <FormField label="Reports To"><select value={reportsToId} onChange={(e) => setReportsToId(e.target.value)} className="field" disabled={!isEmployee}>
             <option value="">No manager</option>
             {users.filter((u) => u.active && (u.isEmployee ?? true)).map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}
-          </select>
-          <button className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600" disabled={!companyId || companies.length === 0}>Create User</button>
+          </select></FormField>
+          <button className="inline-flex h-11 items-center justify-center self-end rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600" disabled={!companyId || companies.length === 0}>Create User</button>
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -248,6 +292,7 @@ export default function UsersAdminPage() {
               <th className="px-4 py-3 font-semibold">Reports To</th>
               <th className="px-4 py-3 font-semibold">Custom Roles</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -288,10 +333,24 @@ export default function UsersAdminPage() {
                     ) : null}
                   </div>
                 </td>
+                <td className="px-4 py-4">
+                  {canEmulateUser(u) ? (
+                    <button
+                      type="button"
+                      onClick={() => beginEmulation(u.id)}
+                      disabled={emulatingUserId === u.id}
+                      className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      {emulatingUserId === u.id ? 'Starting…' : 'Emulate'}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {users.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={8}>No users found.</td></tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={9}>No users found.</td></tr>
             ) : null}
           </tbody>
         </table>
