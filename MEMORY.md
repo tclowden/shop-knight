@@ -11,6 +11,7 @@ Long-term memory for important context.
 - In shop-knight, when Tommy asks for "delete" functionality, he means soft-delete/archive behavior (retain data), not hard delete.
 - Tommy strongly prefers create flows behind a button leading to a dedicated create screen/modal; avoid inline always-visible entry fields on list/admin pages.
 - UI/forms preference: default to labels above inputs (not placeholder-only fields), especially in admin/create flows; keep field layout clean and readable.
+- Default UX preference: lists/dropdowns/select menus should be alphabetical by default unless a user-selected/saved filter or explicit workflow ordering overrides it.
 - Before saying a feature is ready to test, run an independent sub-agent validation pass. Validate behavior under Tommy's effective role context (SUPER_ADMIN) for access/permission-sensitive flows, not just build/static checks.
 - Before asking Tommy to test any feature that includes schema/model changes, run DB migrations in the active environment first (at minimum `prisma migrate deploy` + `prisma generate`) so testing is not blocked by migration drift.
 - Hard rule: never say "ready to test" on DB-related work until I have verified migration status (`prisma migrate status`) and applied any pending migrations.

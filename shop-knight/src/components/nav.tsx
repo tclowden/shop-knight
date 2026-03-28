@@ -67,6 +67,7 @@ export function Nav() {
   const [emulationBusy, setEmulationBusy] = useState(false);
   const [emulationError, setEmulationError] = useState('');
   const [selectedEmulationUserId, setSelectedEmulationUserId] = useState('');
+  const [emulationQuery, setEmulationQuery] = useState('');
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,9 +78,14 @@ export function Nav() {
   const isEmulating = Boolean(session?.user?.isEmulating);
   const actorId = String(session?.user?.actorId || session?.user?.id || '');
 
+  const sortedTopLinks = useMemo(() => [...links].sort((a, b) => a.label.localeCompare(b.label)), []);
+  const sortedTransactionLinks = useMemo(() => [...transactionLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
+  const sortedAdminLinks = useMemo(() => [...adminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
+  const sortedSuperAdminLinks = useMemo(() => [...superAdminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
+
   const availableEmulationUsers = useMemo(() => {
     if (!isAdmin) return [];
-    return emulationUsers.filter((u) => {
+    const scoped = emulationUsers.filter((u) => {
       if (!u.active) return false;
       if (actorId && u.id === actorId) return false;
       if (!isSuperAdmin) {
@@ -88,7 +94,14 @@ export function Nav() {
       }
       return true;
     });
+    return scoped.sort((a, b) => a.name.localeCompare(b.name));
   }, [emulationUsers, isAdmin, isSuperAdmin, actorId, session?.user?.companyId]);
+
+  const filteredEmulationUsers = useMemo(() => {
+    const q = emulationQuery.trim().toLowerCase();
+    if (!q) return availableEmulationUsers;
+    return availableEmulationUsers.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(q));
+  }, [availableEmulationUsers, emulationQuery]);
 
   async function loadClockState() {
     try {
@@ -194,15 +207,20 @@ export function Nav() {
 
   useEffect(() => {
     if (!profileOpen || !isAdmin) return;
+    setEmulationQuery('');
     void loadEmulationUsers();
   }, [profileOpen, isAdmin]);
 
   useEffect(() => {
     if (!profileOpen) return;
-    if (selectedEmulationUserId) return;
-    if (availableEmulationUsers.length === 0) return;
-    setSelectedEmulationUserId(availableEmulationUsers[0].id);
-  }, [profileOpen, selectedEmulationUserId, availableEmulationUsers]);
+    if (filteredEmulationUsers.length === 0) {
+      setSelectedEmulationUserId('');
+      return;
+    }
+    if (!selectedEmulationUserId || !filteredEmulationUsers.some((u) => u.id === selectedEmulationUserId)) {
+      setSelectedEmulationUserId(filteredEmulationUsers[0].id);
+    }
+  }, [profileOpen, selectedEmulationUserId, filteredEmulationUsers]);
 
   function scheduleClose(menu: 'transactions' | 'admin' | 'profile') {
     const timerRef = menu === 'transactions' ? transactionsCloseTimer : menu === 'admin' ? adminCloseTimer : profileCloseTimer;
@@ -239,7 +257,7 @@ export function Nav() {
         </div>
       ) : null}
       <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {links.map((link) => (
+        {sortedTopLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
@@ -262,7 +280,7 @@ export function Nav() {
           {transactionsOpen ? (
             <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
               <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                {transactionLinks.map((link) => (
+                {sortedTransactionLinks.map((link) => (
                   <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setTransactionsOpen(false)}>
                     {link.label}
                   </Link>
@@ -284,7 +302,7 @@ export function Nav() {
             {adminOpen ? (
               <div className="absolute left-0 top-full z-20 min-w-52 pt-1">
                 <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                  {adminLinks.map((link) => (
+                  {sortedAdminLinks.map((link) => (
                     <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
                       {link.label}
                     </Link>
@@ -292,7 +310,7 @@ export function Nav() {
                   {isSuperAdmin ? (
                     <>
                       <div className="my-1 border-t border-slate-200" />
-                      {superAdminLinks.map((link) => (
+                      {sortedSuperAdminLinks.map((link) => (
                         <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50" onClick={() => setAdminOpen(false)}>
                           {link.label}
                         </Link>
@@ -352,22 +370,30 @@ export function Nav() {
                     <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emulation</p>
                     {!isEmulating ? (
                       <>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Search User</label>
+                        <input
+                          value={emulationQuery}
+                          onChange={(e) => setEmulationQuery(e.target.value)}
+                          placeholder="Type name or email"
+                          className="mb-2 h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
+                          disabled={emulationLoading || emulationBusy || availableEmulationUsers.length === 0}
+                        />
                         <label className="mb-1 block text-xs font-medium text-slate-600">Emulate User</label>
                         <select
                           value={selectedEmulationUserId}
                           onChange={(e) => setSelectedEmulationUserId(e.target.value)}
                           className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
-                          disabled={emulationLoading || emulationBusy || availableEmulationUsers.length === 0}
+                          disabled={emulationLoading || emulationBusy || filteredEmulationUsers.length === 0}
                         >
-                          {availableEmulationUsers.length === 0 ? <option value="">No eligible users</option> : null}
-                          {availableEmulationUsers.map((u) => (
+                          {filteredEmulationUsers.length === 0 ? <option value="">No matching users</option> : null}
+                          {filteredEmulationUsers.map((u) => (
                             <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                           ))}
                         </select>
                         <button
                           type="button"
                           onClick={startEmulation}
-                          disabled={emulationLoading || emulationBusy || !selectedEmulationUserId || availableEmulationUsers.length === 0}
+                          disabled={emulationLoading || emulationBusy || !selectedEmulationUserId || filteredEmulationUsers.length === 0}
                           className="mt-2 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
                         >
                           {emulationBusy ? 'Starting Emulation…' : emulationLoading ? 'Loading Users…' : 'Start Emulation'}
