@@ -229,7 +229,7 @@ export function Nav() {
       if (menu === 'transactions') setTransactionsOpen(false);
       else if (menu === 'admin') setAdminOpen(false);
       else setProfileOpen(false);
-    }, 500);
+    }, 75);
   }
 
   function cancelClose(menu: 'transactions' | 'admin' | 'profile') {

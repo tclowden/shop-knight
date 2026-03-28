@@ -12,6 +12,7 @@ Long-term memory for important context.
 - Tommy strongly prefers create flows behind a button leading to a dedicated create screen/modal; avoid inline always-visible entry fields on list/admin pages.
 - UI/forms preference: default to labels above inputs (not placeholder-only fields), especially in admin/create flows; keep field layout clean and readable.
 - Default UX preference: lists/dropdowns/select menus should be alphabetical by default unless a user-selected/saved filter or explicit workflow ordering overrides it.
+- Default UX preference: menus/dropdowns should auto-close 0.075 seconds (75ms) after pointer leaves the selection area, unless Tommy explicitly requests different behavior.
 - Before saying a feature is ready to test, run an independent sub-agent validation pass. Validate behavior under Tommy's effective role context (SUPER_ADMIN) for access/permission-sensitive flows, not just build/static checks.
 - Before asking Tommy to test any feature that includes schema/model changes, run DB migrations in the active environment first (at minimum `prisma migrate deploy` + `prisma generate`) so testing is not blocked by migration drift.
 - Hard rule: never say "ready to test" on DB-related work until I have verified migration status (`prisma migrate status`) and applied any pending migrations.
