@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 
@@ -45,6 +45,15 @@ const adminLinks = [
 
 const superAdminLinks = [{ href: '/admin/companies', label: 'Companies' }];
 
+type EmulationCandidate = {
+  id: string;
+  name: string;
+  email: string;
+  type: string;
+  active: boolean;
+  activeCompanyId?: string | null;
+};
+
 export function Nav() {
   const { data: session, update } = useSession();
   const [transactionsOpen, setTransactionsOpen] = useState(false);
@@ -53,6 +62,11 @@ export function Nav() {
   const [clockedInRecord, setClockedInRecord] = useState<string | null>(null);
   const [clockBusy, setClockBusy] = useState(false);
   const [clockError, setClockError] = useState('');
+  const [emulationUsers, setEmulationUsers] = useState<EmulationCandidate[]>([]);
+  const [emulationLoading, setEmulationLoading] = useState(false);
+  const [emulationBusy, setEmulationBusy] = useState(false);
+  const [emulationError, setEmulationError] = useState('');
+  const [selectedEmulationUserId, setSelectedEmulationUserId] = useState('');
   const transactionsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adminCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.roles?.includes('SUPER_ADMIN');
@@ -60,6 +74,19 @@ export function Nav() {
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   const isEmulating = Boolean(session?.user?.isEmulating);
+
+  const availableEmulationUsers = useMemo(() => {
+    if (!isAdmin || !session?.user?.id) return [];
+    return emulationUsers.filter((u) => {
+      if (!u.active) return false;
+      if (u.id === session.user.id) return false;
+      if (!isSuperAdmin) {
+        if (u.type === 'SUPER_ADMIN') return false;
+        if (!session.user.companyId || !u.activeCompanyId || session.user.companyId !== u.activeCompanyId) return false;
+      }
+      return true;
+    });
+  }, [emulationUsers, isAdmin, isSuperAdmin, session?.user?.id, session?.user?.companyId]);
 
   async function loadClockState() {
     try {
@@ -77,6 +104,50 @@ export function Nav() {
     } catch {
       setClockedInRecord(null);
     }
+  }
+
+  async function loadEmulationUsers() {
+    if (!isAdmin) return;
+    setEmulationError('');
+    setEmulationLoading(true);
+    const res = await fetch('/api/admin/users');
+    const payload = await res.json().catch(() => []);
+    setEmulationLoading(false);
+    if (!res.ok || !Array.isArray(payload)) {
+      setEmulationError('Unable to load users for emulation.');
+      return;
+    }
+    const candidates = payload.map((u: EmulationCandidate) => ({
+      id: String(u.id),
+      name: String(u.name || 'User'),
+      email: String(u.email || ''),
+      type: String(u.type || ''),
+      active: Boolean(u.active),
+      activeCompanyId: u.activeCompanyId ? String(u.activeCompanyId) : null,
+    }));
+    setEmulationUsers(candidates);
+  }
+
+  async function startEmulation() {
+    if (!selectedEmulationUserId) {
+      setEmulationError('Choose a user to emulate first.');
+      return;
+    }
+    setEmulationError('');
+    setEmulationBusy(true);
+    const res = await fetch('/api/admin/emulation/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId: selectedEmulationUserId }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    setEmulationBusy(false);
+    if (!res.ok) {
+      setEmulationError(typeof payload?.error === 'string' ? payload.error : 'Unable to start emulation.');
+      return;
+    }
+    await update();
+    window.location.assign('/dashboard');
   }
 
   async function stopEmulation() {
@@ -118,6 +189,19 @@ export function Nav() {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!profileOpen || !isAdmin) return;
+    if (emulationUsers.length > 0) return;
+    void loadEmulationUsers();
+  }, [profileOpen, isAdmin]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    if (selectedEmulationUserId) return;
+    if (availableEmulationUsers.length === 0) return;
+    setSelectedEmulationUserId(availableEmulationUsers[0].id);
+  }, [profileOpen, selectedEmulationUserId, availableEmulationUsers]);
 
   function scheduleClose(menu: 'transactions' | 'admin') {
     const timerRef = menu === 'transactions' ? transactionsCloseTimer : adminCloseTimer;
@@ -260,6 +344,46 @@ export function Nav() {
                   </button>
                 ) : null}
                 {clockError ? <p className="mt-1 px-3 text-xs text-rose-600">{clockError}</p> : null}
+
+                {isAdmin ? (
+                  <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Emulation</p>
+                    {!isEmulating ? (
+                      <>
+                        <label className="mb-1 block text-xs font-medium text-slate-600">Emulate User</label>
+                        <select
+                          value={selectedEmulationUserId}
+                          onChange={(e) => setSelectedEmulationUserId(e.target.value)}
+                          className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-slate-900"
+                          disabled={emulationLoading || emulationBusy || availableEmulationUsers.length === 0}
+                        >
+                          {availableEmulationUsers.length === 0 ? <option value="">No eligible users</option> : null}
+                          {availableEmulationUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={startEmulation}
+                          disabled={emulationLoading || emulationBusy || !selectedEmulationUserId || availableEmulationUsers.length === 0}
+                          className="mt-2 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                        >
+                          {emulationBusy ? 'Starting Emulation…' : emulationLoading ? 'Loading Users…' : 'Start Emulation'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={stopEmulation}
+                        className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                      >
+                        Stop Emulation
+                      </button>
+                    )}
+                    {emulationError ? <p className="mt-1 text-xs text-rose-600">{emulationError}</p> : null}
+                  </div>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={() => signOut({ callbackUrl: '/login' })}
