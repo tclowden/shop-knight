@@ -98,8 +98,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { label: 'My Tasks', value: myTasks, href: '/tasks' },
   ];
 
-  const maxBar = Math.max(completedSalesOrders, archivedSalesOrders, 1);
   const otherSalesOrders = Math.max(salesOrders - completedSalesOrders - archivedSalesOrders, 0);
+  const maxBar = Math.max(completedSalesOrders, archivedSalesOrders, otherSalesOrders, 1);
   const pieSlices = [
     { label: 'Complete', value: completedSalesOrders, color: '#22c55e' },
     { label: 'Archived', value: archivedSalesOrders, color: '#71717a' },
