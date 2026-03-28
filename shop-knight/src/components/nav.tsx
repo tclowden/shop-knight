@@ -74,19 +74,20 @@ export function Nav() {
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   const isEmulating = Boolean(session?.user?.isEmulating);
+  const actorId = String(session?.user?.actorId || session?.user?.id || '');
 
   const availableEmulationUsers = useMemo(() => {
-    if (!isAdmin || !session?.user?.id) return [];
+    if (!isAdmin) return [];
     return emulationUsers.filter((u) => {
       if (!u.active) return false;
-      if (u.id === session.user.id) return false;
+      if (actorId && u.id === actorId) return false;
       if (!isSuperAdmin) {
         if (u.type === 'SUPER_ADMIN') return false;
-        if (!session.user.companyId || !u.activeCompanyId || session.user.companyId !== u.activeCompanyId) return false;
+        if (!session?.user?.companyId || !u.activeCompanyId || session.user.companyId !== u.activeCompanyId) return false;
       }
       return true;
     });
-  }, [emulationUsers, isAdmin, isSuperAdmin, session?.user?.id, session?.user?.companyId]);
+  }, [emulationUsers, isAdmin, isSuperAdmin, actorId, session?.user?.companyId]);
 
   async function loadClockState() {
     try {
@@ -192,7 +193,6 @@ export function Nav() {
 
   useEffect(() => {
     if (!profileOpen || !isAdmin) return;
-    if (emulationUsers.length > 0) return;
     void loadEmulationUsers();
   }, [profileOpen, isAdmin]);
 
