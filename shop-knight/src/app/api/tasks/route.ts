@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   const tasks = await prisma.task.findMany({
     where: { entityType, entityId },
     include: { assignee: { select: { id: true, name: true } } },
-    orderBy: [{ status: 'asc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
+    orderBy: [{ status: 'asc' }, { startAt: 'asc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
   });
 
   return NextResponse.json(tasks);
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       entityId,
       status: (String(body?.status || 'TODO') as never),
       assigneeId: body?.assigneeId ? String(body.assigneeId) : null,
+      startAt: toDate(body?.startAt),
       dueAt: toDate(body?.dueAt),
     },
     include: { assignee: { select: { id: true, name: true, email: true } } },

@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   const tasks = await prisma.task.findMany({
     where: includeDone ? undefined : { status: { not: 'DONE' } },
     include: { assignee: { select: { id: true, name: true } } },
-    orderBy: [{ dueAt: 'asc' }, { createdAt: 'desc' }],
+    orderBy: [{ startAt: 'asc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
   });
 
   const withEntity = await Promise.all(

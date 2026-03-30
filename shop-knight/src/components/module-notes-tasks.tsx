@@ -8,11 +8,35 @@ type Note = { id: string; body: string; createdAt: string; createdBy?: { id: str
 type Task = { id: string; title: string; status: string; startAt?: string | null; dueAt: string | null; assignee?: { id: string; name: string } | null };
 
 type TaskView = 'list' | 'gantt';
+type DragMode = 'move' | 'start' | 'end';
 
-function toDateValue(v?: string | null) {
-  if (!v) return null;
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
+type GanttRow = {
+  task: Task;
+  start: Date;
+  end: Date;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DAY_PX = 40;
+
+function parseDate(value?: string | null) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * DAY_MS);
+}
+
+function dateInputValue(date: Date | null) {
+  if (!date) return null;
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export function ModuleNotesTasks({ entityType, entityId }: { entityType: string; entityId: string }) {
@@ -25,6 +49,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   const [mentionQuery, setMentionQuery] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
+  const [taskStartAt, setTaskStartAt] = useState('');
   const [taskDueAt, setTaskDueAt] = useState('');
   const [taskAssigneeId, setTaskAssigneeId] = useState('');
   const [taskView, setTaskView] = useState<TaskView>('list');
@@ -33,6 +58,17 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
   const [templateAnchorDate, setTemplateAnchorDate] = useState('');
   const [templatePmUserId, setTemplatePmUserId] = useState('');
   const [templateProjectCoordinatorUserId, setTemplateProjectCoordinatorUserId] = useState('');
+
+  const [savingTaskDates, setSavingTaskDates] = useState<string | null>(null);
+  const [dragState, setDragState] = useState<{
+    taskId: string;
+    mode: DragMode;
+    originX: number;
+    originStart: Date;
+    originEnd: Date;
+    currentStart: Date;
+    currentEnd: Date;
+  } | null>(null);
 
   const load = useCallback(async () => {
     const [usersRes, templatesRes, notesRes, tasksRes] = await Promise.all([
@@ -48,26 +84,102 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     if (tasksRes.ok) setTasks(await tasksRes.json());
   }, [entityType, entityId]);
 
-  const ganttRows = useMemo(() => {
-    const base = tasks
-      .map((task) => {
-        const due = toDateValue(task.dueAt);
-        const start = toDateValue(task.startAt) ?? (due ? new Date(due.getTime() - 24 * 60 * 60 * 1000) : null);
+  const ganttData = useMemo(() => {
+    const rows = tasks
+      .map((task): GanttRow | null => {
+        const due = parseDate(task.dueAt);
+        const start = parseDate(task.startAt) ?? (due ? addDays(due, -1) : null);
         if (!start && !due) return null;
-        const effectiveStart = start ?? due;
-        const effectiveEnd = due ?? start;
-        if (!effectiveStart || !effectiveEnd) return null;
-        return { task, start: effectiveStart, end: effectiveEnd };
+        const resolvedStart = start ?? due!;
+        const resolvedEnd = due ?? start!;
+        return {
+          task,
+          start: resolvedStart <= resolvedEnd ? resolvedStart : resolvedEnd,
+          end: resolvedEnd >= resolvedStart ? resolvedEnd : resolvedStart,
+        };
       })
-      .filter(Boolean) as Array<{ task: Task; start: Date; end: Date }>;
+      .filter(Boolean) as GanttRow[];
 
-    if (base.length === 0) return { min: null as Date | null, max: null as Date | null, rows: [] as typeof base };
+    if (rows.length === 0) {
+      return { rows: [], chartStart: null as Date | null, chartEnd: null as Date | null, totalDays: 0 };
+    }
 
-    const minMs = Math.min(...base.map((x) => x.start.getTime()));
-    const maxMs = Math.max(...base.map((x) => x.end.getTime()));
-    const padMs = 24 * 60 * 60 * 1000;
-    return { min: new Date(minMs - padMs), max: new Date(maxMs + padMs), rows: base };
+    const min = new Date(Math.min(...rows.map((r) => r.start.getTime())));
+    const max = new Date(Math.max(...rows.map((r) => r.end.getTime())));
+    min.setHours(0, 0, 0, 0);
+    max.setHours(0, 0, 0, 0);
+    const chartStart = addDays(min, -1);
+    const chartEnd = addDays(max, 1);
+    const totalDays = Math.max(1, Math.round((chartEnd.getTime() - chartStart.getTime()) / DAY_MS) + 1);
+    return { rows, chartStart, chartEnd, totalDays };
   }, [tasks]);
+
+  useEffect(() => {
+    if (!dragState) return;
+    const activeDrag = dragState;
+
+    function onMove(e: MouseEvent) {
+      const deltaDays = Math.round((e.clientX - activeDrag.originX) / DAY_PX);
+      if (deltaDays === 0) {
+        setDragState((prev) => (prev ? { ...prev, currentStart: prev.originStart, currentEnd: prev.originEnd } : prev));
+        return;
+      }
+
+      if (activeDrag.mode === 'move') {
+        setDragState((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            currentStart: addDays(prev.originStart, deltaDays),
+            currentEnd: addDays(prev.originEnd, deltaDays),
+          };
+        });
+        return;
+      }
+
+      if (activeDrag.mode === 'start') {
+        setDragState((prev) => {
+          if (!prev) return prev;
+          const nextStart = addDays(prev.originStart, deltaDays);
+          if (nextStart > prev.currentEnd) return { ...prev, currentStart: prev.currentEnd };
+          return { ...prev, currentStart: nextStart };
+        });
+        return;
+      }
+
+      setDragState((prev) => {
+        if (!prev) return prev;
+        const nextEnd = addDays(prev.originEnd, deltaDays);
+        if (nextEnd < prev.currentStart) return { ...prev, currentEnd: prev.currentStart };
+        return { ...prev, currentEnd: nextEnd };
+      });
+    }
+
+    async function onUp() {
+      const finalState = activeDrag;
+      setDragState(null);
+      const startIso = dateInputValue(finalState.currentStart);
+      const endIso = dateInputValue(finalState.currentEnd);
+      if (!startIso || !endIso) return;
+      if (startIso === dateInputValue(finalState.originStart) && endIso === dateInputValue(finalState.originEnd)) return;
+
+      setSavingTaskDates(finalState.taskId);
+      const res = await fetch(`/api/tasks/${finalState.taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startAt: startIso, dueAt: endIso }),
+      });
+      setSavingTaskDates(null);
+      if (res.ok) await load();
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [dragState, load]);
 
   function onNoteChange(value: string) {
     setNoteBody(value);
@@ -122,6 +234,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
         entityType,
         entityId,
         title: taskTitle,
+        startAt: taskStartAt || null,
         dueAt: taskDueAt || null,
         assigneeId: taskAssigneeId || null,
       }),
@@ -134,6 +247,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     }
 
     setTaskTitle('');
+    setTaskStartAt('');
     setTaskDueAt('');
     setTaskAssigneeId('');
     await load();
@@ -261,7 +375,8 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
 
         <form onSubmit={addTask} className="mb-3 grid grid-cols-1 gap-2">
           <input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Task title" className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            <input type="date" value={taskStartAt} onChange={(e) => setTaskStartAt(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             <input type="date" value={taskDueAt} onChange={(e) => setTaskDueAt(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
             <select value={taskAssigneeId} onChange={(e) => setTaskAssigneeId(e.target.value)} className="rounded border border-zinc-700 bg-white p-2 text-zinc-900">
               <option value="">Unassigned</option>
@@ -276,7 +391,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
             {tasks.map((t) => (
               <div id={`task-${t.id}`} key={t.id} className="rounded border border-zinc-700 p-2 text-sm target:border-blue-500 target:bg-blue-950/20">
                 <p className="font-medium">{t.title}</p>
-                <p className="mt-1 text-xs text-zinc-400">Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : '—'} • Assignee: {t.assignee?.name || 'Unassigned'}</p>
+                <p className="mt-1 text-xs text-zinc-400">{t.startAt ? `Start: ${new Date(t.startAt).toLocaleDateString()} • ` : ''}Due: {t.dueAt ? new Date(t.dueAt).toLocaleDateString() : '—'} • Assignee: {t.assignee?.name || 'Unassigned'}</p>
                 <div className="mt-2 flex gap-2">
                   {['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'].map((s) => (
                     <button key={s} onClick={() => setTaskStatus(t.id, s)} className={`rounded border px-2 py-1 text-xs ${t.status === s ? 'border-blue-500 text-blue-400' : 'border-zinc-600'}`}>
@@ -290,24 +405,89 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
           </div>
         ) : (
           <div className="rounded border border-zinc-700 p-2">
-            {ganttRows.rows.length === 0 || !ganttRows.min || !ganttRows.max ? (
-              <p className="text-sm text-zinc-400">No task dates yet. Add due dates to populate Gantt.</p>
+            {ganttData.rows.length === 0 || !ganttData.chartStart ? (
+              <p className="text-sm text-zinc-400">No task dates yet. Add start/due dates to use Gantt.</p>
             ) : (
-              <div className="space-y-2">
-                {ganttRows.rows.map(({ task, start, end }) => {
-                  const total = ganttRows.max!.getTime() - ganttRows.min!.getTime();
-                  const left = ((start.getTime() - ganttRows.min!.getTime()) / total) * 100;
-                  const width = Math.max(((end.getTime() - start.getTime()) / total) * 100, 2);
-                  return (
-                    <div key={task.id} className="grid grid-cols-[180px_1fr] items-center gap-2 text-xs">
-                      <div className="truncate text-zinc-300" title={task.title}>{task.title}</div>
-                      <div className="relative h-6 rounded bg-zinc-900">
-                        <div className="absolute inset-y-1 rounded bg-blue-500/80" style={{ left: `${left}%`, width: `${width}%` }} title={`${start.toLocaleDateString()} → ${end.toLocaleDateString()}`} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <>
+                <p className="mb-2 text-xs text-zinc-400">Drag bars to move. Drag left/right handles to resize dates.</p>
+                <div className="overflow-x-auto">
+                  <div style={{ width: `${ganttData.totalDays * DAY_PX}px` }}>
+                    {ganttData.rows.map((row) => {
+                      const local = dragState?.taskId === row.task.id ? { start: dragState.currentStart, end: dragState.currentEnd } : null;
+                      const start = local?.start ?? row.start;
+                      const end = local?.end ?? row.end;
+                      const leftDays = Math.round((start.getTime() - ganttData.chartStart!.getTime()) / DAY_MS);
+                      const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1);
+                      const isSaving = savingTaskDates === row.task.id;
+
+                      return (
+                        <div key={row.task.id} className="mb-2 grid grid-cols-[180px_1fr] items-center gap-2 text-xs">
+                          <div className="truncate text-zinc-300" title={row.task.title}>{row.task.title}</div>
+                          <div className="relative h-7 rounded bg-zinc-900">
+                            <div
+                              className={`absolute top-1.5 flex h-4 items-center rounded ${isSaving ? 'bg-amber-500/80' : 'bg-blue-500/85'}`}
+                              style={{ left: `${leftDays * DAY_PX}px`, width: `${spanDays * DAY_PX}px` }}
+                            >
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setDragState({
+                                    taskId: row.task.id,
+                                    mode: 'start',
+                                    originX: e.clientX,
+                                    originStart: row.start,
+                                    originEnd: row.end,
+                                    currentStart: row.start,
+                                    currentEnd: row.end,
+                                  });
+                                }}
+                                className="h-4 w-2 cursor-ew-resize rounded-l bg-blue-900/80"
+                                aria-label="Resize start"
+                              />
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setDragState({
+                                    taskId: row.task.id,
+                                    mode: 'move',
+                                    originX: e.clientX,
+                                    originStart: row.start,
+                                    originEnd: row.end,
+                                    currentStart: row.start,
+                                    currentEnd: row.end,
+                                  });
+                                }}
+                                className="h-4 flex-1 cursor-move"
+                                title={`${start.toLocaleDateString()} → ${end.toLocaleDateString()}`}
+                                aria-label="Move bar"
+                              />
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setDragState({
+                                    taskId: row.task.id,
+                                    mode: 'end',
+                                    originX: e.clientX,
+                                    originStart: row.start,
+                                    originEnd: row.end,
+                                    currentStart: row.start,
+                                    currentEnd: row.end,
+                                  });
+                                }}
+                                className="h-4 w-2 cursor-ew-resize rounded-r bg-blue-900/80"
+                                aria-label="Resize end"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}

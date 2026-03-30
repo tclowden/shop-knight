@@ -30,6 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       title: body?.title !== undefined ? String(body.title) : undefined,
       status: body?.status !== undefined ? (String(body.status) as never) : undefined,
       assigneeId: body?.assigneeId !== undefined ? (body.assigneeId ? String(body.assigneeId) : null) : undefined,
+      startAt: body?.startAt !== undefined ? toDate(body.startAt) : undefined,
       dueAt: body?.dueAt !== undefined ? toDate(body.dueAt) : undefined,
     },
     include: { assignee: { select: { id: true, name: true, email: true } } },

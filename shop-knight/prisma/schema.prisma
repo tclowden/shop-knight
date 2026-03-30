@@ -939,6 +939,7 @@ model Task {
   assigneeId String?
   entityType EntityType
   entityId   String
+  startAt    DateTime?
   dueAt      DateTime?
   assignee   User?      @relation(fields: [assigneeId], references: [id])
 

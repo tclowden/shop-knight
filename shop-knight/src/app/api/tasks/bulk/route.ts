@@ -25,6 +25,7 @@ export async function PATCH(req: Request) {
       ? { connect: { id: String(body.assigneeId) } }
       : { disconnect: true };
   }
+  if (body?.startAt !== undefined) data.startAt = toDate(body.startAt);
   if (body?.dueAt !== undefined) data.dueAt = toDate(body.dueAt);
 
   if (Object.keys(data).length === 0) {
