@@ -8,6 +8,8 @@ type Note = { id: string; body: string; createdAt: string; createdBy?: { id: str
 type Task = { id: string; title: string; status: string; startAt?: string | null; dueAt: string | null; assignee?: { id: string; name: string } | null };
 
 type TaskView = 'list' | 'gantt';
+
+const GANTT_ENABLED_ENTITY_TYPES = new Set(['JOB', 'SALES_ORDER']);
 type DragMode = 'move' | 'start' | 'end';
 
 type GanttRow = {
@@ -351,7 +353,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
       <article className="rounded border border-zinc-800 p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-lg font-medium">Tasks</h2>
-          {entityType === 'JOB' ? (
+          {GANTT_ENABLED_ENTITY_TYPES.has(entityType) ? (
             <div className="inline-flex overflow-hidden rounded border border-zinc-700 text-xs">
               <button type="button" onClick={() => setTaskView('list')} className={`px-2 py-1 ${taskView === 'list' ? 'bg-blue-600 text-white' : 'bg-zinc-900 text-zinc-300'}`}>List</button>
               <button type="button" onClick={() => setTaskView('gantt')} className={`px-2 py-1 ${taskView === 'gantt' ? 'bg-blue-600 text-white' : 'bg-zinc-900 text-zinc-300'}`}>Gantt</button>
