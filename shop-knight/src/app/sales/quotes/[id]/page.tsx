@@ -767,7 +767,13 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
       </td>
       <td className="p-3">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
-          {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-zinc-500">↳</span>}
+          {hasChildren ? (
+            <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button>
+          ) : depth > 0 ? (
+            <span className="text-zinc-500">↳</span>
+          ) : (
+            <span className="inline-block w-4" />
+          )}
           <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
         </div>
       </td>

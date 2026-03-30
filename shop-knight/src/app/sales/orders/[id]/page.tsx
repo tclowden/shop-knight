@@ -2194,7 +2194,13 @@ function SalesOrderLineRow({ line, depth, roots, displayTotal, hasChildren, onSa
       </td>
       <td className="px-4 py-4">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
-          {depth === 0 ? <button onClick={() => onToggleCollapse(line)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">{line.collapsed ? '+' : '-'}</button> : <span className="text-slate-400">↳</span>}
+          {hasChildren ? (
+            <button onClick={() => onToggleCollapse(line)} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs">{line.collapsed ? '+' : '-'}</button>
+          ) : depth > 0 ? (
+            <span className="text-slate-400">↳</span>
+          ) : (
+            <span className="inline-block w-6" />
+          )}
           <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="field w-full" />
         </div>
       </td>
