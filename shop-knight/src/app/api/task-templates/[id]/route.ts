@@ -64,24 +64,19 @@ function mapTemplateSteps(steps: Array<z.infer<typeof stepSchema>>) {
   }));
 }
 
-export async function GET() {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermissions(['tasks.templates.view']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
-  const templates = await prisma.taskTemplate.findMany({
-    where: companyId ? withCompany(companyId, { active: true }) : { companyId: null, active: true },
-    include: { steps: { include: { specificAssignee: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } } },
-    orderBy: { name: 'asc' },
+  const { id } = await params;
+
+  const existing = await prisma.taskTemplate.findFirst({
+    where: companyId ? withCompany(companyId, { id, active: true }) : { id, companyId: null, active: true },
+    select: { id: true },
   });
-  return NextResponse.json(templates);
-}
+  if (!existing) return NextResponse.json({ error: 'Task template not found' }, { status: 404 });
 
-export async function POST(req: Request) {
-  const auth = await requirePermissions(['tasks.templates.view']);
-  if (!auth.ok) return auth.response;
-
-  const companyId = getSessionCompanyId(auth.session);
   const parsed = taskTemplateSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid task template payload', detail: parsed.error.issues[0]?.message || 'Invalid payload' }, { status: 400 });
@@ -93,18 +88,22 @@ export async function POST(req: Request) {
   }
 
   try {
-    const created = await prisma.taskTemplate.create({
-      data: {
-        companyId,
-        name: parsed.data.name,
-        steps: {
-          create: mapTemplateSteps(parsed.data.steps),
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.taskTemplateStep.deleteMany({ where: { templateId: id } });
+
+      return tx.taskTemplate.update({
+        where: { id },
+        data: {
+          name: parsed.data.name,
+          steps: {
+            create: mapTemplateSteps(parsed.data.steps),
+          },
         },
-      },
-      include: { steps: { include: { specificAssignee: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } } },
+        include: { steps: { include: { specificAssignee: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } } },
+      });
     });
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(updated);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ error: 'Task template name already exists' }, { status: 409 });

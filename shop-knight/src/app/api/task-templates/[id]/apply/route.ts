@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { TemplateAssigneeMode } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 function plusDays(date: Date, days: number) {
   const d = new Date(date);
@@ -12,6 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
   const { id } = await params;
   const body = await req.json();
 
@@ -25,11 +27,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: 'entityType and entityId required' }, { status: 400 });
   }
 
-  const template = await prisma.taskTemplate.findUnique({ where: { id }, include: { steps: { orderBy: { sortOrder: 'asc' } } } });
+  const template = await prisma.taskTemplate.findFirst({
+    where: companyId ? withCompany(companyId, { id, active: true }) : { id, companyId: null, active: true },
+    include: { steps: { orderBy: { sortOrder: 'asc' } } },
+  });
   if (!template) return NextResponse.json({ error: 'template not found' }, { status: 404 });
 
   const created = await prisma.$transaction(
-    template.steps.map((step: any) => {
+    template.steps.map((step: { title: string; dueOffsetDays: number; assigneeMode: TemplateAssigneeMode; specificAssigneeId: string | null }) => {
       let assigneeId: string | null = null;
       if (step.assigneeMode === 'SPECIFIC_USER') assigneeId = step.specificAssigneeId || null;
       if (step.assigneeMode === 'PM') assigneeId = pmUserId;
