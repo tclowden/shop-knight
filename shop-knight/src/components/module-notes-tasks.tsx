@@ -20,6 +20,8 @@ type GanttRow = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAY_PX = 40;
+const GANTT_LABEL_COL_PX = 220;
+const GANTT_MIN_TIMELINE_PX = 720;
 
 function parseDate(value?: string | null) {
   if (!value) return null;
@@ -419,23 +421,28 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
               <>
                 <p className="mb-2 text-xs text-zinc-400">Drag bars to move. Drag left/right handles to resize dates.</p>
                 <div className="overflow-x-auto">
-                  <div style={{ width: `${ganttData.totalDays * DAY_PX}px` }}>
-                    {ganttData.rows.map((row) => {
-                      const local = dragState?.taskId === row.task.id ? { start: dragState.currentStart, end: dragState.currentEnd } : null;
-                      const start = local?.start ?? row.start;
-                      const end = local?.end ?? row.end;
-                      const leftDays = Math.round((start.getTime() - ganttData.chartStart!.getTime()) / DAY_MS);
-                      const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1);
-                      const isSaving = savingTaskDates === row.task.id;
+                  {(() => {
+                    const timelineWidth = Math.max(ganttData.totalDays * DAY_PX, GANTT_MIN_TIMELINE_PX);
+                    const rowWidth = GANTT_LABEL_COL_PX + timelineWidth;
 
-                      return (
-                        <div key={row.task.id} className="mb-2 grid grid-cols-[180px_1fr] items-center gap-2 text-xs">
-                          <div className="truncate text-zinc-300" title={row.task.title}>{row.task.title}</div>
-                          <div className="relative h-7 rounded bg-zinc-900">
-                            <div
-                              className={`absolute top-1.5 flex h-4 items-center rounded ${isSaving ? 'bg-amber-500/80' : 'bg-blue-500/85'}`}
-                              style={{ left: `${leftDays * DAY_PX}px`, width: `${spanDays * DAY_PX}px` }}
-                            >
+                    return (
+                      <div style={{ width: `${rowWidth}px` }}>
+                        {ganttData.rows.map((row) => {
+                          const local = dragState?.taskId === row.task.id ? { start: dragState.currentStart, end: dragState.currentEnd } : null;
+                          const start = local?.start ?? row.start;
+                          const end = local?.end ?? row.end;
+                          const leftDays = Math.round((start.getTime() - ganttData.chartStart!.getTime()) / DAY_MS);
+                          const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1);
+                          const isSaving = savingTaskDates === row.task.id;
+
+                          return (
+                            <div key={row.task.id} className="mb-2 flex items-center gap-2 text-xs">
+                              <div className="truncate text-zinc-300" style={{ width: `${GANTT_LABEL_COL_PX}px` }} title={row.task.title}>{row.task.title}</div>
+                              <div className="relative h-7 rounded bg-zinc-900" style={{ width: `${timelineWidth}px` }}>
+                                <div
+                                  className={`absolute top-1.5 flex h-4 items-center rounded ${isSaving ? 'bg-amber-500/80' : 'bg-blue-500/85'}`}
+                                  style={{ left: `${leftDays * DAY_PX}px`, width: `${spanDays * DAY_PX}px` }}
+                                >
                               <button
                                 type="button"
                                 onMouseDown={(e) => {
@@ -494,6 +501,8 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
                       );
                     })}
                   </div>
+                );
+              })()}
                 </div>
               </>
             )}
