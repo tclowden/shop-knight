@@ -10,7 +10,7 @@ function plusDays(date: Date, days: number) {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireRoles(['ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
+  const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);

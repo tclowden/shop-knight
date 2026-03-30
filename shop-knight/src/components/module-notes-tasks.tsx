@@ -266,7 +266,7 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
     e.preventDefault();
     if (!templateId) return;
 
-    await fetch(`/api/task-templates/${templateId}/apply`, {
+    const res = await fetch(`/api/task-templates/${templateId}/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -277,6 +277,12 @@ export function ModuleNotesTasks({ entityType, entityId }: { entityType: string;
         projectCoordinatorUserId: templateProjectCoordinatorUserId || null,
       }),
     });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      window.alert(typeof payload?.error === 'string' ? payload.error : 'Failed to apply task template');
+      return;
+    }
 
     await load();
   }
