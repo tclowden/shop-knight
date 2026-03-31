@@ -25,6 +25,7 @@ const transactionLinks = [
 ];
 
 const adminLinks = [
+  { href: '/admin/pricing', label: 'Pricing' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/users/org-chart', label: 'Org Chart' },
   { href: '/admin/products', label: 'Products' },
