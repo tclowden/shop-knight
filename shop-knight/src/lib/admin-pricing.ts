@@ -12,12 +12,12 @@ export const pricingSections: PricingSection[] = [
   {
     href: '/admin/pricing/labor-rates',
     label: 'Labor Rates',
-    description: 'Manage placeholder labor rate tables and future labor pricing rules.',
+    description: 'Manage labor rate tables and pricing inputs for labor calculations.',
   },
   {
     href: '/admin/pricing/machine-rates',
     label: 'Machine Rates',
-    description: 'Manage baseline machine-rate records used by pricing workflows.',
+    description: 'Manage baseline machine-rate records used by pricing calculations.',
   },
   {
     href: '/admin/pricing/discounts',
@@ -32,7 +32,7 @@ export const pricingSections: PricingSection[] = [
   {
     href: '/admin/pricing/modifiers',
     label: 'Modifiers',
-    description: 'Configure pricing modifiers, markups, and adjustment placeholders.',
+    description: 'Configure pricing modifiers, markups, and adjustment controls.',
   },
   {
     href: '/admin/pricing/pricing-formulas',

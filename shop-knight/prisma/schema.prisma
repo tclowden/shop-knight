@@ -150,6 +150,9 @@ model Company {
   jobs                 Job[]
   products             Product[]
   machines             Machine[]
+  laborRates           LaborRate[]
+  machineRates         MachineRate[]
+  modifiers            Modifier[]
   substrates           Substrate[]
   inventoryItems       InventoryItem[]
   inventoryReservations InventoryReservation[]
@@ -580,6 +583,63 @@ enum PricingEffectType {
   FORMULA_VAR
 }
 
+enum PricingFormulaType {
+  AREA
+  CYL_VOL
+  CYLINDRICAL_SURFACE_AREA
+  FIXED
+  HEIGHT
+  LENGTH
+  NORECALC
+  NONE
+  PBASE
+  PERMITER
+  TOTAL_AREA
+  UNIT
+  VOLUME
+  WIDTH
+}
+
+enum PricingRateUnit {
+  CU_IN
+  CU_FT
+  FEET
+  INCHES
+  SQ_IN
+  SQ_FT
+  UNIT
+}
+
+enum PricingRatePer {
+  HR
+  MIN
+  UNIT
+}
+
+enum ModifierType {
+  BOOLEAN
+  NUMERIC
+  RANGE
+}
+
+enum ModifierUnit {
+  PERCENT
+  CU_FT
+  DAYS
+  FEET
+  HOUR
+  INCHES
+  KM
+  METERS
+  MILES
+  SQ_FT
+  SQ_M
+  UNIT
+  YARD
+  CM
+  MM
+}
+
 model ProductAttribute {
   id           String                   @id @default(cuid())
   productId    String
@@ -632,6 +692,74 @@ model ProductPricingGridCell {
   grid      ProductPricingGrid @relation(fields: [gridId], references: [id], onDelete: Cascade)
 
   @@unique([gridId, xIndex, yIndex])
+}
+
+
+model LaborRate {
+  id             String            @id @default(cuid())
+  companyId      String?
+  name           String
+  cost           Decimal           @db.Decimal(12, 4)
+  price          Decimal           @db.Decimal(12, 4)
+  markup         Decimal           @db.Decimal(12, 4)
+  setupCharge    Decimal           @db.Decimal(12, 4)
+  machineCharge  Decimal           @db.Decimal(12, 4)
+  otherCharge    Decimal           @db.Decimal(12, 4)
+  formula        PricingFormulaType
+  productionRate Decimal           @db.Decimal(12, 4)
+  units          PricingRateUnit
+  per            PricingRatePer
+  active         Boolean           @default(true)
+  company        Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
+model MachineRate {
+  id             String            @id @default(cuid())
+  companyId      String?
+  name           String
+  cost           Decimal           @db.Decimal(12, 4)
+  price          Decimal           @db.Decimal(12, 4)
+  markup         Decimal           @db.Decimal(12, 4)
+  units          String
+  setupCharge    Decimal           @db.Decimal(12, 4)
+  laborCharge    Decimal           @db.Decimal(12, 4)
+  otherCharge    Decimal           @db.Decimal(12, 4)
+  formula        PricingFormulaType
+  productionRate Decimal           @db.Decimal(12, 4)
+  rateUnit       PricingRateUnit
+  per            PricingRatePer
+  active         Boolean           @default(true)
+  company        Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
+model Modifier {
+  id               String       @id @default(cuid())
+  companyId        String?
+  name             String
+  systemLookupName String
+  type             ModifierType
+  units            ModifierUnit
+  showInternally   Boolean      @default(true)
+  showCustomer     Boolean      @default(false)
+  defaultValue     String
+  active           Boolean      @default(true)
+  company          Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([companyId, name])
+  @@unique([companyId, systemLookupName])
+  @@index([companyId, active, name])
 }
 
 model Machine {
