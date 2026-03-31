@@ -65,6 +65,9 @@ export default function MachineRatesPage() {
                 <td className="px-4 py-4">{labelFromOption(PRICING_FORMULA_OPTIONS, row.formula)}</td>
                 <td className="px-4 py-4">{labelFromOption(PRICING_RATE_UNIT_OPTIONS, row.rateUnit)}</td>
                 <td className="px-4 py-4">{labelFromOption(PRICING_RATE_PER_OPTIONS, row.per)}</td>
+                <td className="px-4 py-4 text-right">
+                  <Link href={`/admin/pricing/machine-rates/${row.id}`} className="text-sm font-medium text-emerald-700 hover:text-emerald-800">Edit</Link>
+                </td>
               </tr>
             ))}
             {rows.length === 0 ? (

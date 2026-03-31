@@ -58,6 +58,9 @@ export default function ModifiersPage() {
                 <td className="px-4 py-4">{row.showInternally ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-4">{row.showCustomer ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-4">{row.defaultValue}</td>
+                <td className="px-4 py-4 text-right">
+                  <Link href={`/admin/pricing/modifiers/${row.id}`} className="text-sm font-medium text-emerald-700 hover:text-emerald-800">Edit</Link>
+                </td>
               </tr>
             ))}
             {rows.length === 0 ? (

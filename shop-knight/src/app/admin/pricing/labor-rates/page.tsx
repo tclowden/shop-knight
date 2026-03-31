@@ -52,6 +52,7 @@ export default function LaborRatesPage() {
               <th className="px-4 py-3 font-semibold">Production</th>
               <th className="px-4 py-3 font-semibold">Units</th>
               <th className="px-4 py-3 font-semibold">Per</th>
+              <th className="px-4 py-3 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -65,10 +66,13 @@ export default function LaborRatesPage() {
                 <td className="px-4 py-4">{row.productionRate}</td>
                 <td className="px-4 py-4">{labelFromOption(PRICING_RATE_UNIT_OPTIONS, row.units)}</td>
                 <td className="px-4 py-4">{labelFromOption(PRICING_RATE_PER_OPTIONS, row.per)}</td>
+                <td className="px-4 py-4 text-right">
+                  <Link href={`/admin/pricing/labor-rates/${row.id}`} className="text-sm font-medium text-emerald-700 hover:text-emerald-800">Edit</Link>
+                </td>
               </tr>
             ))}
             {rows.length === 0 ? (
-              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={8}>No labor rates yet.</td></tr>
+              <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={9}>No labor rates yet.</td></tr>
             ) : null}
           </tbody>
         </table>
