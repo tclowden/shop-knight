@@ -171,6 +171,10 @@ model Company {
   titles               Title[]
   productCategories    ProductCategory[]
   incomeAccounts       IncomeAccount[]
+  pricingDiscounts     PricingDiscount[]
+  materialTypes        MaterialType[]
+  materialCategories   MaterialCategory[]
+  materials            Material[]
   timeEntries          TimeEntry[]
   payPeriodLocks       PayPeriodLock[]
   payrollExportConfig  PayrollExportConfig?
@@ -290,10 +294,100 @@ model IncomeAccount {
   active      Boolean   @default(true)
   company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   products    Product[]
+  materials   Material[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@unique([companyId, code])
+}
+
+model PricingDiscount {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  materials Material[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model MaterialType {
+  id        String    @id @default(cuid())
+  companyId String?
+  name      String
+  active    Boolean   @default(true)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  categories MaterialCategory[]
+  materials Material[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([companyId, name])
+}
+
+model MaterialCategory {
+  id             String       @id @default(cuid())
+  companyId      String?
+  materialTypeId String
+  name           String
+  active         Boolean      @default(true)
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  materialType   MaterialType @relation(fields: [materialTypeId], references: [id], onDelete: Cascade)
+  materials      Material[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([companyId, materialTypeId, name])
+  @@index([companyId, materialTypeId, name])
+}
+
+model Material {
+  id                 String             @id @default(cuid())
+  companyId          String?
+  name               String
+  externalName       String?
+  materialTypeId     String?
+  materialCategoryId String?
+  sellingUnit        MaterialUnit?
+  buyingUnit         MaterialUnit?
+  sellBuyRatio       Decimal?           @db.Decimal(12, 4)
+  sheetWidth         Decimal?           @db.Decimal(12, 4)
+  sheetHeight        Decimal?           @db.Decimal(12, 4)
+  sheetCost          Decimal?           @db.Decimal(12, 4)
+  partNumber         String?
+  weight             Decimal?           @db.Decimal(12, 4)
+  weightUom          MaterialWeightUom?
+  cost               Decimal?           @db.Decimal(12, 4)
+  price              Decimal?           @db.Decimal(12, 4)
+  multiplier         Decimal?           @db.Decimal(12, 4)
+  setupCharge        Decimal?           @db.Decimal(12, 4)
+  laborCharge        Decimal?           @db.Decimal(12, 4)
+  machineCharge      Decimal?           @db.Decimal(12, 4)
+  otherCharge        Decimal?           @db.Decimal(12, 4)
+  formula            MaterialFormulaType?
+  discountId         String?
+  includeInBasePrice Boolean            @default(false)
+  quickbooksItemType QuickbooksItemType?
+  cogAccountId       String?
+  perLiUnit          Boolean            @default(false)
+  fixedSide          MaterialFixedSide?
+  wastageMarkup      Decimal?           @db.Decimal(12, 4)
+  calculateWastage   Boolean            @default(false)
+  notes              String?
+  active             Boolean            @default(true)
+  company            Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  materialType       MaterialType?      @relation(fields: [materialTypeId], references: [id], onDelete: SetNull)
+  materialCategory   MaterialCategory?  @relation(fields: [materialCategoryId], references: [id], onDelete: SetNull)
+  discount           PricingDiscount?   @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  cogAccount         IncomeAccount?     @relation(fields: [cogAccountId], references: [id], onDelete: SetNull)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, materialTypeId, materialCategoryId])
 }
 
 model CustomRole {
@@ -638,6 +732,67 @@ enum ModifierUnit {
   YARD
   CM
   MM
+}
+
+enum MaterialUnit {
+  BAG
+  BDFT
+  BOX
+  CASE
+  CUIN
+  CUFT
+  FEET
+  GALLON
+  INCH
+  L
+  LB
+  ML
+  OZ
+  PALLET
+  REAM
+  ROLL
+  SETS
+  SHEET
+  SQIN
+  SQYD
+  SQFT
+  UNIT
+  YARD
+}
+
+enum MaterialWeightUom {
+  KG
+  LB
+  OZ
+}
+
+enum MaterialFormulaType {
+  AREA
+  CYL_VOL
+  CYLINDRICAL_SURFACE_AREA
+  FIXED
+  HEIGHT
+  LENGTH
+  NORECALC
+  NONE
+  PBASE
+  PERIMETER
+  TOTAL_AREA
+  UNIT
+  VOLUME
+  WIDTH
+}
+
+enum MaterialFixedSide {
+  BOTH
+  HEIGHT
+  WIDTH
+}
+
+enum QuickbooksItemType {
+  INVENTORY
+  NON_INVENTORY
+  SERVICE
 }
 
 model ProductAttribute {
