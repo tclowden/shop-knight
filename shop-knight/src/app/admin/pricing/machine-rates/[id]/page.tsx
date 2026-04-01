@@ -19,6 +19,32 @@ export default function EditMachineRatePage({ params }: { params: Promise<{ id: 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
 
+  const toNumber = (value: string) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const fmt = (value: number) => value.toFixed(4);
+
+  const onCostChange = (value: string) => {
+    const cost = toNumber(value);
+    const markup = toNumber(form.markup);
+    setForm((s) => ({ ...s, cost: value, price: fmt(cost * markup) }));
+  };
+
+  const onMarkupChange = (value: string) => {
+    const cost = toNumber(form.cost);
+    const markup = toNumber(value);
+    setForm((s) => ({ ...s, markup: value, price: fmt(cost * markup) }));
+  };
+
+  const onPriceChange = (value: string) => {
+    const cost = toNumber(form.cost);
+    const price = toNumber(value);
+    const markup = cost > 0 ? price / cost : 0;
+    setForm((s) => ({ ...s, price: value, markup: fmt(markup) }));
+  };
+
   useEffect(() => {
     params.then(async ({ id: rateId }) => {
       setId(rateId);
@@ -90,13 +116,15 @@ export default function EditMachineRatePage({ params }: { params: Promise<{ id: 
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="text-xl font-semibold text-slate-900">Costs</h3>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                {[
-                  ['cost', 'Cost $'], ['price', 'Price $'], ['markup', 'Markup (X)'],
-                ].map(([key, label]) => (
-                  <label key={key} className="text-sm font-medium text-slate-700">{label}
-                    <input className="field mt-1" type="number" min="0" step="0.0001" value={form[key as keyof typeof form]} onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))} required />
-                  </label>
-                ))}
+                <label className="text-sm font-medium text-slate-700">Cost $
+                  <input className="field mt-1" type="number" min="0" step="0.0001" value={form.cost} onChange={(e) => onCostChange(e.target.value)} required />
+                </label>
+                <label className="text-sm font-medium text-slate-700">Price $
+                  <input className="field mt-1" type="number" min="0" step="0.0001" value={form.price} onChange={(e) => onPriceChange(e.target.value)} required />
+                </label>
+                <label className="text-sm font-medium text-slate-700">Markup (X)
+                  <input className="field mt-1" type="number" min="0" step="0.0001" value={form.markup} onChange={(e) => onMarkupChange(e.target.value)} required />
+                </label>
                 <label className="text-sm font-medium text-slate-700">Units
                   <select className="field mt-1" value={form.units} onChange={(e) => setForm((s) => ({ ...s, units: e.target.value }))}>
                     {PRICING_RATE_PER_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
