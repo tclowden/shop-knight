@@ -175,6 +175,7 @@ model Company {
   materialTypes        MaterialType[]
   materialCategories   MaterialCategory[]
   materials            Material[]
+  pricingFormulas      PricingFormula[]
   timeEntries          TimeEntry[]
   payPeriodLocks       PayPeriodLock[]
   payrollExportConfig  PayrollExportConfig?
@@ -388,6 +389,21 @@ model Material {
 
   @@unique([companyId, name])
   @@index([companyId, materialTypeId, materialCategoryId])
+}
+
+model PricingFormula {
+  id         String    @id @default(cuid())
+  companyId  String?
+  name       String
+  formula    String
+  uom        String
+  active     Boolean   @default(true)
+  company    Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
 }
 
 model CustomRole {
