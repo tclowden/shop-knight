@@ -200,7 +200,17 @@ export default function MaterialListPage() {
                   }}>Edit</button>
                   {row.active !== false ? (
                     <button className="text-sm font-semibold text-rose-700" onClick={async () => { const res = await fetch(`/api/admin/pricing/materials/${row.id}`, { method: 'DELETE' }); if (res.ok) { await load(); push('Material archived.', 'success'); } else push('Could not archive material.', 'error'); }}>Archive</button>
-                  ) : null}
+                  ) : (
+                    <button className="text-sm font-semibold text-emerald-700" onClick={async () => {
+                      const res = await fetch(`/api/admin/pricing/materials/${row.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ active: true }),
+                      });
+                      if (res.ok) { await load(); push('Material restored.', 'success'); }
+                      else push('Could not restore material.', 'error');
+                    }}>Restore</button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -40,6 +40,8 @@ const schema = z.object({
   notes: nullableString,
 });
 
+const restoreSchema = z.object({ active: z.literal(true) });
+
 function clean<T extends Record<string, unknown>>(payload: T): T {
   return Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])) as T;
 }
@@ -53,10 +55,24 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const { id } = await ctx.params;
-  const existing = await prisma.material.findFirst({ where: withCompany(companyId, { id, active: true }) });
+  const existing = await prisma.material.findFirst({ where: withCompany(companyId, { id }) });
   if (!existing) return NextResponse.json({ error: 'Material not found' }, { status: 404 });
 
-  const parsed = schema.safeParse(clean(await req.json().catch(() => ({}))));
+  const payload = clean(await req.json().catch(() => ({})));
+
+  const restoreParsed = restoreSchema.safeParse(payload);
+  if (restoreParsed.success) {
+    const restored = await prisma.material.update({
+      where: { id },
+      data: { active: true },
+      include: { materialType: true, materialCategory: true, discount: true, cogAccount: true },
+    });
+    return NextResponse.json(restored);
+  }
+
+  if (!existing.active) return NextResponse.json({ error: 'Archived material must be restored before editing' }, { status: 409 });
+
+  const parsed = schema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid material payload' }, { status: 400 });
 
   const updated = await prisma.material.update({

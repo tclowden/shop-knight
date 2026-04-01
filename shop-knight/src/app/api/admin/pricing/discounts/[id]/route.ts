@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 const schema = z.object({ name: z.string().trim().min(1) });
+const restoreSchema = z.object({ active: z.literal(true) });
+
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -13,10 +15,20 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
   const { id } = await ctx.params;
-  const existing = await prisma.pricingDiscount.findFirst({ where: withCompany(companyId, { id, active: true }) });
+  const existing = await prisma.pricingDiscount.findFirst({ where: withCompany(companyId, { id }) });
   if (!existing) return NextResponse.json({ error: 'Discount not found' }, { status: 404 });
 
-  const parsed = schema.safeParse(await req.json().catch(() => ({})));
+  const payload = await req.json().catch(() => ({}));
+
+  const restoreParsed = restoreSchema.safeParse(payload);
+  if (restoreParsed.success) {
+    const restored = await prisma.pricingDiscount.update({ where: { id }, data: { active: true } });
+    return NextResponse.json(restored);
+  }
+
+  if (!existing.active) return NextResponse.json({ error: 'Archived discount must be restored before editing' }, { status: 409 });
+
+  const parsed = schema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid discount payload' }, { status: 400 });
 
   const updated = await prisma.pricingDiscount.update({ where: { id }, data: { name: parsed.data.name } });

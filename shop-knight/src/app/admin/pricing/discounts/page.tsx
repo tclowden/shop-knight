@@ -78,7 +78,22 @@ export default function DiscountsPage() {
                         push('Discount archived.', 'success');
                       }}
                     >Archive</button>
-                  ) : null}
+                  ) : (
+                    <button
+                      type="button"
+                      className="text-sm font-semibold text-emerald-700"
+                      onClick={async () => {
+                        const res = await fetch(`/api/admin/pricing/discounts/${row.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ active: true }),
+                        });
+                        if (!res.ok) return push('Could not restore discount.', 'error');
+                        await load();
+                        push('Discount restored.', 'success');
+                      }}
+                    >Restore</button>
+                  )}
                 </td>
               </tr>
             ))}
