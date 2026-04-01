@@ -11,7 +11,7 @@ const schema = z.object({
   units: z.nativeEnum(ModifierUnit),
   showInternally: z.boolean(),
   showCustomer: z.boolean(),
-  defaultValue: z.string().trim().min(1),
+  defaultValue: z.string().trim().optional().nullable(),
 });
 
 export async function GET() {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         ...parsed.data,
         name: parsed.data.name.trim(),
         systemLookupName: parsed.data.systemLookupName.trim(),
-        defaultValue: parsed.data.defaultValue.trim(),
+        defaultValue: parsed.data.defaultValue?.trim() ?? '',
         active: true,
       },
     });

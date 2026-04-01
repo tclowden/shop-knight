@@ -88,7 +88,7 @@ export default function EditModifierPage({ params }: { params: Promise<{ id: str
                 </select>
               </label>
               <label className="text-sm font-medium text-slate-700">Default Value
-                <input className="field mt-1" value={form.defaultValue} onChange={(e) => setForm((s) => ({ ...s, defaultValue: e.target.value }))} required />
+                <input className="field mt-1" value={form.defaultValue} onChange={(e) => setForm((s) => ({ ...s, defaultValue: e.target.value }))} />
               </label>
               <div className="grid grid-cols-1 gap-2 content-start">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mt-6">
