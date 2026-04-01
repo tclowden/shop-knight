@@ -9,7 +9,7 @@ const schema = z.object({
   cost: z.coerce.number().min(0),
   price: z.coerce.number().min(0),
   markup: z.coerce.number().min(0),
-  units: z.string().trim().min(1),
+  units: z.nativeEnum(PricingRatePer),
   setupCharge: z.coerce.number().min(0),
   laborCharge: z.coerce.number().min(0),
   otherCharge: z.coerce.number().min(0),
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         companyId,
         ...parsed.data,
         name: parsed.data.name.trim(),
-        units: parsed.data.units.trim(),
+        units: parsed.data.units,
         active: true,
       },
     });
