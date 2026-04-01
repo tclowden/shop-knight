@@ -55,6 +55,67 @@ export const MODIFIER_UNIT_OPTIONS = [
   { value: 'MM', label: 'mm' },
 ] as const;
 
+export const MATERIAL_UNIT_OPTIONS = [
+  { value: 'BAG', label: 'Bag' },
+  { value: 'BDFT', label: 'BdFt' },
+  { value: 'BOX', label: 'Box' },
+  { value: 'CASE', label: 'Case' },
+  { value: 'CUIN', label: 'CuIn' },
+  { value: 'CUFT', label: 'Cuft' },
+  { value: 'FEET', label: 'Feet' },
+  { value: 'GALLON', label: 'Gallon' },
+  { value: 'INCH', label: 'Inch' },
+  { value: 'L', label: 'L' },
+  { value: 'LB', label: 'lb' },
+  { value: 'ML', label: 'ML' },
+  { value: 'OZ', label: 'Oz' },
+  { value: 'PALLET', label: 'Pallet' },
+  { value: 'REAM', label: 'Ream' },
+  { value: 'ROLL', label: 'Roll' },
+  { value: 'SETS', label: 'Set(s)' },
+  { value: 'SHEET', label: 'Sheet' },
+  { value: 'SQIN', label: 'SqIn' },
+  { value: 'SQYD', label: 'SqYd' },
+  { value: 'SQFT', label: 'Sqft' },
+  { value: 'UNIT', label: 'Unit' },
+  { value: 'YARD', label: 'Yard' },
+] as const;
+
+export const MATERIAL_WEIGHT_UOM_OPTIONS = [
+  { value: 'KG', label: 'Kg' },
+  { value: 'LB', label: 'Lb' },
+  { value: 'OZ', label: 'Oz' },
+] as const;
+
+export const MATERIAL_FORMULA_OPTIONS = [
+  { value: 'AREA', label: 'Area' },
+  { value: 'CYL_VOL', label: 'Cyl.Vol' },
+  { value: 'CYLINDRICAL_SURFACE_AREA', label: 'Cylindrical Surface Area' },
+  { value: 'FIXED', label: 'Fixed' },
+  { value: 'HEIGHT', label: 'Height' },
+  { value: 'LENGTH', label: 'Length' },
+  { value: 'NORECALC', label: 'NoRecalc' },
+  { value: 'NONE', label: 'None' },
+  { value: 'PBASE', label: 'PBase' },
+  { value: 'PERIMETER', label: 'Perimeter' },
+  { value: 'TOTAL_AREA', label: 'Total Area' },
+  { value: 'UNIT', label: 'Unit' },
+  { value: 'VOLUME', label: 'Volume' },
+  { value: 'WIDTH', label: 'Width' },
+] as const;
+
+export const MATERIAL_FIXED_SIDE_OPTIONS = [
+  { value: 'BOTH', label: 'Both' },
+  { value: 'HEIGHT', label: 'Height' },
+  { value: 'WIDTH', label: 'Width' },
+] as const;
+
+export const MATERIAL_QB_ITEM_TYPE_OPTIONS = [
+  { value: 'INVENTORY', label: 'Inventory' },
+  { value: 'NON_INVENTORY', label: 'Non Inventory' },
+  { value: 'SERVICE', label: 'Service' },
+] as const;
+
 export function labelFromOption(options: readonly { value: string; label: string }[], value: string) {
   return options.find((option) => option.value === value)?.label ?? value;
 }
