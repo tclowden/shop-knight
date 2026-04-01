@@ -44,14 +44,20 @@ function clean<T extends Record<string, unknown>>(payload: T): T {
   return Object.fromEntries(Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])) as T;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
+  const url = new URL(req.url);
+  const archived = url.searchParams.get('archived') || 'active';
+  const where = archived === 'all'
+    ? withCompany(companyId)
+    : withCompany(companyId, { active: archived === 'archived' ? false : true });
+
   const items = await prisma.material.findMany({
-    where: withCompany(companyId, { active: true }),
+    where,
     include: {
       materialType: true,
       materialCategory: true,

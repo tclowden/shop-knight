@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { PricingPageShell } from '@/components/admin-pricing';
+import { useToast } from '@/components/toast-provider';
 import { MATERIAL_FIXED_SIDE_OPTIONS, MATERIAL_FORMULA_OPTIONS, MATERIAL_QB_ITEM_TYPE_OPTIONS, MATERIAL_UNIT_OPTIONS, MATERIAL_WEIGHT_UOM_OPTIONS } from '@/lib/admin-pricing-options';
 
 type Option = { id: string; name: string; materialTypeId?: string };
 type Account = { id: string; code: string; name: string };
 type Material = Record<string, any>;
+type Scope = 'active' | 'archived' | 'all';
 
 type FormState = {
   name: string; externalName: string; materialTypeId: string; materialCategoryId: string;
@@ -26,7 +28,13 @@ const blank: FormState = {
   fixedSide: '', wastageMarkup: '', calculateWastage: false, notes: '',
 };
 
+const numericKeys: (keyof FormState)[] = [
+  'sellBuyRatio','sheetWidth','sheetHeight','sheetCost','weight','cost','price','multiplier','setupCharge','laborCharge','machineCharge','otherCharge','wastageMarkup',
+];
+
 export default function MaterialListPage() {
+  const { push } = useToast();
+  const [scope, setScope] = useState<Scope>('active');
   const [materialTypes, setMaterialTypes] = useState<Option[]>([]);
   const [categories, setCategories] = useState<Option[]>([]);
   const [discounts, setDiscounts] = useState<Option[]>([]);
@@ -34,14 +42,19 @@ export default function MaterialListPage() {
   const [rows, setRows] = useState<Material[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blank);
+  const [showQuickCategory, setShowQuickCategory] = useState(false);
+  const [quickCategoryName, setQuickCategoryName] = useState('');
 
   const visibleCategories = useMemo(() => {
     if (!form.materialTypeId) return categories;
     return categories.filter((c) => !c.materialTypeId || c.materialTypeId === form.materialTypeId);
   }, [categories, form.materialTypeId]);
 
-  const load = async () => {
-    const [optionsRes, materialsRes] = await Promise.all([fetch('/api/admin/pricing/materials/options'), fetch('/api/admin/pricing/materials')]);
+  const load = async (nextScope: Scope = scope) => {
+    const [optionsRes, materialsRes] = await Promise.all([
+      fetch('/api/admin/pricing/materials/options'),
+      fetch(`/api/admin/pricing/materials?archived=${nextScope}`),
+    ]);
     if (optionsRes.ok) {
       const options = await optionsRes.json();
       setMaterialTypes(options.materialTypes || []);
@@ -52,22 +65,72 @@ export default function MaterialListPage() {
     if (materialsRes.ok) setRows(await materialsRes.json());
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [scope]);
+
+  const validate = () => {
+    if (!form.name.trim()) return 'Name is required.';
+    if (!form.materialTypeId) return 'Material type is required.';
+    if (!form.materialCategoryId) return 'Category is required.';
+    for (const key of numericKeys) {
+      const value = form[key];
+      if (value === '') continue;
+      const num = Number(value);
+      if (!Number.isFinite(num)) return `${key} must be a valid number.`;
+      if (num < 0) return `${key} cannot be negative.`;
+    }
+    return null;
+  };
 
   const submit = async () => {
+    const error = validate();
+    if (error) return push(error, 'error');
+
     const url = editingId ? `/api/admin/pricing/materials/${editingId}` : '/api/admin/pricing/materials';
     const method = editingId ? 'PATCH' : 'POST';
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-    if (!res.ok) return alert('Could not save material');
+    if (!res.ok) return push('Could not save material.', 'error');
+
     setForm(blank);
     setEditingId(null);
     await load();
+    push(editingId ? 'Material updated.' : 'Material created.', 'success');
   };
 
   return (
     <PricingPageShell title="Material List" description="Create, edit, and archive materials.">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-semibold">{editingId ? 'Edit Material' : 'Create Material'}</h2>{editingId ? <button className="text-sm font-semibold text-slate-600" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel Edit</button> : null}</div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{editingId ? 'Edit Material' : 'Create Material'}</h2>
+          <div className="flex items-center gap-2">
+            <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickCategory((v) => !v)}>+ Quick Category</button>
+            {editingId ? <button className="text-sm font-semibold text-slate-600" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel Edit</button> : null}
+          </div>
+        </div>
+
+        {showQuickCategory ? (
+          <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]">
+            <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value })} className="h-10 rounded border border-slate-300 bg-white px-2">
+              <option value="">Select material type</option>
+              {materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <input value={quickCategoryName} onChange={(e) => setQuickCategoryName(e.target.value)} placeholder="New category name" className="h-10 rounded border border-slate-300 px-2" />
+            <button
+              className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
+              onClick={async () => {
+                if (!form.materialTypeId || !quickCategoryName.trim()) return push('Pick a type and category name.', 'error');
+                const res = await fetch('/api/admin/pricing/material-categories', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ materialTypeId: form.materialTypeId, name: quickCategoryName.trim() }),
+                });
+                if (!res.ok) return push('Could not create category.', 'error');
+                setQuickCategoryName('');
+                await load();
+                push('Category created.', 'success');
+              }}
+            >Create</button>
+          </div>
+        ) : null}
+
         <div className="grid gap-3 md:grid-cols-3">
           <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
           <input placeholder="External Name" value={form.externalName} onChange={(e) => setForm({ ...form, externalName: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
@@ -96,16 +159,26 @@ export default function MaterialListPage() {
           <select value={form.fixedSide} onChange={(e) => setForm({ ...form, fixedSide: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Fixed Side</option>{MATERIAL_FIXED_SIDE_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
           <input placeholder="Wastage Markup" value={form.wastageMarkup} onChange={(e) => setForm({ ...form, wastageMarkup: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
         </div>
+
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.includeInBasePrice} onChange={(e) => setForm({ ...form, includeInBasePrice: e.target.checked })} /> Include in Base Price</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.perLiUnit} onChange={(e) => setForm({ ...form, perLiUnit: e.target.checked })} /> Per LI Unit</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.calculateWastage} onChange={(e) => setForm({ ...form, calculateWastage: e.target.checked })} /> Calculate Wastage</label>
         </div>
+
         <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-3 min-h-24 w-full rounded-lg border border-slate-300 p-3" />
         <div className="mt-3"><button type="button" onClick={submit} className="h-11 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white">{editingId ? 'Update Material' : 'Save Material'}</button></div>
       </section>
 
       <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 p-3">
+          <h3 className="font-semibold">Materials</h3>
+          <select value={scope} onChange={(e) => setScope(e.target.value as Scope)} className="h-9 rounded border border-slate-300 bg-white px-2 text-sm">
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="all">All</option>
+          </select>
+        </div>
         <table className="w-full text-left text-sm">
           <thead className="bg-[#eaf6fd] text-slate-600"><tr><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">External</th><th className="px-4 py-3 font-semibold">Type</th><th className="px-4 py-3 font-semibold">Category</th><th className="px-4 py-3 font-semibold text-right">Actions</th></tr></thead>
           <tbody>
@@ -123,12 +196,15 @@ export default function MaterialListPage() {
                       formula: row.formula || '', discountId: row.discountId || '', includeInBasePrice: !!row.includeInBasePrice, quickbooksItemType: row.quickbooksItemType || '', cogAccountId: row.cogAccountId || '', perLiUnit: !!row.perLiUnit,
                       fixedSide: row.fixedSide || '', wastageMarkup: row.wastageMarkup?.toString?.() || '', calculateWastage: !!row.calculateWastage, notes: row.notes || '',
                     });
+                    push('Loaded material for editing.', 'info');
                   }}>Edit</button>
-                  <button className="text-sm font-semibold text-rose-700" onClick={async () => { const res = await fetch(`/api/admin/pricing/materials/${row.id}`, { method: 'DELETE' }); if (res.ok) await load(); }}>Archive</button>
+                  {row.active !== false ? (
+                    <button className="text-sm font-semibold text-rose-700" onClick={async () => { const res = await fetch(`/api/admin/pricing/materials/${row.id}`, { method: 'DELETE' }); if (res.ok) { await load(); push('Material archived.', 'success'); } else push('Could not archive material.', 'error'); }}>Archive</button>
+                  ) : null}
                 </td>
               </tr>
             ))}
-            {rows.length === 0 ? <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={5}>No materials yet.</td></tr> : null}
+            {rows.length === 0 ? <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={5}>No materials found.</td></tr> : null}
           </tbody>
         </table>
       </section>

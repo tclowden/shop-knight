@@ -5,14 +5,20 @@ import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
 const schema = z.object({ name: z.string().trim().min(1) });
 
-export async function GET() {
+export async function GET(req: Request) {
   const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
 
+  const url = new URL(req.url);
+  const archived = url.searchParams.get('archived') || 'active';
+  const where = archived === 'all'
+    ? withCompany(companyId)
+    : withCompany(companyId, { active: archived === 'archived' ? false : true });
+
   const items = await prisma.pricingDiscount.findMany({
-    where: withCompany(companyId, { active: true }),
+    where,
     orderBy: { name: 'asc' },
   });
   return NextResponse.json(items);
