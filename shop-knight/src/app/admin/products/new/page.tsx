@@ -21,6 +21,8 @@ type DraftAttribute = {
   pricingImpact: PricingImpact;
 };
 
+type AttributeLibraryItem = DraftAttribute;
+
 export default function NewProductPage() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -42,6 +44,8 @@ export default function NewProductPage() {
   const [incomeAccounts, setIncomeAccounts] = useState<IncomeAccount[]>([]);
 
   const [attributes, setAttributes] = useState<DraftAttribute[]>([]);
+  const [attributeLibrary, setAttributeLibrary] = useState<AttributeLibraryItem[]>([]);
+  const [selectedLibraryAttribute, setSelectedLibraryAttribute] = useState('');
   const [attrCode, setAttrCode] = useState('');
   const [attrName, setAttrName] = useState('');
   const [showAttributeAdvanced, setShowAttributeAdvanced] = useState(false);
@@ -74,10 +78,11 @@ export default function NewProductPage() {
 
   useEffect(() => {
     async function loadOptions() {
-      const [dRes, cRes, iRes] = await Promise.all([
+      const [dRes, cRes, iRes, aRes] = await Promise.all([
         fetch('/api/admin/departments'),
         fetch('/api/admin/product-categories'),
         fetch('/api/admin/income-accounts'),
+        fetch('/api/admin/products/attribute-library'),
       ]);
       if (dRes.ok) setDepartments((await dRes.json()).filter((d: Department) => d.active));
       if (cRes.ok) {
@@ -87,6 +92,10 @@ export default function NewProductPage() {
         setCategories(activeCategories);
       }
       if (iRes.ok) setIncomeAccounts((await iRes.json()).filter((i: IncomeAccount) => i.active));
+      if (aRes.ok) {
+        const library = (await aRes.json()) as AttributeLibraryItem[];
+        setAttributeLibrary(Array.isArray(library) ? library : []);
+      }
     }
     loadOptions();
   }, []);
@@ -155,6 +164,28 @@ export default function NewProductPage() {
       setEditingAttributeCode(null);
       setShowAttributeForm(false);
     }
+  }
+
+  function addAttributeFromLibrary() {
+    if (!selectedLibraryAttribute) {
+      setError('Select an attribute to add.');
+      return;
+    }
+
+    const template = attributeLibrary.find((item) => item.code === selectedLibraryAttribute);
+    if (!template) {
+      setError('Selected attribute not found in admin attributes.');
+      return;
+    }
+
+    if (attributes.some((item) => item.code.toLowerCase() === template.code.toLowerCase())) {
+      setError('That attribute is already added.');
+      return;
+    }
+
+    setAttributes((prev) => [...prev, template]);
+    setSelectedLibraryAttribute('');
+    setError('');
   }
 
   function startEditAttribute(code: string) {
@@ -400,6 +431,18 @@ export default function NewProductPage() {
           <h2 className="text-sm font-semibold text-slate-800">Attributes</h2>
           <p className="mt-1 text-xs text-slate-500">Add optional product attributes now (width, height, material, finish, etc.). For pricing-aware dropdowns, use <span className="font-mono">Label|Number</span> (example: <span className="font-mono">Rush|25</span>).</p>
           <p className="mt-2 text-xs text-slate-600">Auto formula preview: <span className="font-mono">{draftPricingFormula}</span></p>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+            <select value={selectedLibraryAttribute} onChange={(e) => setSelectedLibraryAttribute(e.target.value)} className="field">
+              <option value="">Add attribute from admin library</option>
+              {attributeLibrary.map((attr) => (
+                <option key={attr.code} value={attr.code}>{attr.name} ({attr.code})</option>
+              ))}
+            </select>
+            <button type="button" onClick={addAttributeFromLibrary} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Add Selected Attribute
+            </button>
+          </div>
 
           <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
             <table className="w-full text-left text-sm">
