@@ -42,6 +42,8 @@ export default function MaterialListPage() {
   const [rows, setRows] = useState<Material[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(blank);
+  const [showQuickType, setShowQuickType] = useState(false);
+  const [quickTypeName, setQuickTypeName] = useState('');
   const [showQuickCategory, setShowQuickCategory] = useState(false);
   const [quickCategoryName, setQuickCategoryName] = useState('');
 
@@ -102,10 +104,35 @@ export default function MaterialListPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{editingId ? 'Edit Material' : 'Create Material'}</h2>
           <div className="flex items-center gap-2">
+            <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickType((v) => !v)}>+ Quick Type</button>
             <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickCategory((v) => !v)}>+ Quick Category</button>
             {editingId ? <button className="text-sm font-semibold text-slate-600" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel Edit</button> : null}
           </div>
         </div>
+
+        {showQuickType ? (
+          <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_auto]">
+            <input value={quickTypeName} onChange={(e) => setQuickTypeName(e.target.value)} placeholder="New material type" className="h-10 rounded border border-slate-300 px-2" />
+            <button
+              className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
+              onClick={async () => {
+                if (!quickTypeName.trim()) return push('Material type name is required.', 'error');
+                const res = await fetch('/api/admin/pricing/material-types', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ name: quickTypeName.trim() }),
+                });
+                if (!res.ok) return push('Could not create material type.', 'error');
+                const created = await res.json().catch(() => null);
+                setQuickTypeName('');
+                await load();
+                if (created?.id) {
+                  setForm((prev) => ({ ...prev, materialTypeId: created.id, materialCategoryId: '' }));
+                }
+                push('Material type created.', 'success');
+              }}
+            >Create</button>
+          </div>
+        ) : null}
 
         {showQuickCategory ? (
           <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]">
@@ -134,7 +161,10 @@ export default function MaterialListPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
           <input placeholder="External Name" value={form.externalName} onChange={(e) => setForm({ ...form, externalName: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value, materialCategoryId: '' })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Material Type</option>{materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+          <div className="space-y-1">
+            <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value, materialCategoryId: '' })} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Material Type</option>{materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+            <button type="button" onClick={() => setShowQuickType(true)} className="text-left text-xs font-semibold text-sky-700 hover:text-sky-800">+ Create Material Type</button>
+          </div>
           <select value={form.materialCategoryId} onChange={(e) => setForm({ ...form, materialCategoryId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Category</option>{visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select value={form.sellingUnit} onChange={(e) => setForm({ ...form, sellingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Selling Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
           <select value={form.buyingUnit} onChange={(e) => setForm({ ...form, buyingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Buying Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
