@@ -6,6 +6,15 @@ import { useRouter } from 'next/navigation';
 import { PricingPageShell } from '@/components/admin-pricing';
 import { PRICING_FORMULA_OPTIONS, PRICING_RATE_PER_OPTIONS, PRICING_RATE_UNIT_OPTIONS } from '@/lib/admin-pricing-options';
 
+function parseNumber(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toFieldValue(value: number) {
+  return value.toFixed(4).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+}
+
 const initialForm = {
   name: '', cost: '0', price: '0', markup: '0', setupCharge: '0', machineCharge: '0', otherCharge: '0',
   formula: 'NONE', productionRate: '0', units: 'UNIT', per: 'UNIT',
@@ -18,6 +27,20 @@ export default function EditLaborRatePage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
+
+  function updateFromCostAndPrice(costRaw: string, priceRaw: string) {
+    const cost = parseNumber(costRaw);
+    const price = parseNumber(priceRaw);
+    const markup = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+    return { markup: toFieldValue(markup) };
+  }
+
+  function updateFromCostAndMarkup(costRaw: string, markupRaw: string) {
+    const cost = parseNumber(costRaw);
+    const markup = parseNumber(markupRaw);
+    const price = cost * (1 + markup / 100);
+    return { price: toFieldValue(price) };
+  }
 
   useEffect(() => {
     params.then(async ({ id: rateId }) => {
@@ -84,7 +107,41 @@ export default function EditLaborRatePage({ params }: { params: Promise<{ id: st
                 ['otherCharge', 'Other Charge'], ['productionRate', 'Production Rate'],
               ].map(([key, label]) => (
                 <label key={key} className="text-sm font-medium text-slate-700">{label}
-                  <input className="field mt-1" type="number" min="0" step="0.0001" value={form[key as keyof typeof form]} onChange={(e) => setForm((s) => ({ ...s, [key]: e.target.value }))} required />
+                  <input
+                    className="field mt-1"
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={form[key as keyof typeof form]}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setForm((s) => {
+                        if (key === 'cost') {
+                          return {
+                            ...s,
+                            cost: nextValue,
+                            ...updateFromCostAndPrice(nextValue, s.price),
+                          };
+                        }
+                        if (key === 'price') {
+                          return {
+                            ...s,
+                            price: nextValue,
+                            ...updateFromCostAndPrice(s.cost, nextValue),
+                          };
+                        }
+                        if (key === 'markup') {
+                          return {
+                            ...s,
+                            markup: nextValue,
+                            ...updateFromCostAndMarkup(s.cost, nextValue),
+                          };
+                        }
+                        return { ...s, [key]: nextValue };
+                      });
+                    }}
+                    required
+                  />
                 </label>
               ))}
               <label className="text-sm font-medium text-slate-700">Formula
