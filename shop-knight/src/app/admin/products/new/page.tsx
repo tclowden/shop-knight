@@ -24,7 +24,7 @@ type DraftAttribute = {
 export default function NewProductPage() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [type, setType] = useState('PRINT');
+  const [type, setType] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [incomeAccountId, setIncomeAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -80,7 +80,12 @@ export default function NewProductPage() {
         fetch('/api/admin/income-accounts'),
       ]);
       if (dRes.ok) setDepartments((await dRes.json()).filter((d: Department) => d.active));
-      if (cRes.ok) setCategories((await cRes.json()).filter((c: ProductCategory) => c.active));
+      if (cRes.ok) {
+        const activeCategories = (await cRes.json())
+          .filter((c: ProductCategory) => c.active)
+          .sort((a: ProductCategory, b: ProductCategory) => a.name.localeCompare(b.name));
+        setCategories(activeCategories);
+      }
       if (iRes.ok) setIncomeAccounts((await iRes.json()).filter((i: IncomeAccount) => i.active));
     }
     loadOptions();
@@ -318,7 +323,13 @@ export default function NewProductPage() {
 
           <label className="text-sm font-medium text-slate-700">
             Type
-            <input value={type} onChange={(e) => setType(e.target.value)} placeholder="PRINT, LABOR, INSTALL..." className="field mt-1" required />
+            <select value={type} onChange={(e) => setType(e.target.value)} className="field mt-1" required>
+              <option value="">Select type</option>
+              {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <Link href="/admin/product-categories" className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:text-sky-800">
+              + Create / manage product types
+            </Link>
           </label>
 
           <label className="text-sm font-medium text-slate-700">
