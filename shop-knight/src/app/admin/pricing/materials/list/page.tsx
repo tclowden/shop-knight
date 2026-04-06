@@ -41,6 +41,7 @@ export default function MaterialListPage() {
   const [cogAccounts, setCogAccounts] = useState<Account[]>([]);
   const [rows, setRows] = useState<Material[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [form, setForm] = useState<FormState>(blank);
   const [showQuickType, setShowQuickType] = useState(false);
   const [quickTypeName, setQuickTypeName] = useState('');
@@ -94,6 +95,9 @@ export default function MaterialListPage() {
 
     setForm(blank);
     setEditingId(null);
+    setShowMaterialForm(false);
+    setShowQuickType(false);
+    setShowQuickCategory(false);
     await load();
     push(editingId ? 'Material updated.' : 'Material created.', 'success');
   };
@@ -102,102 +106,138 @@ export default function MaterialListPage() {
     <PricingPageShell title="Material List" description="Create, edit, and archive materials.">
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{editingId ? 'Edit Material' : 'Create Material'}</h2>
-          <div className="flex items-center gap-2">
-            <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickType((v) => !v)}>+ Quick Type</button>
-            <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickCategory((v) => !v)}>+ Quick Category</button>
-            {editingId ? <button className="text-sm font-semibold text-slate-600" onClick={() => { setEditingId(null); setForm(blank); }}>Cancel Edit</button> : null}
-          </div>
+          <h2 className="text-lg font-semibold">Material Setup</h2>
+          {showMaterialForm ? (
+            <div className="flex items-center gap-2">
+              <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickType((v) => !v)}>+ Quick Type</button>
+              <button className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setShowQuickCategory((v) => !v)}>+ Quick Category</button>
+              <button
+                className="text-sm font-semibold text-slate-600"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(blank);
+                  setShowMaterialForm(false);
+                  setShowQuickType(false);
+                  setShowQuickCategory(false);
+                }}
+              >
+                {editingId ? 'Cancel Edit' : 'Cancel'}
+              </button>
+            </div>
+          ) : (
+            <button
+              className="h-10 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white"
+              onClick={() => {
+                setEditingId(null);
+                setForm(blank);
+                setShowMaterialForm(true);
+              }}
+            >
+              Create Material
+            </button>
+          )}
         </div>
 
-        {showQuickType ? (
-          <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_auto]">
-            <input value={quickTypeName} onChange={(e) => setQuickTypeName(e.target.value)} placeholder="New material type" className="h-10 rounded border border-slate-300 px-2" />
-            <button
-              className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
-              onClick={async () => {
-                if (!quickTypeName.trim()) return push('Material type name is required.', 'error');
-                const res = await fetch('/api/admin/pricing/material-types', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ name: quickTypeName.trim() }),
-                });
-                if (!res.ok) return push('Could not create material type.', 'error');
-                const created = await res.json().catch(() => null);
-                setQuickTypeName('');
-                await load();
-                if (created?.id) {
-                  setForm((prev) => ({ ...prev, materialTypeId: created.id, materialCategoryId: '' }));
-                }
-                push('Material type created.', 'success');
-              }}
-            >Create</button>
-          </div>
+        {!showMaterialForm ? (
+          <p className="text-sm text-slate-500">Click <span className="font-semibold text-slate-700">Create Material</span> to open the full material form.</p>
         ) : null}
 
-        {showQuickCategory ? (
-          <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]">
-            <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value })} className="h-10 rounded border border-slate-300 bg-white px-2">
-              <option value="">Select material type</option>
-              {materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <input value={quickCategoryName} onChange={(e) => setQuickCategoryName(e.target.value)} placeholder="New category name" className="h-10 rounded border border-slate-300 px-2" />
-            <button
-              className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
-              onClick={async () => {
-                if (!form.materialTypeId || !quickCategoryName.trim()) return push('Pick a type and category name.', 'error');
-                const res = await fetch('/api/admin/pricing/material-categories', {
-                  method: 'POST', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ materialTypeId: form.materialTypeId, name: quickCategoryName.trim() }),
-                });
-                if (!res.ok) return push('Could not create category.', 'error');
-                setQuickCategoryName('');
-                await load();
-                push('Category created.', 'success');
-              }}
-            >Create</button>
-          </div>
+        {showMaterialForm ? (
+          <>
+            <div className="mb-4">
+              <h3 className="text-base font-semibold">{editingId ? 'Edit Material' : 'Create Material'}</h3>
+            </div>
+
+            {showQuickType ? (
+              <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_auto]">
+                <input value={quickTypeName} onChange={(e) => setQuickTypeName(e.target.value)} placeholder="New material type" className="h-10 rounded border border-slate-300 px-2" />
+                <button
+                  className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
+                  onClick={async () => {
+                    if (!quickTypeName.trim()) return push('Material type name is required.', 'error');
+                    const res = await fetch('/api/admin/pricing/material-types', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: quickTypeName.trim() }),
+                    });
+                    if (!res.ok) return push('Could not create material type.', 'error');
+                    const created = await res.json().catch(() => null);
+                    setQuickTypeName('');
+                    await load();
+                    if (created?.id) {
+                      setForm((prev) => ({ ...prev, materialTypeId: created.id, materialCategoryId: '' }));
+                    }
+                    push('Material type created.', 'success');
+                  }}
+                >Create</button>
+              </div>
+            ) : null}
+
+            {showQuickCategory ? (
+              <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1fr_1fr_auto]">
+                <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value })} className="h-10 rounded border border-slate-300 bg-white px-2">
+                  <option value="">Select material type</option>
+                  {materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                <input value={quickCategoryName} onChange={(e) => setQuickCategoryName(e.target.value)} placeholder="New category name" className="h-10 rounded border border-slate-300 px-2" />
+                <button
+                  className="h-10 rounded bg-emerald-600 px-3 text-sm font-semibold text-white"
+                  onClick={async () => {
+                    if (!form.materialTypeId || !quickCategoryName.trim()) return push('Pick a type and category name.', 'error');
+                    const res = await fetch('/api/admin/pricing/material-categories', {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ materialTypeId: form.materialTypeId, name: quickCategoryName.trim() }),
+                    });
+                    if (!res.ok) return push('Could not create category.', 'error');
+                    setQuickCategoryName('');
+                    await load();
+                    push('Category created.', 'success');
+                  }}
+                >Create</button>
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="External Name" value={form.externalName} onChange={(e) => setForm({ ...form, externalName: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <div className="space-y-1">
+                <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value, materialCategoryId: '' })} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Material Type</option>{materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+                <button type="button" onClick={() => setShowQuickType(true)} className="text-left text-xs font-semibold text-sky-700 hover:text-sky-800">+ Create Material Type</button>
+              </div>
+              <select value={form.materialCategoryId} onChange={(e) => setForm({ ...form, materialCategoryId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Category</option>{visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <select value={form.sellingUnit} onChange={(e) => setForm({ ...form, sellingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Selling Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <select value={form.buyingUnit} onChange={(e) => setForm({ ...form, buyingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Buying Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <input placeholder="Sell/Buy Ratio" value={form.sellBuyRatio} onChange={(e) => setForm({ ...form, sellBuyRatio: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Sheet Width" value={form.sheetWidth} onChange={(e) => setForm({ ...form, sheetWidth: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Sheet Height" value={form.sheetHeight} onChange={(e) => setForm({ ...form, sheetHeight: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Sheet Cost" value={form.sheetCost} onChange={(e) => setForm({ ...form, sheetCost: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Part Number" value={form.partNumber} onChange={(e) => setForm({ ...form, partNumber: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Weight" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <select value={form.weightUom} onChange={(e) => setForm({ ...form, weightUom: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Weight UOM</option>{MATERIAL_WEIGHT_UOM_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <input placeholder="Cost" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Multiplier" value={form.multiplier} onChange={(e) => setForm({ ...form, multiplier: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Setup Charge" value={form.setupCharge} onChange={(e) => setForm({ ...form, setupCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Labor Charge" value={form.laborCharge} onChange={(e) => setForm({ ...form, laborCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Machine Charge" value={form.machineCharge} onChange={(e) => setForm({ ...form, machineCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <input placeholder="Other Charge" value={form.otherCharge} onChange={(e) => setForm({ ...form, otherCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+              <select value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Formula</option>{MATERIAL_FORMULA_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <select value={form.discountId} onChange={(e) => setForm({ ...form, discountId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Discount</option>{discounts.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+              <select value={form.quickbooksItemType} onChange={(e) => setForm({ ...form, quickbooksItemType: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">QuickBooks Item Type</option>{MATERIAL_QB_ITEM_TYPE_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <select value={form.cogAccountId} onChange={(e) => setForm({ ...form, cogAccountId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">COG Account</option>{cogAccounts.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select>
+              <select value={form.fixedSide} onChange={(e) => setForm({ ...form, fixedSide: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Fixed Side</option>{MATERIAL_FIXED_SIDE_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
+              <input placeholder="Wastage Markup" value={form.wastageMarkup} onChange={(e) => setForm({ ...form, wastageMarkup: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.includeInBasePrice} onChange={(e) => setForm({ ...form, includeInBasePrice: e.target.checked })} /> Include in Base Price</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.perLiUnit} onChange={(e) => setForm({ ...form, perLiUnit: e.target.checked })} /> Per LI Unit</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.calculateWastage} onChange={(e) => setForm({ ...form, calculateWastage: e.target.checked })} /> Calculate Wastage</label>
+            </div>
+
+            <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-3 min-h-24 w-full rounded-lg border border-slate-300 p-3" />
+            <div className="mt-3"><button type="button" onClick={submit} className="h-11 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white">{editingId ? 'Update Material' : 'Save Material'}</button></div>
+          </>
         ) : null}
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="External Name" value={form.externalName} onChange={(e) => setForm({ ...form, externalName: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <div className="space-y-1">
-            <select value={form.materialTypeId} onChange={(e) => setForm({ ...form, materialTypeId: e.target.value, materialCategoryId: '' })} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3"><option value="">Material Type</option>{materialTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
-            <button type="button" onClick={() => setShowQuickType(true)} className="text-left text-xs font-semibold text-sky-700 hover:text-sky-800">+ Create Material Type</button>
-          </div>
-          <select value={form.materialCategoryId} onChange={(e) => setForm({ ...form, materialCategoryId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Category</option>{visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={form.sellingUnit} onChange={(e) => setForm({ ...form, sellingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Selling Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <select value={form.buyingUnit} onChange={(e) => setForm({ ...form, buyingUnit: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Buying Units</option>{MATERIAL_UNIT_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <input placeholder="Sell/Buy Ratio" value={form.sellBuyRatio} onChange={(e) => setForm({ ...form, sellBuyRatio: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Sheet Width" value={form.sheetWidth} onChange={(e) => setForm({ ...form, sheetWidth: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Sheet Height" value={form.sheetHeight} onChange={(e) => setForm({ ...form, sheetHeight: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Sheet Cost" value={form.sheetCost} onChange={(e) => setForm({ ...form, sheetCost: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Part Number" value={form.partNumber} onChange={(e) => setForm({ ...form, partNumber: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Weight" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <select value={form.weightUom} onChange={(e) => setForm({ ...form, weightUom: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Weight UOM</option>{MATERIAL_WEIGHT_UOM_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <input placeholder="Cost" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Price" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Multiplier" value={form.multiplier} onChange={(e) => setForm({ ...form, multiplier: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Setup Charge" value={form.setupCharge} onChange={(e) => setForm({ ...form, setupCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Labor Charge" value={form.laborCharge} onChange={(e) => setForm({ ...form, laborCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Machine Charge" value={form.machineCharge} onChange={(e) => setForm({ ...form, machineCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <input placeholder="Other Charge" value={form.otherCharge} onChange={(e) => setForm({ ...form, otherCharge: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-          <select value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Formula</option>{MATERIAL_FORMULA_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <select value={form.discountId} onChange={(e) => setForm({ ...form, discountId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Discount</option>{discounts.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
-          <select value={form.quickbooksItemType} onChange={(e) => setForm({ ...form, quickbooksItemType: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">QuickBooks Item Type</option>{MATERIAL_QB_ITEM_TYPE_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <select value={form.cogAccountId} onChange={(e) => setForm({ ...form, cogAccountId: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">COG Account</option>{cogAccounts.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select>
-          <select value={form.fixedSide} onChange={(e) => setForm({ ...form, fixedSide: e.target.value })} className="h-11 rounded-lg border border-slate-300 bg-white px-3"><option value="">Fixed Side</option>{MATERIAL_FIXED_SIDE_OPTIONS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
-          <input placeholder="Wastage Markup" value={form.wastageMarkup} onChange={(e) => setForm({ ...form, wastageMarkup: e.target.value })} className="h-11 rounded-lg border border-slate-300 px-3" />
-        </div>
-
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.includeInBasePrice} onChange={(e) => setForm({ ...form, includeInBasePrice: e.target.checked })} /> Include in Base Price</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.perLiUnit} onChange={(e) => setForm({ ...form, perLiUnit: e.target.checked })} /> Per LI Unit</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.calculateWastage} onChange={(e) => setForm({ ...form, calculateWastage: e.target.checked })} /> Calculate Wastage</label>
-        </div>
-
-        <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="mt-3 min-h-24 w-full rounded-lg border border-slate-300 p-3" />
-        <div className="mt-3"><button type="button" onClick={submit} className="h-11 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white">{editingId ? 'Update Material' : 'Save Material'}</button></div>
       </section>
 
       <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -218,6 +258,7 @@ export default function MaterialListPage() {
                 <td className="px-4 py-3 text-right">
                   <button className="mr-3 text-sm font-semibold text-sky-700" onClick={() => {
                     setEditingId(row.id);
+                    setShowMaterialForm(true);
                     setForm({
                       name: row.name || '', externalName: row.externalName || '', materialTypeId: row.materialTypeId || '', materialCategoryId: row.materialCategoryId || '',
                       sellingUnit: row.sellingUnit || '', buyingUnit: row.buyingUnit || '', sellBuyRatio: row.sellBuyRatio?.toString?.() || '',
