@@ -40,6 +40,21 @@ export const pricingSections: PricingSection[] = [
     description: 'Review and manage formula definitions that pricing will reference.',
   },
   {
+    href: '/admin/pricing/pricing-profiles',
+    label: 'Pricing Profiles',
+    description: 'Manage reusable configurable print pricing profiles and their default state.',
+  },
+  {
+    href: '/admin/pricing/pricing-profile-components',
+    label: 'Pricing Profile Components',
+    description: 'Configure the component rows that belong to each print pricing profile.',
+  },
+  {
+    href: '/admin/pricing/product-pricing-profiles',
+    label: 'Product Pricing Profiles',
+    description: 'Assign print pricing profiles to products and manage product-level defaults.',
+  },
+  {
     href: '/admin/pricing/material-pricing-levels',
     label: 'Material Pricing Levels',
     description: 'Create pricing tier placeholders for materials and material classes.',
