@@ -176,6 +176,13 @@ model Company {
   materialCategories   MaterialCategory[]
   materials            Material[]
   pricingFormulas      PricingFormula[]
+  pricingProfiles      PricingProfile[]
+  pricingProfileComponents PricingProfileComponent[]
+  productPricingProfiles ProductPricingProfile[]
+  modifierPricingRules ModifierPricingRule[]
+  substratePricingRules SubstratePricingRule[]
+  machinePricingProfiles MachinePricingProfile[]
+  salesOrderLinePricingSnapshots SalesOrderLinePricingSnapshot[]
   timeEntries          TimeEntry[]
   payPeriodLocks       PayPeriodLock[]
   payrollExportConfig  PayrollExportConfig?
@@ -662,6 +669,7 @@ model Product {
   inventoryRequirements ProductInventoryRequirement[]
   quoteLines       QuoteLine[]
   salesOrderLines  SalesOrderLine[]
+  pricingProfiles  ProductPricingProfile[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -811,6 +819,22 @@ enum QuickbooksItemType {
   SERVICE
 }
 
+enum PricingComponentType {
+  INK
+  OVERHEAD
+  LABOR
+  SUBSTRATE
+  MACHINE
+  MODIFIER
+  CUSTOM
+}
+
+enum PricingValueType {
+  FIXED
+  RATE
+  PERCENT
+}
+
 model ProductAttribute {
   id           String                   @id @default(cuid())
   productId    String
@@ -925,6 +949,7 @@ model Modifier {
   defaultValue     String
   active           Boolean      @default(true)
   company          Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pricingRules     ModifierPricingRule[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -943,6 +968,8 @@ model Machine {
   notes            String?
   active           Boolean   @default(true)
   company          Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pricingProfiles  MachinePricingProfile[]
+  pricingSnapshots SalesOrderLinePricingSnapshot[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -958,11 +985,159 @@ model Substrate {
   notes         String?
   active        Boolean   @default(true)
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pricingRules  SubstratePricingRule[]
+  pricingSnapshots SalesOrderLinePricingSnapshot[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@unique([companyId, name])
   @@index([companyId, active, name])
+}
+
+
+
+model PricingProfile {
+  id          String                   @id @default(cuid())
+  companyId   String?
+  name        String
+  description String?
+  isDefault   Boolean                  @default(false)
+  active      Boolean                  @default(true)
+  company     Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  components  PricingProfileComponent[]
+  products    ProductPricingProfile[]
+  machines    MachinePricingProfile[]
+  substrates  SubstratePricingRule[]
+  modifiers   ModifierPricingRule[]
+  snapshots   SalesOrderLinePricingSnapshot[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
+model PricingProfileComponent {
+  id            String               @id @default(cuid())
+  companyId     String?
+  profileId     String
+  name          String
+  componentType PricingComponentType
+  valueType     PricingValueType     @default(RATE)
+  formulaType   PricingFormulaType?
+  rateUnit      PricingRateUnit?
+  ratePer       PricingRatePer?
+  amount        Decimal              @db.Decimal(12, 4)
+  sortOrder     Int                  @default(0)
+  metadata      Json?
+  active        Boolean              @default(true)
+  company       Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  profile       PricingProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([companyId, componentType, active])
+  @@index([profileId, sortOrder])
+}
+
+model ProductPricingProfile {
+  id        String         @id @default(cuid())
+  companyId String?
+  productId String
+  profileId String
+  isDefault Boolean        @default(true)
+  company   Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  profile   PricingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([companyId, productId, profileId])
+  @@index([companyId, productId, isDefault])
+}
+
+model MachinePricingProfile {
+  id        String         @id @default(cuid())
+  companyId String?
+  machineId String
+  profileId String
+  isDefault Boolean        @default(true)
+  notes     String?
+  company   Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine   Machine        @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  profile   PricingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([companyId, machineId, profileId])
+  @@index([companyId, machineId, isDefault])
+}
+
+model SubstratePricingRule {
+  id          String           @id @default(cuid())
+  companyId   String?
+  substrateId String
+  profileId   String
+  amount      Decimal          @db.Decimal(12, 4)
+  valueType   PricingValueType @default(FIXED)
+  notes       String?
+  active      Boolean          @default(true)
+  company     Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  substrate   Substrate        @relation(fields: [substrateId], references: [id], onDelete: Cascade)
+  profile     PricingProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([companyId, substrateId, profileId])
+  @@index([companyId, profileId, active])
+}
+
+model ModifierPricingRule {
+  id          String            @id @default(cuid())
+  companyId   String?
+  modifierId  String
+  profileId   String
+  amount      Decimal           @db.Decimal(12, 4)
+  valueType   PricingValueType  @default(RATE)
+  formulaType PricingFormulaType?
+  rateUnit    PricingRateUnit?
+  ratePer     PricingRatePer?
+  minValue    Decimal?          @db.Decimal(12, 4)
+  maxValue    Decimal?          @db.Decimal(12, 4)
+  notes       String?
+  active      Boolean           @default(true)
+  company     Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  modifier    Modifier          @relation(fields: [modifierId], references: [id], onDelete: Cascade)
+  profile     PricingProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([companyId, modifierId, profileId])
+  @@index([companyId, profileId, active])
+}
+
+model SalesOrderLinePricingSnapshot {
+  id               String          @id @default(cuid())
+  companyId        String?
+  salesOrderLineId String
+  pricingProfileId String?
+  machineId        String?
+  substrateId      String?
+  quantity         Int             @default(1)
+  unitPrice        Decimal         @db.Decimal(12, 4)
+  totalPrice       Decimal         @db.Decimal(12, 2)
+  totalCost        Decimal?        @db.Decimal(12, 2)
+  breakdown        Json?
+  computedAt       DateTime        @default(now())
+  company          Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salesOrderLine   SalesOrderLine  @relation(fields: [salesOrderLineId], references: [id], onDelete: Cascade)
+  pricingProfile   PricingProfile? @relation(fields: [pricingProfileId], references: [id], onDelete: SetNull)
+  machine          Machine?        @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  substrate        Substrate?      @relation(fields: [substrateId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+
+  @@index([companyId, salesOrderLineId, computedAt])
+  @@index([pricingProfileId])
 }
 
 model InventoryItem {
@@ -1113,6 +1288,7 @@ model SalesOrderLine {
   jobs            Job[]
   loadListItems   LoadListItem[]
   inventoryReservations InventoryReservation[]
+  pricingSnapshots SalesOrderLinePricingSnapshot[]
 }
 
 model SalesOrderPurchaseItem {
