@@ -304,7 +304,7 @@ export default function StorageItemsAdminPage() {
       </section>
 
       {groupedItems.map((group) => (
-        <section key={group.key} className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <section key={group.key} className="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm">
           {groupBy !== 'none' ? (
             <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700">
               {group.label} ({group.items.length})
@@ -329,7 +329,7 @@ export default function StorageItemsAdminPage() {
                 <tr key={item.id} className="border-t border-slate-100 align-top hover:bg-slate-50">
                   <td className="px-4 py-4">
                     {item.photoUrl ? (
-                      <img src={item.photoUrl} alt={item.name} className="h-12 w-12 rounded border border-slate-200 object-cover" />
+                      <img src={item.photoUrl} alt={item.name} className="relative h-12 w-12 rounded border border-slate-200 object-cover transition-transform duration-150 hover:z-20 hover:scale-[2.4]" />
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
