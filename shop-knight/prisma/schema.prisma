@@ -156,6 +156,10 @@ model Company {
   substrates           Substrate[]
   inventoryItems       InventoryItem[]
   inventoryReservations InventoryReservation[]
+  storageRacks         StorageRack[]
+  storageSpaces        StorageSpace[]
+  storageBins          StorageBin[]
+  inventoryItemStorageAssignments InventoryItemStorageAssignment[]
   productInventoryRequirements ProductInventoryRequirement[]
   salesOrderStatuses   SalesOrderStatus[]
   taskTemplates        TaskTemplate[]
@@ -248,6 +252,7 @@ model User {
   emulationSessionsAsTarget   UserEmulationSession[] @relation("EmulationTarget")
   emulationAuditAsActor       UserEmulationAudit[]  @relation("EmulationAuditActor")
   emulationAuditAsTarget      UserEmulationAudit[]  @relation("EmulationAuditTarget")
+  storageMoves                InventoryItemStorageAssignment[] @relation("StorageMoveByUser")
 }
 
 model Department {
@@ -1140,6 +1145,78 @@ model SalesOrderLinePricingSnapshot {
   @@index([pricingProfileId])
 }
 
+model StorageRack {
+  id        String       @id @default(cuid())
+  companyId String?
+  name      String
+  code      String?
+  active    Boolean      @default(true)
+  company   Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  spaces    StorageSpace[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, active, name])
+}
+
+model StorageSpace {
+  id        String      @id @default(cuid())
+  companyId String?
+  rackId    String
+  name      String
+  code      String?
+  active    Boolean     @default(true)
+  company   Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  rack      StorageRack @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  bins      StorageBin[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([companyId, rackId, name])
+  @@index([companyId, rackId, active, name])
+}
+
+model StorageBin {
+  id          String                          @id @default(cuid())
+  companyId   String?
+  spaceId     String
+  name        String
+  code        String?
+  active      Boolean                         @default(true)
+  company     Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  space       StorageSpace                    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  assignments InventoryItemStorageAssignment[]
+  createdAt   DateTime                        @default(now())
+  updatedAt   DateTime                        @updatedAt
+
+  @@unique([companyId, spaceId, name])
+  @@index([companyId, spaceId, active, name])
+}
+
+model InventoryItemStorageAssignment {
+  id            String       @id @default(cuid())
+  companyId     String?
+  inventoryItemId String
+  binId         String
+  notes         String?
+  photoFileName String?
+  photoMimeType String?
+  photoFileData Bytes?
+  startedAt     DateTime     @default(now())
+  endedAt       DateTime?
+  movedById     String?
+  company       Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  bin           StorageBin   @relation(fields: [binId], references: [id], onDelete: Restrict)
+  movedBy       User?        @relation("StorageMoveByUser", fields: [movedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([companyId, inventoryItemId, startedAt])
+  @@index([companyId, endedAt])
+}
+
 model InventoryItem {
   id            String    @id @default(cuid())
   companyId     String?
@@ -1154,6 +1231,7 @@ model InventoryItem {
   company       Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   reservations  InventoryReservation[]
   productRequirements ProductInventoryRequirement[]
+  storageAssignments InventoryItemStorageAssignment[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
