@@ -97,11 +97,11 @@ export default function NewStorageItemPage() {
       return;
     }
 
-    router.push('/admin/storage');
+    router.push('/admin/storage/items');
     router.refresh();
   }
 
-  return <main className="mx-auto max-w-4xl bg-[#f5f7fa] p-8 text-slate-800"><div className="mb-2 flex items-start justify-between"><h1 className="text-3xl font-semibold tracking-tight">Create Storage Item</h1><Link href="/admin/storage" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold">Back to Storage</Link></div><Nav />
+  return <main className="mx-auto max-w-4xl bg-[#f5f7fa] p-8 text-slate-800"><div className="mb-2 flex items-start justify-between"><h1 className="text-3xl font-semibold tracking-tight">Create Storage Item</h1><Link href="/admin/storage/items" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold">Back to Storage Items</Link></div><Nav />
   <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid grid-cols-1 gap-3 md:grid-cols-2">
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Storage Item Name</span><input className="field" value={name} onChange={(e) => setName(e.target.value)} required /></label>
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Rack</span><select className="field" value={rackId} onChange={(e) => setRackId(e.target.value)} required>{filteredSpaces.length === 0 ? <option value="">No racks</option> : racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
@@ -114,5 +114,5 @@ export default function NewStorageItemPage() {
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Date Entered Storage</span><input type="date" className="field" value={dateEnteredStorage} onChange={(e) => setDateEnteredStorage(e.target.value)} /></label>
     <label className="text-sm font-medium text-slate-700 md:col-span-2"><span className="mb-1 block">Description</span><textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
     <label className="text-sm font-medium text-slate-700 md:col-span-2"><span className="mb-1 block">Photo</span><input type="file" accept="image/*" className="block w-full text-sm" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></label>
-  </div>{error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}<div className="mt-4 flex gap-2"><button disabled={saving} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white">{saving ? 'Creating…' : 'Create Storage Item'}</button><Link href="/admin/storage" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold">Cancel</Link></div></form></main>;
+  </div>{error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}<div className="mt-4 flex gap-2"><button disabled={saving} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white">{saving ? 'Creating…' : 'Create Storage Item'}</button><Link href="/admin/storage/items" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold">Cancel</Link></div></form></main>;
 }
