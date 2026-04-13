@@ -9,6 +9,7 @@ datasource db {
 enum UserType {
   SUPER_ADMIN
   ADMIN
+  STORAGE
   SALES
   SALES_REP
   PROJECT_MANAGER

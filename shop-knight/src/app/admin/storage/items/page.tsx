@@ -36,9 +36,9 @@ type GroupedItems = {
 const GROUP_BY_OPTIONS: Array<{ value: GroupBy; label: string }> = [
   { value: 'none', label: 'None' },
   { value: 'owner', label: 'Owner' },
-  { value: 'rack', label: 'Rack' },
-  { value: 'space', label: 'Space' },
-  { value: 'bin', label: 'Bin' },
+  { value: 'rack', label: 'Bay' },
+  { value: 'space', label: 'Shelf' },
+  { value: 'bin', label: 'Pallet' },
 ];
 
 function sortByName<T extends { name: string }>(rows: T[]) {
@@ -159,10 +159,10 @@ export default function StorageItemsAdminPage() {
         (groupBy === 'owner'
           ? 'No Owner'
           : groupBy === 'rack'
-            ? 'No Rack'
+            ? 'No Bay'
             : groupBy === 'space'
-              ? 'No Space'
-              : 'No Bin');
+              ? 'No Shelf'
+              : 'No Pallet');
 
       const existing = groups.get(key);
       if (existing) {
@@ -185,8 +185,8 @@ export default function StorageItemsAdminPage() {
   }
 
   function buildLocationDescription(item: StorageItem) {
-    const rackCode = item.rack?.code || item.rack?.name || 'Rack';
-    const spaceCode = item.space?.code || item.space?.name || 'Space';
+    const rackCode = item.rack?.code || item.rack?.name || 'Bay';
+    const spaceCode = item.space?.code || item.space?.name || 'Shelf';
     const binCode = item.bin?.code || item.bin?.name;
     const location = binCode ? `${rackCode} / ${spaceCode} / ${binCode}` : `${rackCode} / ${spaceCode}`;
     return `${location} - ${item.description?.trim() || item.name}`;
@@ -269,9 +269,9 @@ export default function StorageItemsAdminPage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            <span className="mb-1 block">Rack</span>
+            <span className="mb-1 block">Bay</span>
             <select className="field" value={rackId} onChange={(e) => setRackId(e.target.value)}>
-              <option value="">All Racks</option>
+              <option value="">All Bays</option>
               {racks.map((rack) => (
                 <option key={rack.id} value={rack.id}>{rack.name}</option>
               ))}
@@ -279,9 +279,9 @@ export default function StorageItemsAdminPage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            <span className="mb-1 block">Space</span>
+            <span className="mb-1 block">Shelf</span>
             <select className="field" value={spaceId} onChange={(e) => setSpaceId(e.target.value)}>
-              <option value="">All Spaces</option>
+              <option value="">All Shelves</option>
               {filteredSpaces.map((space) => (
                 <option key={space.id} value={space.id}>{space.name}</option>
               ))}
@@ -289,10 +289,10 @@ export default function StorageItemsAdminPage() {
           </label>
 
           <label className="text-sm font-medium text-slate-700">
-            <span className="mb-1 block">Bin</span>
+            <span className="mb-1 block">Pallet</span>
             <select className="field" value={binId} onChange={(e) => setBinId(e.target.value)}>
-              <option value="">All Bins</option>
-              <option value="__none__">No Bin</option>
+              <option value="">All Pallets</option>
+              <option value="__none__">No Pallet</option>
               {filteredBins.map((bin) => (
                 <option key={bin.id} value={bin.id}>{bin.name}</option>
               ))}
@@ -325,9 +325,9 @@ export default function StorageItemsAdminPage() {
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Description</th>
                 <th className="px-4 py-3 font-semibold">Owner</th>
-                <th className="px-4 py-3 font-semibold">Rack</th>
-                <th className="px-4 py-3 font-semibold">Space</th>
-                <th className="px-4 py-3 font-semibold">Bin</th>
+                <th className="px-4 py-3 font-semibold">Bay</th>
+                <th className="px-4 py-3 font-semibold">Shelf</th>
+                <th className="px-4 py-3 font-semibold">Pallet</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -347,7 +347,7 @@ export default function StorageItemsAdminPage() {
                   <td className="px-4 py-4">{item.ownerCustomer?.name || '—'}</td>
                   <td className="px-4 py-4">{item.rack?.name || '—'}</td>
                   <td className="px-4 py-4">{item.space?.name || '—'}</td>
-                  <td className="px-4 py-4">{item.bin?.name || 'No Bin'}</td>
+                  <td className="px-4 py-4">{item.bin?.name || 'No Pallet'}</td>
                   <td className="px-4 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <Link href={`/admin/storage/items/${item.id}`} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">

@@ -24,7 +24,7 @@ type CustomRole = { id: string; name: string; active: boolean };
 type Company = { id: string; name: string; slug: string };
 type Title = { id: string; name: string; active: boolean };
 
-const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const userTypes = ['SUPER_ADMIN', 'ADMIN', 'STORAGE', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 function FormField({ label, children }: { label: string; children: ReactNode }) {
   return (

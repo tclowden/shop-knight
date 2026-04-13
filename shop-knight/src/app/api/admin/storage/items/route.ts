@@ -15,7 +15,7 @@ async function generateNextStorageItemNumber(companyId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });

@@ -5,7 +5,7 @@ import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });
@@ -54,7 +54,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 }
 
 export async function POST(req: Request, ctx: Ctx) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN', 'STORAGE']);
   if (!auth.ok) return auth.response;
   const companyId = getSessionCompanyId(auth.session);
   if (!companyId) return NextResponse.json({ error: 'No active company' }, { status: 400 });

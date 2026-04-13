@@ -44,7 +44,7 @@ export default function StorageAdminPage() {
       <div className="mb-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Storage Admin</h1>
-          <p className="text-sm text-slate-500">Manage racks, spaces, and bins.</p>
+          <p className="text-sm text-slate-500">Manage bays, shelves, and pallets.</p>
         </div>
       </div>
 
@@ -54,9 +54,9 @@ export default function StorageAdminPage() {
         <div className="flex gap-2">
           {!showArchived ? (
             <>
-              <Link href="/admin/storage/racks/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Create Rack</Link>
-              <Link href="/admin/storage/spaces/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Space</Link>
-              <Link href="/admin/storage/bins/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Bin</Link>
+              <Link href="/admin/storage/racks/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Create Bay</Link>
+              <Link href="/admin/storage/spaces/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Shelf</Link>
+              <Link href="/admin/storage/bins/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Pallet</Link>
               <Link href="/admin/storage/items" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Storage Items</Link>
             </>
           ) : null}
@@ -67,26 +67,26 @@ export default function StorageAdminPage() {
       </div>
 
       <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Racks</div>
-        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Spaces</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
+        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Bays</div>
+        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Shelves</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
           {racks.map((x) => <tr key={x.id} className="border-t border-slate-100"><td className="px-4 py-2">{x.name}</td><td className="px-4 py-2">{x.code || '—'}</td><td className="px-4 py-2">{x._count?.spaces || 0}</td><td className="px-4 py-2"><div className="flex justify-end gap-2">{!showArchived ? <Link href={`/admin/storage/racks/${x.id}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">Edit</Link> : null}<button onClick={() => toggle('/api/admin/storage/racks', x.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700">{showArchived ? 'Restore' : 'Archive'}</button></div></td></tr>)}
-          {racks.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No racks found.</td></tr> : null}
+          {racks.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No bays found.</td></tr> : null}
         </tbody></table>
       </section>
 
       <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Spaces</div>
-        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Rack</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Bins</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
+        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Shelves</div>
+        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Bay</th><th className="px-4 py-2">Code</th><th className="px-4 py-2">Pallets</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
           {spaces.map((x) => <tr key={x.id} className="border-t border-slate-100"><td className="px-4 py-2">{x.name}</td><td className="px-4 py-2">{x.rack?.name || '—'}</td><td className="px-4 py-2">{x.code || '—'}</td><td className="px-4 py-2">{x._count?.bins || 0}</td><td className="px-4 py-2"><div className="flex justify-end gap-2">{!showArchived ? <Link href={`/admin/storage/spaces/${x.id}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">Edit</Link> : null}<button onClick={() => toggle('/api/admin/storage/spaces', x.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700">{showArchived ? 'Restore' : 'Archive'}</button></div></td></tr>)}
-          {spaces.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No spaces found.</td></tr> : null}
+          {spaces.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No shelves found.</td></tr> : null}
         </tbody></table>
       </section>
 
       <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Bins</div>
-        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Space</th><th className="px-4 py-2">Rack</th><th className="px-4 py-2">Code</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
+        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Pallets</div>
+        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Shelf</th><th className="px-4 py-2">Bay</th><th className="px-4 py-2">Code</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
           {bins.map((x) => <tr key={x.id} className="border-t border-slate-100"><td className="px-4 py-2">{x.name}</td><td className="px-4 py-2">{x.space?.name || '—'}</td><td className="px-4 py-2">{x.space?.rack?.name || '—'}</td><td className="px-4 py-2">{x.code || '—'}</td><td className="px-4 py-2"><div className="flex justify-end gap-2">{!showArchived ? <Link href={`/admin/storage/bins/${x.id}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">Edit</Link> : null}<button onClick={() => toggle('/api/admin/storage/bins', x.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700">{showArchived ? 'Restore' : 'Archive'}</button></div></td></tr>)}
-          {bins.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No bins found.</td></tr> : null}
+          {bins.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No pallets found.</td></tr> : null}
         </tbody></table>
       </section>
 

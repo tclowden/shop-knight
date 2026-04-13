@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requirePermissions } from '@/lib/api-auth';
 
-const ALLOWED_TYPES = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
+const ALLOWED_TYPES = ['SUPER_ADMIN', 'ADMIN', 'STORAGE', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'] as const;
 type UserTypeValue = (typeof ALLOWED_TYPES)[number];
 
 function isSuperAdminSession(session: { user?: { role?: string; roles?: string[] } } | null | undefined) {

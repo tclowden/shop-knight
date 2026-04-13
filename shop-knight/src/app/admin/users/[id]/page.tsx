@@ -33,7 +33,7 @@ type Company = { id: string; name: string; slug: string };
 type Department = { id: string; name: string; active: boolean };
 type Title = { id: string; name: string; active: boolean };
 
-const userTypes = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
+const userTypes = ['SUPER_ADMIN', 'ADMIN', 'STORAGE', 'SALES', 'SALES_REP', 'PROJECT_MANAGER', 'DESIGNER', 'OPERATIONS', 'PURCHASING', 'FINANCE'];
 
 function ReadField({ label, value }: { label: string; value: string }) {
   return (
