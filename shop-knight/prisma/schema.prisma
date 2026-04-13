@@ -159,6 +159,7 @@ model Company {
   storageRacks         StorageRack[]
   storageSpaces        StorageSpace[]
   storageBins          StorageBin[]
+  storageItems         StorageItem[]
   inventoryItemStorageAssignments InventoryItemStorageAssignment[]
   productInventoryRequirements ProductInventoryRequirement[]
   salesOrderStatuses   SalesOrderStatus[]
@@ -1153,6 +1154,7 @@ model StorageRack {
   active    Boolean      @default(true)
   company   Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   spaces    StorageSpace[]
+  storageItems StorageItem[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -1170,6 +1172,7 @@ model StorageSpace {
   company   Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   rack      StorageRack @relation(fields: [rackId], references: [id], onDelete: Cascade)
   bins      StorageBin[]
+  storageItems StorageItem[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -1187,11 +1190,37 @@ model StorageBin {
   company     Company?                        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   space       StorageSpace                    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   assignments InventoryItemStorageAssignment[]
+  storageItems StorageItem[]
   createdAt   DateTime                        @default(now())
   updatedAt   DateTime                        @updatedAt
 
   @@unique([companyId, spaceId, name])
   @@index([companyId, spaceId, active, name])
+}
+
+model StorageItem {
+  id            String      @id @default(cuid())
+  companyId     String?
+  itemNumber    String
+  name          String
+  description   String?
+  rackId        String?
+  spaceId       String?
+  binId         String?
+  photoFileName String?
+  photoMimeType String?
+  photoFileData Bytes?
+  active        Boolean     @default(true)
+  company       Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  rack          StorageRack? @relation(fields: [rackId], references: [id], onDelete: SetNull)
+  space         StorageSpace? @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  bin           StorageBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([companyId, itemNumber])
+  @@index([companyId, active, name])
+  @@index([companyId, rackId, spaceId, binId])
 }
 
 model InventoryItemStorageAssignment {

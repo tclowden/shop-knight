@@ -7,23 +7,27 @@ import { Nav } from '@/components/nav';
 type Rack = { id: string; name: string; code: string | null; active: boolean; _count?: { spaces: number } };
 type Space = { id: string; name: string; code: string | null; active: boolean; rack: { id: string; name: string } | null; _count?: { bins: number } };
 type Bin = { id: string; name: string; code: string | null; active: boolean; space: { id: string; name: string; rack: { id: string; name: string } | null } | null };
+type StorageItem = { id: string; itemNumber: string; name: string; description: string | null; active: boolean; photoUrl: string | null; rack: { id: string; name: string } | null; space: { id: string; name: string } | null; bin: { id: string; name: string } | null };
 
 export default function StorageAdminPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [racks, setRacks] = useState<Rack[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [bins, setBins] = useState<Bin[]>([]);
+  const [items, setItems] = useState<StorageItem[]>([]);
 
   async function loadAll() {
     const archived = showArchived ? 'only' : 'active';
-    const [r, s, b] = await Promise.all([
+    const [r, s, b, i] = await Promise.all([
       fetch(`/api/admin/storage/racks?archived=${archived}`),
       fetch(`/api/admin/storage/spaces?archived=${archived}`),
       fetch(`/api/admin/storage/bins?archived=${archived}`),
+      fetch(`/api/admin/storage/items?archived=${archived}`),
     ]);
     if (r.ok) setRacks(await r.json());
     if (s.ok) setSpaces(await s.json());
     if (b.ok) setBins(await b.json());
+    if (i.ok) setItems(await i.json());
   }
 
   useEffect(() => {
@@ -57,6 +61,7 @@ export default function StorageAdminPage() {
               <Link href="/admin/storage/racks/new" className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Create Rack</Link>
               <Link href="/admin/storage/spaces/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Space</Link>
               <Link href="/admin/storage/bins/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Bin</Link>
+              <Link href="/admin/storage/items/new" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">Create Storage Item</Link>
             </>
           ) : null}
         </div>
@@ -81,11 +86,19 @@ export default function StorageAdminPage() {
         </tbody></table>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Bins</div>
         <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Name</th><th className="px-4 py-2">Space</th><th className="px-4 py-2">Rack</th><th className="px-4 py-2">Code</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
           {bins.map((x) => <tr key={x.id} className="border-t border-slate-100"><td className="px-4 py-2">{x.name}</td><td className="px-4 py-2">{x.space?.name || '—'}</td><td className="px-4 py-2">{x.space?.rack?.name || '—'}</td><td className="px-4 py-2">{x.code || '—'}</td><td className="px-4 py-2"><div className="flex justify-end gap-2">{!showArchived ? <Link href={`/admin/storage/bins/${x.id}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">Edit</Link> : null}<button onClick={() => toggle('/api/admin/storage/bins', x.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700">{showArchived ? 'Restore' : 'Archive'}</button></div></td></tr>)}
           {bins.length === 0 ? <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No bins found.</td></tr> : null}
+        </tbody></table>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Storage Items</div>
+        <table className="w-full text-left text-sm"><thead className="bg-[#eaf6fd]"><tr><th className="px-4 py-2">Photo</th><th className="px-4 py-2">Item</th><th className="px-4 py-2">Location</th><th className="px-4 py-2 text-right">Actions</th></tr></thead><tbody>
+          {items.map((x) => <tr key={x.id} className="border-t border-slate-100"><td className="px-4 py-2">{x.photoUrl ? <img src={x.photoUrl} alt={x.name} className="h-12 w-12 rounded border border-slate-200 object-cover" /> : <span className="text-slate-400">—</span>}</td><td className="px-4 py-2"><div className="font-medium text-slate-800">{x.itemNumber} — {x.name}</div><div className="text-xs text-slate-500">{x.description || 'No description'}</div></td><td className="px-4 py-2">{x.rack?.name || '—'} / {x.space?.name || '—'} / {x.bin?.name || 'No Bin'}</td><td className="px-4 py-2"><div className="flex justify-end gap-2">{!showArchived ? <Link href={`/admin/storage/items/${x.id}`} className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold">Edit</Link> : null}<button onClick={() => toggle('/api/admin/storage/items', x.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700">{showArchived ? 'Restore' : 'Archive'}</button></div></td></tr>)}
+          {items.length === 0 ? <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No storage items found.</td></tr> : null}
         </tbody></table>
       </section>
     </main>
