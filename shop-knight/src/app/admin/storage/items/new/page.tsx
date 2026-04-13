@@ -8,6 +8,7 @@ import { Nav } from '@/components/nav';
 type Rack = { id: string; name: string };
 type Space = { id: string; name: string; rackId: string; rack: { id: string; name: string } | null };
 type Bin = { id: string; name: string; spaceId: string; space: { id: string; name: string; rack: { id: string; name: string } | null } | null };
+type Customer = { id: string; name: string };
 
 export default function NewStorageItemPage() {
   const router = useRouter();
@@ -16,26 +17,35 @@ export default function NewStorageItemPage() {
   const [rackId, setRackId] = useState('');
   const [spaceId, setSpaceId] = useState('');
   const [binId, setBinId] = useState('');
+  const [ownerCustomerId, setOwnerCustomerId] = useState('');
+  const [pointOfContact, setPointOfContact] = useState('');
+  const [pointOfContactEmail, setPointOfContactEmail] = useState('');
+  const [pointOfContactPhone, setPointOfContactPhone] = useState('');
+  const [dateEnteredStorage, setDateEnteredStorage] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [racks, setRacks] = useState<Rack[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [bins, setBins] = useState<Bin[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
-      const [rRes, sRes, bRes] = await Promise.all([
+      const [rRes, sRes, bRes, cRes] = await Promise.all([
         fetch('/api/admin/storage/racks'),
         fetch('/api/admin/storage/spaces'),
         fetch('/api/admin/storage/bins'),
+        fetch('/api/customers'),
       ]);
       const rackRows = rRes.ok ? ((await rRes.json()) as Rack[]) : [];
       const spaceRows = sRes.ok ? ((await sRes.json()) as Space[]) : [];
       const binRows = bRes.ok ? ((await bRes.json()) as Bin[]) : [];
+      const customerRows = cRes.ok ? ((await cRes.json()) as Customer[]) : [];
       setRacks([...rackRows].sort((a, b) => a.name.localeCompare(b.name)));
       setSpaces([...spaceRows].sort((a, b) => a.name.localeCompare(b.name)));
       setBins([...binRows].sort((a, b) => a.name.localeCompare(b.name)));
+      setCustomers([...customerRows].sort((a, b) => a.name.localeCompare(b.name)));
       if (spaceRows[0]) {
         setRackId(spaceRows[0].rackId);
         setSpaceId(spaceRows[0].id);
@@ -71,6 +81,11 @@ export default function NewStorageItemPage() {
     form.set('rackId', rackId);
     form.set('spaceId', spaceId);
     form.set('binId', binId);
+    form.set('ownerCustomerId', ownerCustomerId);
+    form.set('pointOfContact', pointOfContact);
+    form.set('pointOfContactEmail', pointOfContactEmail);
+    form.set('pointOfContactPhone', pointOfContactPhone);
+    form.set('dateEnteredStorage', dateEnteredStorage);
     if (photo) form.set('photo', photo);
 
     const res = await fetch('/api/admin/storage/items', { method: 'POST', body: form });
@@ -92,6 +107,11 @@ export default function NewStorageItemPage() {
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Rack</span><select className="field" value={rackId} onChange={(e) => setRackId(e.target.value)} required>{filteredSpaces.length === 0 ? <option value="">No racks</option> : racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Space</span><select className="field" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} required>{filteredSpaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Bin (optional)</span><select className="field" value={binId} onChange={(e) => setBinId(e.target.value)}><option value="">No Bin</option>{filteredBins.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Owner (Customer)</span><select className="field" value={ownerCustomerId} onChange={(e) => setOwnerCustomerId(e.target.value)}><option value="">No Owner</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact</span><input className="field" value={pointOfContact} onChange={(e) => setPointOfContact(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact Email</span><input type="email" className="field" value={pointOfContactEmail} onChange={(e) => setPointOfContactEmail(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact Phone</span><input className="field" value={pointOfContactPhone} onChange={(e) => setPointOfContactPhone(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Date Entered Storage</span><input type="date" className="field" value={dateEnteredStorage} onChange={(e) => setDateEnteredStorage(e.target.value)} /></label>
     <label className="text-sm font-medium text-slate-700 md:col-span-2"><span className="mb-1 block">Description</span><textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
     <label className="text-sm font-medium text-slate-700 md:col-span-2"><span className="mb-1 block">Photo</span><input type="file" accept="image/*" className="block w-full text-sm" onChange={(e) => setPhoto(e.target.files?.[0] || null)} /></label>
   </div>{error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}<div className="mt-4 flex gap-2"><button disabled={saving} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white">{saving ? 'Creating…' : 'Create Storage Item'}</button><Link href="/admin/storage" className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold">Cancel</Link></div></form></main>;

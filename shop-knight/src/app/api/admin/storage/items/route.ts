@@ -31,6 +31,7 @@ export async function GET(req: Request) {
           ? withCompany(companyId)
           : withCompany(companyId, { active: true }),
     include: {
+      ownerCustomer: true,
       rack: true,
       space: { include: { rack: true } },
       bin: true,
@@ -57,6 +58,11 @@ export async function POST(req: Request) {
   const spaceId = String(form.get('spaceId') || '').trim();
   const binId = String(form.get('binId') || '').trim() || null;
   const requestedItemNumber = String(form.get('itemNumber') || '').trim();
+  const ownerCustomerId = String(form.get('ownerCustomerId') || '').trim() || null;
+  const pointOfContact = String(form.get('pointOfContact') || '').trim() || null;
+  const pointOfContactEmail = String(form.get('pointOfContactEmail') || '').trim() || null;
+  const pointOfContactPhone = String(form.get('pointOfContactPhone') || '').trim() || null;
+  const dateEnteredStorageRaw = String(form.get('dateEnteredStorage') || '').trim();
   const file = form.get('photo');
 
   if (!name || !spaceId) return NextResponse.json({ error: 'name and spaceId are required' }, { status: 400 });
@@ -78,6 +84,18 @@ export async function POST(req: Request) {
     validBinId = bin.id;
   }
 
+  if (ownerCustomerId) {
+    const owner = await prisma.customer.findFirst({ where: withCompany(companyId, { id: ownerCustomerId }) });
+    if (!owner) return NextResponse.json({ error: 'Selected owner customer is invalid' }, { status: 400 });
+  }
+
+  let dateEnteredStorage: Date | null = null;
+  if (dateEnteredStorageRaw) {
+    const parsed = new Date(dateEnteredStorageRaw);
+    if (Number.isNaN(parsed.getTime())) return NextResponse.json({ error: 'dateEnteredStorage is invalid' }, { status: 400 });
+    dateEnteredStorage = parsed;
+  }
+
   let photoFileName: string | null = null;
   let photoMimeType: string | null = null;
   let photoFileData: Uint8Array | null = null;
@@ -94,6 +112,11 @@ export async function POST(req: Request) {
     companyId,
     name,
     description,
+    ownerCustomerId,
+    pointOfContact,
+    pointOfContactEmail,
+    pointOfContactPhone,
+    dateEnteredStorage,
     rackId: space.rackId,
     spaceId,
     binId: validBinId,
@@ -111,6 +134,7 @@ export async function POST(req: Request) {
           itemNumber: requestedItemNumber,
         },
         include: {
+          ownerCustomer: true,
           rack: true,
           space: { include: { rack: true } },
           bin: true,
@@ -135,6 +159,7 @@ export async function POST(req: Request) {
           itemNumber,
         },
         include: {
+          ownerCustomer: true,
           rack: true,
           space: { include: { rack: true } },
           bin: true,

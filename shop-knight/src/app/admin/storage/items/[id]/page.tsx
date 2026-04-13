@@ -8,6 +8,7 @@ import { Nav } from '@/components/nav';
 type Rack = { id: string; name: string };
 type Space = { id: string; name: string; rackId: string; rack: { id: string; name: string } | null };
 type Bin = { id: string; name: string; spaceId: string; space: { id: string; name: string; rack: { id: string; name: string } | null } | null };
+type Customer = { id: string; name: string };
 type Item = {
   id: string;
   itemNumber: string;
@@ -17,6 +18,11 @@ type Item = {
   spaceId: string | null;
   binId: string | null;
   photoUrl: string | null;
+  ownerCustomerId: string | null;
+  pointOfContact: string | null;
+  pointOfContactEmail: string | null;
+  pointOfContactPhone: string | null;
+  dateEnteredStorage: string | null;
 };
 
 export default function EditStorageItemPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,12 +34,18 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
   const [rackId, setRackId] = useState('');
   const [spaceId, setSpaceId] = useState('');
   const [binId, setBinId] = useState('');
+  const [ownerCustomerId, setOwnerCustomerId] = useState('');
+  const [pointOfContact, setPointOfContact] = useState('');
+  const [pointOfContactEmail, setPointOfContactEmail] = useState('');
+  const [pointOfContactPhone, setPointOfContactPhone] = useState('');
+  const [dateEnteredStorage, setDateEnteredStorage] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [clearPhoto, setClearPhoto] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [racks, setRacks] = useState<Rack[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [bins, setBins] = useState<Bin[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,11 +53,12 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
   const filteredBins = useMemo(() => bins.filter((b) => !spaceId || b.spaceId === spaceId), [bins, spaceId]);
 
   async function loadAll(itemId: string) {
-    const [itemRes, rRes, sRes, bRes] = await Promise.all([
+    const [itemRes, rRes, sRes, bRes, cRes] = await Promise.all([
       fetch(`/api/admin/storage/items/${itemId}`),
       fetch('/api/admin/storage/racks'),
       fetch('/api/admin/storage/spaces'),
       fetch('/api/admin/storage/bins'),
+      fetch('/api/customers'),
     ]);
 
     if (!itemRes.ok) {
@@ -57,10 +70,12 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
     const rackRows = rRes.ok ? ((await rRes.json()) as Rack[]) : [];
     const spaceRows = sRes.ok ? ((await sRes.json()) as Space[]) : [];
     const binRows = bRes.ok ? ((await bRes.json()) as Bin[]) : [];
+    const customerRows = cRes.ok ? ((await cRes.json()) as Customer[]) : [];
 
     setRacks([...rackRows].sort((a, b) => a.name.localeCompare(b.name)));
     setSpaces([...spaceRows].sort((a, b) => a.name.localeCompare(b.name)));
     setBins([...binRows].sort((a, b) => a.name.localeCompare(b.name)));
+    setCustomers([...customerRows].sort((a, b) => a.name.localeCompare(b.name)));
 
     setItemNumber(item.itemNumber || '');
     setName(item.name || '');
@@ -68,6 +83,11 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
     setRackId(item.rackId || (item.spaceId ? (spaceRows.find((s) => s.id === item.spaceId)?.rackId || '') : ''));
     setSpaceId(item.spaceId || '');
     setBinId(item.binId || '');
+    setOwnerCustomerId(item.ownerCustomerId || '');
+    setPointOfContact(item.pointOfContact || '');
+    setPointOfContactEmail(item.pointOfContactEmail || '');
+    setPointOfContactPhone(item.pointOfContactPhone || '');
+    setDateEnteredStorage(item.dateEnteredStorage ? item.dateEnteredStorage.slice(0, 10) : '');
     setPhotoUrl(item.photoUrl || null);
   }
 
@@ -103,6 +123,11 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
     form.set('rackId', rackId);
     form.set('spaceId', spaceId);
     form.set('binId', binId);
+    form.set('ownerCustomerId', ownerCustomerId);
+    form.set('pointOfContact', pointOfContact);
+    form.set('pointOfContactEmail', pointOfContactEmail);
+    form.set('pointOfContactPhone', pointOfContactPhone);
+    form.set('dateEnteredStorage', dateEnteredStorage);
     form.set('clearPhoto', clearPhoto ? 'true' : 'false');
     if (photo) form.set('photo', photo);
 
@@ -126,6 +151,11 @@ export default function EditStorageItemPage({ params }: { params: Promise<{ id: 
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Rack</span><select className="field" value={rackId} onChange={(e) => setRackId(e.target.value)} required>{racks.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Space</span><select className="field" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} required>{filteredSpaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Bin (optional)</span><select className="field" value={binId} onChange={(e) => setBinId(e.target.value)}><option value="">No Bin</option>{filteredBins.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Owner (Customer)</span><select className="field" value={ownerCustomerId} onChange={(e) => setOwnerCustomerId(e.target.value)}><option value="">No Owner</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact</span><input className="field" value={pointOfContact} onChange={(e) => setPointOfContact(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact Email</span><input type="email" className="field" value={pointOfContactEmail} onChange={(e) => setPointOfContactEmail(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Point of Contact Phone</span><input className="field" value={pointOfContactPhone} onChange={(e) => setPointOfContactPhone(e.target.value)} /></label>
+    <label className="text-sm font-medium text-slate-700"><span className="mb-1 block">Date Entered Storage</span><input type="date" className="field" value={dateEnteredStorage} onChange={(e) => setDateEnteredStorage(e.target.value)} /></label>
     <label className="text-sm font-medium text-slate-700 md:col-span-2"><span className="mb-1 block">Description</span><textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
     <div className="md:col-span-2">
       <span className="mb-1 block text-sm font-medium text-slate-700">Photo</span>

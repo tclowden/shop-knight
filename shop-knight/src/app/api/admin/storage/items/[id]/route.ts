@@ -13,7 +13,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const row = await prisma.storageItem.findFirst({
     where: withCompany(companyId, { id }),
-    include: { rack: true, space: { include: { rack: true } }, bin: true },
+    include: { ownerCustomer: true, rack: true, space: { include: { rack: true } }, bin: true },
   });
 
   if (!row) return NextResponse.json({ error: 'Storage item not found' }, { status: 404 });
@@ -37,6 +37,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const spaceId = String(form.get('spaceId') ?? existing.spaceId ?? '').trim();
   const binIdInput = String(form.get('binId') ?? existing.binId ?? '').trim() || null;
   const itemNumber = String(form.get('itemNumber') ?? existing.itemNumber).trim();
+  const ownerCustomerId = String(form.get('ownerCustomerId') ?? existing.ownerCustomerId ?? '').trim() || null;
+  const pointOfContact = String(form.get('pointOfContact') ?? existing.pointOfContact ?? '').trim() || null;
+  const pointOfContactEmail = String(form.get('pointOfContactEmail') ?? existing.pointOfContactEmail ?? '').trim() || null;
+  const pointOfContactPhone = String(form.get('pointOfContactPhone') ?? existing.pointOfContactPhone ?? '').trim() || null;
+  const dateEnteredStorageRaw = String(form.get('dateEnteredStorage') ?? (existing.dateEnteredStorage ? existing.dateEnteredStorage.toISOString().slice(0, 10) : '')).trim();
   const clearPhoto = String(form.get('clearPhoto') || '').trim() === 'true';
   const file = form.get('photo');
 
@@ -59,10 +64,27 @@ export async function PATCH(req: Request, ctx: Ctx) {
     binId = bin.id;
   }
 
+  if (ownerCustomerId) {
+    const owner = await prisma.customer.findFirst({ where: withCompany(companyId, { id: ownerCustomerId }) });
+    if (!owner) return NextResponse.json({ error: 'Selected owner customer is invalid' }, { status: 400 });
+  }
+
+  let dateEnteredStorage: Date | null = null;
+  if (dateEnteredStorageRaw) {
+    const parsed = new Date(dateEnteredStorageRaw);
+    if (Number.isNaN(parsed.getTime())) return NextResponse.json({ error: 'dateEnteredStorage is invalid' }, { status: 400 });
+    dateEnteredStorage = parsed;
+  }
+
   const data: {
     itemNumber: string;
     name: string;
     description: string | null;
+    ownerCustomerId: string | null;
+    pointOfContact: string | null;
+    pointOfContactEmail: string | null;
+    pointOfContactPhone: string | null;
+    dateEnteredStorage: Date | null;
     rackId: string;
     spaceId: string;
     binId: string | null;
@@ -73,6 +95,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
     itemNumber,
     name,
     description,
+    ownerCustomerId,
+    pointOfContact,
+    pointOfContactEmail,
+    pointOfContactPhone,
+    dateEnteredStorage,
     rackId: space.rackId,
     spaceId,
     binId,
@@ -94,7 +121,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const updated = await prisma.storageItem.update({
       where: { id },
       data,
-      include: { rack: true, space: { include: { rack: true } }, bin: true },
+      include: { ownerCustomer: true, rack: true, space: { include: { rack: true } }, bin: true },
     });
     return NextResponse.json({ ...updated, photoUrl: updated.photoFileData ? `/api/admin/storage/items/${updated.id}/photo` : null });
   } catch {

@@ -490,6 +490,7 @@ model Customer {
   company       Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   opportunities Opportunity[]
   contacts      CustomerContact[]
+  storageItemsOwned StorageItem[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -1204,6 +1205,11 @@ model StorageItem {
   itemNumber    String
   name          String
   description   String?
+  ownerCustomerId String?
+  pointOfContact String?
+  pointOfContactEmail String?
+  pointOfContactPhone String?
+  dateEnteredStorage DateTime?
   rackId        String?
   spaceId       String?
   binId         String?
@@ -1212,6 +1218,7 @@ model StorageItem {
   photoFileData Bytes?
   active        Boolean     @default(true)
   company       Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  ownerCustomer Customer?   @relation(fields: [ownerCustomerId], references: [id], onDelete: SetNull)
   rack          StorageRack? @relation(fields: [rackId], references: [id], onDelete: SetNull)
   space         StorageSpace? @relation(fields: [spaceId], references: [id], onDelete: SetNull)
   bin           StorageBin? @relation(fields: [binId], references: [id], onDelete: SetNull)
@@ -1220,6 +1227,7 @@ model StorageItem {
 
   @@unique([companyId, itemNumber])
   @@index([companyId, active, name])
+  @@index([companyId, ownerCustomerId])
   @@index([companyId, rackId, spaceId, binId])
 }
 
