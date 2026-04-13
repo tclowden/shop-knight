@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
 
@@ -89,30 +90,65 @@ export async function POST(req: Request) {
     photoFileData = new Uint8Array(bytes as ArrayBuffer);
   }
 
-  try {
-    const itemNumber = requestedItemNumber || await generateNextStorageItemNumber(companyId);
-    const created = await prisma.storageItem.create({
-      data: {
-        companyId,
-        itemNumber,
-        name,
-        description,
-        rackId: space.rackId,
-        spaceId,
-        binId: validBinId,
-        photoFileName,
-        photoMimeType,
-        photoFileData: photoFileData as unknown as Uint8Array<ArrayBuffer> | null,
-        active: true,
-      },
-      include: {
-        rack: true,
-        space: { include: { rack: true } },
-        bin: true,
-      },
-    });
-    return NextResponse.json({ ...created, photoUrl: created.photoFileData ? `/api/admin/storage/items/${created.id}/photo` : null }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Storage item already exists or could not be created' }, { status: 409 });
+  const createPayload = {
+    companyId,
+    name,
+    description,
+    rackId: space.rackId,
+    spaceId,
+    binId: validBinId,
+    photoFileName,
+    photoMimeType,
+    photoFileData: photoFileData as unknown as Uint8Array<ArrayBuffer> | null,
+    active: true,
+  };
+
+  if (requestedItemNumber) {
+    try {
+      const created = await prisma.storageItem.create({
+        data: {
+          ...createPayload,
+          itemNumber: requestedItemNumber,
+        },
+        include: {
+          rack: true,
+          space: { include: { rack: true } },
+          bin: true,
+        },
+      });
+      return NextResponse.json({ ...created, photoUrl: created.photoFileData ? `/api/admin/storage/items/${created.id}/photo` : null }, { status: 201 });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json({ error: 'Storage item number already exists' }, { status: 409 });
+      }
+      console.error('Failed to create storage item', error);
+      return NextResponse.json({ error: 'Could not create storage item' }, { status: 500 });
+    }
   }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const itemNumber = await generateNextStorageItemNumber(companyId);
+      const created = await prisma.storageItem.create({
+        data: {
+          ...createPayload,
+          itemNumber,
+        },
+        include: {
+          rack: true,
+          space: { include: { rack: true } },
+          bin: true,
+        },
+      });
+      return NextResponse.json({ ...created, photoUrl: created.photoFileData ? `/api/admin/storage/items/${created.id}/photo` : null }, { status: 201 });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        continue;
+      }
+      console.error('Failed to create storage item', error);
+      return NextResponse.json({ error: 'Could not create storage item' }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: 'Could not reserve a unique storage item number. Please try again.' }, { status: 409 });
 }
