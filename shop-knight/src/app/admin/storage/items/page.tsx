@@ -45,6 +45,15 @@ function sortByName<T extends { name: string }>(rows: T[]) {
   return [...rows].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export default function StorageItemsAdminPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [items, setItems] = useState<StorageItem[]>([]);
@@ -187,17 +196,15 @@ export default function StorageItemsAdminPage() {
     if (typeof window === 'undefined') return;
     const itemUrl = `${window.location.origin}/admin/storage/items/${item.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(itemUrl)}`;
-    const subtitle = buildLocationDescription(item)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    const subtitle = escapeHtml(buildLocationDescription(item));
+    const title = escapeHtml(`${item.itemNumber} — ${item.name}`);
+    const safeUrl = escapeHtml(itemUrl);
 
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=520,height=700');
+    const w = window.open('about:blank', '_blank', 'width=520,height=700');
     if (!w) return;
 
-    w.document.write(`<!doctype html><html><head><title>${item.itemNumber} QR</title><style>
+    w.document.open();
+    w.document.write(`<!doctype html><html><head><title>${title}</title><style>
       body{font-family:Arial,sans-serif;padding:24px;text-align:center;color:#1e293b}
       .title{font-size:20px;font-weight:700;margin-bottom:14px}
       .qr{width:320px;height:320px;object-fit:contain;border:1px solid #e2e8f0;border-radius:8px}
@@ -205,10 +212,10 @@ export default function StorageItemsAdminPage() {
       .url{margin-top:8px;color:#64748b;font-size:12px;word-break:break-all}
       @media print{body{padding:10px}.title{font-size:18px}}
     </style></head><body>
-      <div class="title">${item.itemNumber} — ${item.name}</div>
+      <div class="title">${title}</div>
       <img class="qr" src="${qrUrl}" alt="QR code" />
       <div class="sub">${subtitle}</div>
-      <div class="url">${itemUrl}</div>
+      <div class="url">${safeUrl}</div>
       <script>window.onload=function(){window.print();}</script>
     </body></html>`);
     w.document.close();
