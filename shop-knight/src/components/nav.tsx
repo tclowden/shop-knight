@@ -86,10 +86,12 @@ export function Nav() {
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const role = String(session?.user?.role || '');
   const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  const permissions = Array.isArray(session?.user?.permissions) ? session.user.permissions.map(String) : [];
   const isSuperAdmin = role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || role === 'ADMIN' || roles.includes('ADMIN');
   const isStorageOnly = role === 'STORAGE' || roles.includes('STORAGE');
-  const canOpenAdminMenu = isAdmin || isStorageOnly;
+  const hasStorageManagePermission = permissions.includes('admin.storage.manage');
+  const canOpenAdminMenu = isAdmin || isStorageOnly || hasStorageManagePermission;
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   const isEmulating = Boolean(session?.user?.isEmulating);
@@ -98,9 +100,13 @@ export function Nav() {
   const sortedTopLinks = useMemo(() => [...links].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedTransactionLinks = useMemo(() => [...transactionLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedAdminLinks = useMemo(() => {
-    const scopedLinks = isStorageOnly ? adminLinks.filter((link) => link.href === '/admin/storage') : adminLinks;
+    const scopedLinks = isAdmin
+      ? adminLinks
+      : (isStorageOnly || hasStorageManagePermission)
+        ? adminLinks.filter((link) => link.href === '/admin/storage')
+        : [];
     return [...scopedLinks].sort((a, b) => a.label.localeCompare(b.label));
-  }, [isStorageOnly]);
+  }, [isAdmin, isStorageOnly, hasStorageManagePermission]);
   const sortedSuperAdminLinks = useMemo(() => [...superAdminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
 
   const primaryTopLinks = useMemo(() => sortedTopLinks.filter((link) => ['Dashboard', 'Customers', 'Tasks', 'Time', 'Vendors'].includes(link.label)), [sortedTopLinks]);
