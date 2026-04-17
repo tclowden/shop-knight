@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionCompanyId, requireRoles, withCompany } from '@/lib/api-auth';
+import { getSessionCompanyId, requirePermissions, withCompany } from '@/lib/api-auth';
 
 async function generateNextInventoryItemNumber(companyId: string) {
   const rows = await prisma.$queryRaw<Array<{ nextnum: number }>>`
@@ -14,7 +14,7 @@ async function generateNextInventoryItemNumber(companyId: string) {
 }
 
 export async function GET(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requirePermissions(['admin.inventory.manage']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRoles(['ADMIN', 'SUPER_ADMIN']);
+  const auth = await requirePermissions(['admin.inventory.manage']);
   if (!auth.ok) return auth.response;
 
   const companyId = getSessionCompanyId(auth.session);

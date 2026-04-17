@@ -31,7 +31,7 @@ const adminLinks = [
   { href: '/admin/products', label: 'Products', permissions: ['admin.products.manage'] },
   { href: '/admin/machines', label: 'Machines', permissions: ['admin.products.manage'] },
   { href: '/admin/substrates', label: 'Substrates', permissions: ['admin.products.manage'] },
-  { href: '/admin/inventory', label: 'Inventory', permissions: ['admin.storage.manage'] },
+  { href: '/admin/inventory', label: 'Inventory', permissions: ['admin.inventory.manage'] },
   { href: '/admin/storage', label: 'Storage', permissions: ['admin.storage.manage'] },
   { href: '/admin/job-workflows', label: 'Job Workflows', permissions: ['admin.users.manage'] },
   { href: '/admin/custom-roles', label: 'Roles', permissions: ['admin.customRoles.manage'] },
