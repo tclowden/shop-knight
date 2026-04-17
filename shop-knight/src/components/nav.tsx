@@ -25,24 +25,24 @@ const transactionLinks = [
 ];
 
 const adminLinks = [
-  { href: '/admin/pricing', label: 'Pricing' },
-  { href: '/admin/users', label: 'Users' },
-  { href: '/admin/users/org-chart', label: 'Org Chart' },
-  { href: '/admin/products', label: 'Products' },
-  { href: '/admin/machines', label: 'Machines' },
-  { href: '/admin/substrates', label: 'Substrates' },
-  { href: '/admin/inventory', label: 'Inventory' },
-  { href: '/admin/storage', label: 'Storage' },
-  { href: '/admin/job-workflows', label: 'Job Workflows' },
-  { href: '/admin/custom-roles', label: 'Roles' },
-  { href: '/admin/departments', label: 'Departments' },
-  { href: '/admin/product-categories', label: 'Product Categories' },
-  { href: '/admin/income-accounts', label: 'Income Accounts' },
-  { href: '/admin/titles', label: 'Titles' },
-  { href: '/admin/sales-order-statuses', label: 'SO Statuses' },
-  { href: '/admin/time', label: 'Time Admin' },
-  { href: '/admin/time/payroll-config', label: 'Payroll Export Config' },
-  { href: '/tasks/templates', label: 'Task Templates' },
+  { href: '/admin/pricing', label: 'Pricing', permissions: ['admin.products.manage'] },
+  { href: '/admin/users', label: 'Users', permissions: ['admin.users.manage'] },
+  { href: '/admin/users/org-chart', label: 'Org Chart', permissions: ['admin.users.manage'] },
+  { href: '/admin/products', label: 'Products', permissions: ['admin.products.manage'] },
+  { href: '/admin/machines', label: 'Machines', permissions: ['admin.products.manage'] },
+  { href: '/admin/substrates', label: 'Substrates', permissions: ['admin.products.manage'] },
+  { href: '/admin/inventory', label: 'Inventory', permissions: ['admin.storage.manage'] },
+  { href: '/admin/storage', label: 'Storage', permissions: ['admin.storage.manage'] },
+  { href: '/admin/job-workflows', label: 'Job Workflows', permissions: ['admin.users.manage'] },
+  { href: '/admin/custom-roles', label: 'Roles', permissions: ['admin.customRoles.manage'] },
+  { href: '/admin/departments', label: 'Departments', permissions: ['admin.users.manage'] },
+  { href: '/admin/product-categories', label: 'Product Categories', permissions: ['admin.products.manage'] },
+  { href: '/admin/income-accounts', label: 'Income Accounts', permissions: ['admin.products.manage'] },
+  { href: '/admin/titles', label: 'Titles', permissions: ['admin.titles.manage'] },
+  { href: '/admin/sales-order-statuses', label: 'SO Statuses', permissions: ['admin.salesOrderStatuses.manage'] },
+  { href: '/admin/time', label: 'Time Admin', permissions: ['time.manage.team', 'time.manage.all'] },
+  { href: '/admin/time/payroll-config', label: 'Payroll Export Config', permissions: ['time.manage.all'] },
+  { href: '/tasks/templates', label: 'Task Templates', permissions: ['tasks.templates.view'] },
 ];
 
 const superAdminLinks = [{ href: '/admin/companies', label: 'Companies' }];
@@ -86,10 +86,11 @@ export function Nav() {
   const profileCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const role = String(session?.user?.role || '');
   const roles = Array.isArray(session?.user?.roles) ? session.user.roles.map(String) : [];
+  const permissions = Array.isArray(session?.user?.permissions) ? session.user.permissions.map(String) : [];
+  const companyId = String(session?.user?.companyId || '');
   const isSuperAdmin = role === 'SUPER_ADMIN' || roles.includes('SUPER_ADMIN');
   const isAdmin = isSuperAdmin || role === 'ADMIN' || roles.includes('ADMIN');
-  const isStorageOnly = role === 'STORAGE' || roles.includes('STORAGE');
-  const canOpenAdminMenu = isAdmin || isStorageOnly;
+  const canOpenAdminMenu = isAdmin || adminLinks.some((link) => link.permissions.some((permission) => permissions.includes(permission)));
   const avatarUrl = session?.user?.image || null;
   const initials = (session?.user?.name || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   const isEmulating = Boolean(session?.user?.isEmulating);
@@ -98,9 +99,11 @@ export function Nav() {
   const sortedTopLinks = useMemo(() => [...links].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedTransactionLinks = useMemo(() => [...transactionLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
   const sortedAdminLinks = useMemo(() => {
-    const scopedLinks = isStorageOnly ? adminLinks.filter((link) => link.href === '/admin/storage') : adminLinks;
+    const scopedLinks = isSuperAdmin
+      ? adminLinks
+      : adminLinks.filter((link) => link.permissions.some((permission) => permissions.includes(permission)));
     return [...scopedLinks].sort((a, b) => a.label.localeCompare(b.label));
-  }, [isStorageOnly]);
+  }, [isSuperAdmin, permissions]);
   const sortedSuperAdminLinks = useMemo(() => [...superAdminLinks].sort((a, b) => a.label.localeCompare(b.label)), []);
 
   const primaryTopLinks = useMemo(() => sortedTopLinks.filter((link) => ['Dashboard', 'Customers', 'Tasks', 'Time', 'Vendors'].includes(link.label)), [sortedTopLinks]);
@@ -113,12 +116,12 @@ export function Nav() {
       if (actorId && u.id === actorId) return false;
       if (!isSuperAdmin) {
         if (u.type === 'SUPER_ADMIN') return false;
-        if (!session?.user?.companyId || !u.activeCompanyId || session.user.companyId !== u.activeCompanyId) return false;
+        if (!companyId || !u.activeCompanyId || companyId !== u.activeCompanyId) return false;
       }
       return true;
     });
     return scoped.sort((a, b) => a.name.localeCompare(b.name));
-  }, [emulationUsers, isAdmin, isSuperAdmin, actorId, session?.user?.companyId]);
+  }, [emulationUsers, isAdmin, isSuperAdmin, actorId, companyId]);
 
   const filteredEmulationUsers = useMemo(() => {
     const q = emulationQuery.trim().toLowerCase();
