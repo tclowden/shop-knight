@@ -10,14 +10,25 @@ type AuthUser = {
   email: string;
   name: string;
   image?: string | null;
-  role: string;
-  roles: string[];
-  permissions: string[];
-  companyId: string;
-  companies: Array<{ id: string; name: string; slug: string }>;
+  role?: string;
 };
 
+async function loadSessionState(actorId: string) {
+  const actorUser = await buildAuthUser(actorId);
+  if (!actorUser) return null;
+
+  const { effectiveUser, emulationTargetUserId } = await getEffectiveUserForActor(actorId);
+  const selected = effectiveUser || actorUser;
+
+  return {
+    actorUser,
+    selected,
+    emulationTargetUserId,
+  };
+}
+
 export const authOptions: NextAuthOptions = {
+  debug: true,
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
   providers: [
@@ -45,7 +56,13 @@ export const authOptions: NextAuthOptions = {
 
         const authUser = await buildAuthUser(user.id);
         if (!authUser) return null;
-        return authUser as AuthUser;
+        return {
+          id: authUser.id,
+          email: authUser.email,
+          name: authUser.name,
+          image: authUser.image || null,
+          role: authUser.role,
+        } as AuthUser;
       },
     }),
   ],
@@ -55,59 +72,51 @@ export const authOptions: NextAuthOptions = {
         const typed = user as AuthUser;
         token.uid = typed.id;
         token.actorUid = typed.id;
-        token.actorRole = typed.role;
-        token.actorCompanyId = typed.companyId;
+        token.role = typed.role;
       }
-
-      const actorId = String(token.actorUid || token.uid || '');
-      if (!actorId) return token;
-
-      const actorUser = await buildAuthUser(actorId);
-      if (!actorUser) return token;
-
-      token.actorUid = actorUser.id;
-      token.actorRole = actorUser.role;
-      token.actorCompanyId = actorUser.companyId;
-
-      const { effectiveUser, emulationTargetUserId } = await getEffectiveUserForActor(actorId);
-      const selected = effectiveUser || actorUser;
-
-      token.uid = selected.id;
-      token.role = selected.role;
-      token.roles = selected.roles;
-      token.permissions = selected.permissions;
-      token.companyId = selected.companyId;
-      token.companies = selected.companies;
-      token.image = selected.image || undefined;
-      token.name = selected.name;
-      token.email = selected.email;
-      token.isEmulating = Boolean(emulationTargetUserId);
-      token.emulationTargetUserId = emulationTargetUserId || undefined;
 
       if (trigger === 'update' && !token.actorUid) {
         token.actorUid = token.uid;
       }
 
+      const actorId = String(token.actorUid || token.uid || '');
+      if (!actorId) return token;
+
+      const state = await loadSessionState(actorId);
+      if (!state) return token;
+
+      token.uid = state.selected.id;
+      token.actorUid = state.actorUser.id;
+      token.role = state.selected.role;
+      token.companyId = state.selected.companyId;
+      token.isEmulating = Boolean(state.emulationTargetUserId);
+      token.emulationTargetUserId = state.emulationTargetUserId || undefined;
+      delete token.name;
+      delete token.email;
+      delete token.picture;
+      delete token.image;
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = String(token.uid || '');
-        session.user.role = String(token.role || '');
-        session.user.roles = Array.isArray(token.roles) ? token.roles.map(String) : [];
-        session.user.permissions = Array.isArray(token.permissions) ? token.permissions.map(String) : [];
-        session.user.companyId = String(token.companyId || '');
-        session.user.companies = Array.isArray(token.companies)
-          ? token.companies.map((c) => ({ id: String((c as { id?: string }).id || ''), name: String((c as { name?: string }).name || ''), slug: String((c as { slug?: string }).slug || '') }))
-          : [];
-        session.user.image = typeof token.image === 'string' ? token.image : null;
-        session.user.name = typeof token.name === 'string' ? token.name : session.user.name;
-        session.user.email = typeof token.email === 'string' ? token.email : session.user.email;
-        session.user.actorId = String(token.actorUid || token.uid || '');
-        session.user.actorRole = String(token.actorRole || token.role || '');
-        session.user.actorCompanyId = String(token.actorCompanyId || '') || null;
-        session.user.isEmulating = Boolean(token.isEmulating);
-        session.user.emulationTargetUserId = typeof token.emulationTargetUserId === 'string' ? token.emulationTargetUserId : null;
+        const actorId = String(token.actorUid || token.uid || '');
+        const state = actorId ? await loadSessionState(actorId) : null;
+
+        session.user.id = state?.selected.id || String(token.uid || '');
+        session.user.role = state?.selected.role || String(token.role || '');
+        session.user.roles = state?.selected.roles || [];
+        session.user.permissions = state?.selected.permissions || [];
+        session.user.companyId = state?.selected.companyId || (typeof token.companyId === 'string' ? token.companyId : '');
+        session.user.companies = state?.selected.companies || [];
+        session.user.image = state?.selected.image || null;
+        session.user.name = state?.selected.name || null;
+        session.user.email = state?.selected.email || null;
+        session.user.actorId = state?.actorUser.id || actorId;
+        session.user.actorRole = state?.actorUser.role || '';
+        session.user.actorCompanyId = state?.actorUser.companyId || null;
+        session.user.isEmulating = Boolean(state?.emulationTargetUserId);
+        session.user.emulationTargetUserId = state?.emulationTargetUserId || null;
       }
       return session;
     },
