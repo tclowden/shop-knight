@@ -25,7 +25,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const quote = await prisma.quote.findFirst({
     where: withCompany(companyId, { id }),
     include: {
-      opportunity: { include: { customer: true } },
+      opportunity: { include: { customer: { include: { contacts: true } } } },
       salesRep: true,
       projectManager: true,
       department: true,

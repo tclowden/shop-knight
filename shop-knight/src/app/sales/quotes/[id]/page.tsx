@@ -44,13 +44,15 @@ type Line = {
   collapsed?: boolean;
 };
 
+type CustomerContactOption = { id: string; name: string; phone?: string | null; email?: string | null; title?: string | null };
+
 type Quote = {
   id: string;
   opportunityId?: string;
   quoteNumber: string;
   status?: string | null;
   workflowState?: string | null;
-  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null } };
+  opportunity: { name: string; customer: { name: string; additionalFeePercent?: string | number | null; phone?: string | null; contacts?: CustomerContactOption[] } };
   customerContactRole?: string | null;
   billingAddress?: string | null;
   billingAttentionTo?: string | null;
@@ -86,7 +88,10 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   const [sendingBatchProofs, setSendingBatchProofs] = useState(false);
   const [showProofPicker, setShowProofPicker] = useState(false);
   const [unsentProofOptions, setUnsentProofOptions] = useState<Array<{ id: string; fileName: string; mimeType: string; lineDescription: string; statusLabel: string }>>([]);
-
+  const [textQuotePhone, setTextQuotePhone] = useState('');
+  const [textQuoteMessage, setTextQuoteMessage] = useState('');
+  const [selectedTextContact, setSelectedTextContact] = useState('');
+  const [sendingQuoteText, setSendingQuoteText] = useState(false);
 
   const [newProductId, setNewProductId] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -127,6 +132,12 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
       setSalesRepId(q.salesRepId || '');
       setProjectManagerId(q.projectManagerId || '');
       setOpportunityId(q.opportunityId || '');
+
+      const contacts = Array.isArray(q?.opportunity?.customer?.contacts) ? q.opportunity.customer.contacts : [];
+      const preferredContact = contacts.find((contact: CustomerContactOption) => Boolean(contact.phone)) || null;
+      const fallbackPhone = preferredContact?.phone || q?.opportunity?.customer?.phone || '';
+      setSelectedTextContact(preferredContact?.id || '');
+      setTextQuotePhone((current) => current || fallbackPhone || '');
     }
     if (pRes.ok) setProducts(await pRes.json());
     if (usersRes.ok) setUsers(await usersRes.json());
@@ -229,6 +240,34 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
     await load(id);
     setSavingHeader(false);
     setEditingHeader(false);
+  }
+
+  const customerContacts = useMemo(() => {
+    return Array.isArray(quote?.opportunity?.customer?.contacts) ? quote.opportunity.customer.contacts : [];
+  }, [quote]);
+
+  async function sendQuoteText() {
+    if (!textQuotePhone.trim()) {
+      push('Enter a phone number first', 'error');
+      return;
+    }
+
+    setSendingQuoteText(true);
+    const res = await fetch(`/api/quotes/${id}/send-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: textQuotePhone.trim(), message: textQuoteMessage.trim() || undefined }),
+    });
+    setSendingQuoteText(false);
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      push(payload?.error || 'Failed to text quote', 'error');
+      return;
+    }
+
+    push('Quote text sent', 'success');
+    setTextQuoteMessage('');
   }
 
   function calculateUnitPriceFromCostGpm(unitCost: string, gpmPercent: string) {
@@ -421,6 +460,22 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <ClockInButton sourceType="QUOTE" sourceId={id} />
+        <a
+          href={`/api/quotes/${id}/pdf?download=1`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Download PDF
+        </a>
+        <a
+          href={`/api/quotes/${id}/pdf`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Preview PDF
+        </a>
         <button
           onClick={convertToSalesOrder}
           disabled={converting}
@@ -433,6 +488,52 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             Open Sales Order →
           </Link>
         ) : null}
+      </section>
+
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Text Quote</h2>
+          <span className="text-xs text-zinc-500">Sends SMS with a PDF download link</span>
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-[220px_220px_1fr_auto]">
+          <select
+            value={selectedTextContact}
+            onChange={(e) => {
+              const nextId = e.target.value;
+              setSelectedTextContact(nextId);
+              const selected = customerContacts.find((contact) => contact.id === nextId);
+              setTextQuotePhone(selected?.phone || '');
+            }}
+            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+          >
+            <option value="">Select contact</option>
+            {customerContacts.map((contact) => (
+              <option key={contact.id} value={contact.id}>
+                {contact.name}{contact.phone ? ` • ${contact.phone}` : ''}
+              </option>
+            ))}
+          </select>
+          <input
+            value={textQuotePhone}
+            onChange={(e) => setTextQuotePhone(e.target.value)}
+            placeholder="Customer phone"
+            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+          />
+          <input
+            value={textQuoteMessage}
+            onChange={(e) => setTextQuoteMessage(e.target.value)}
+            placeholder="Optional custom SMS message"
+            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+          />
+          <button
+            type="button"
+            onClick={sendQuoteText}
+            disabled={sendingQuoteText}
+            className="rounded bg-sky-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {sendingQuoteText ? 'Sending…' : 'Text Quote'}
+          </button>
+        </div>
       </section>
 
       <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
