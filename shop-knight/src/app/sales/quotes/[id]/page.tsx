@@ -450,52 +450,65 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
   useUnsavedGuard(headerDirty);
 
   useEffect(() => { params.then((p) => { setId(p.id); load(p.id); }); }, [params]);
-  if (!quote) return <main className="mx-auto max-w-6xl p-8">Loading quote…</main>;
+  if (!quote) return <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-8 text-slate-700">Loading quote…</main>;
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-7xl bg-[#f5f7fa] p-6 text-slate-800 md:p-8">
       <Nav />
-      <h1 className="text-2xl font-semibold">Quote {quote.quoteNumber}</h1>
-      <p className="text-sm text-zinc-400">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
+      <header className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Quote {quote.quoteNumber}</h1>
+          <p className="mt-1 text-sm text-slate-500">{quote.opportunity.name} • {quote.opportunity.customer.name}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ClockInButton sourceType="QUOTE" sourceId={id} />
+          <a
+            href={`/api/quotes/${id}/pdf?download=1`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Download PDF
+          </a>
+          <a
+            href={`/api/quotes/${id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Preview PDF
+          </a>
+          <button
+            onClick={convertToSalesOrder}
+            disabled={converting}
+            className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+          >
+            {converting ? 'Converting…' : 'Convert to Sales Order'}
+          </button>
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+            <StatusChip value={quote.workflowState || quote.status} />
+          </div>
+          {convertedSalesOrderId ? (
+            <Link href={`/sales/orders/${convertedSalesOrderId}`} className="text-sm font-medium text-sky-700">
+              Open Sales Order →
+            </Link>
+          ) : null}
+        </div>
+      </header>
 
-      <section className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <ClockInButton sourceType="QUOTE" sourceId={id} />
-        <a
-          href={`/api/quotes/${id}/pdf?download=1`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Download PDF
-        </a>
-        <a
-          href={`/api/quotes/${id}/pdf`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Preview PDF
-        </a>
-        <button
-          onClick={convertToSalesOrder}
-          disabled={converting}
-          className="inline-flex h-10 items-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
-        >
-          {converting ? 'Converting…' : 'Convert to Sales Order'}
-        </button>
-        {convertedSalesOrderId ? (
-          <Link href={`/sales/orders/${convertedSalesOrderId}`} className="text-sm font-medium text-sky-700">
-            Open Sales Order →
-          </Link>
-        ) : null}
+      <section className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        <SummaryCell label="Customer" value={quote.opportunity.customer.name} />
+        <SummaryCell label="Status" value={quote.workflowState || quote.status || 'Draft'} />
+        <SummaryCell label="Assigned Team" value={[quote.salesRep?.name, quote.projectManager?.name].filter(Boolean).join(', ') || 'Unassigned'} />
+        <SummaryCell label="Dates" value={`${quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString() : '—'} • Due ${quote.dueDate ? new Date(quote.dueDate).toLocaleDateString() : '—'}`} />
       </section>
 
-      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="mb-2 flex items-center justify-between gap-2">
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold">Text Quote</h2>
-          <span className="text-xs text-zinc-500">Sends SMS with a PDF download link</span>
+          <span className="text-xs text-slate-500">Sends SMS with a PDF download link</span>
         </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-[220px_220px_1fr_auto]">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_220px_1fr_auto]">
           <select
             value={selectedTextContact}
             onChange={(e) => {
@@ -504,7 +517,7 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
               const selected = customerContacts.find((contact) => contact.id === nextId);
               setTextQuotePhone(selected?.phone || '');
             }}
-            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+            className="field"
           >
             <option value="">Select contact</option>
             {customerContacts.map((contact) => (
@@ -517,133 +530,123 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
             value={textQuotePhone}
             onChange={(e) => setTextQuotePhone(e.target.value)}
             placeholder="Customer phone"
-            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+            className="field"
           />
           <input
             value={textQuoteMessage}
             onChange={(e) => setTextQuoteMessage(e.target.value)}
             placeholder="Optional custom SMS message"
-            className="rounded border border-zinc-700 bg-white p-2 text-zinc-900"
+            className="field"
           />
           <button
             type="button"
             onClick={sendQuoteText}
             disabled={sendingQuoteText}
-            className="rounded bg-sky-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            className="inline-flex h-11 items-center rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
           >
             {sendingQuoteText ? 'Sending…' : 'Text Quote'}
           </button>
         </div>
       </section>
 
-      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">State</p><div className="mt-1"><StatusChip value={quote.workflowState || quote.status} /></div></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Lines</p><p className="text-xl font-semibold">{quote.lines.length}</p></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Subtotal</p><p className="text-xl font-semibold">${subtotal.toFixed(0)}</p></div>
-        <div className="rounded border border-zinc-800 p-3"><p className="text-xs text-zinc-400">Total</p><p className="text-xl font-semibold">${(subtotal + taxTotal).toFixed(0)}</p></div>
-      </div>
-
-      <div className="mb-4 rounded border border-zinc-800 p-3 text-sm">
+      <section className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <details open>
           <summary className="cursor-pointer list-none text-base font-semibold">Quote Info</summary>
         {!editingHeader ? (
           <>
-            <div className="mb-3 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded border border-zinc-600 px-3 py-1">Edit</button></div>
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <p><span className="text-zinc-400">Opportunity:</span> {quote.opportunity.name}</p>
-              <p><span className="text-zinc-400">Customer Contact Role:</span> {quote.customerContactRole || '—'}</p>
-              <p><span className="text-zinc-400">Sales Rep:</span> {quote.salesRep?.name || '—'}</p>
-              <p><span className="text-zinc-400">Project Manager:</span> {quote.projectManager?.name || '—'}</p>
-              <p><span className="text-zinc-400">Quote Date:</span> {quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Due Date:</span> {quote.dueDate ? new Date(quote.dueDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Expiration Date:</span> {quote.expiryDate ? new Date(quote.expiryDate).toLocaleDateString() : '—'}</p>
-              <p><span className="text-zinc-400">Billing Attention To:</span> {quote.billingAttentionTo || '—'}</p>
-              <p><span className="text-zinc-400">Shipping Attention To:</span> {quote.shippingAttentionTo || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Billing Address:</span> {quote.billingAddress || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Shipping Address:</span> {quote.shippingAddress || '—'}</p>
-              <p className="md:col-span-2"><span className="text-zinc-400">Install Address:</span> {quote.installAddress || '—'}</p>
+            <div className="mb-4 flex justify-end"><button onClick={() => setEditingHeader(true)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">Edit quote info</button></div>
+            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+              <ReadField label="Opportunity" value={quote.opportunity.name} />
+              <ReadField label="Customer Contact Role" value={quote.customerContactRole || '—'} />
+              <ReadField label="Sales Rep" value={quote.salesRep?.name || '—'} />
+              <ReadField label="Project Manager" value={quote.projectManager?.name || '—'} />
+              <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule Dates</p>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <ReadField label="Quote Date" value={quote.quoteDate ? new Date(quote.quoteDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Due Date" value={quote.dueDate ? new Date(quote.dueDate).toLocaleDateString() : '—'} />
+                  <ReadField label="Expiration Date" value={quote.expiryDate ? new Date(quote.expiryDate).toLocaleDateString() : '—'} />
+                </div>
+              </div>
+              <ReadField label="Billing Attention To" value={quote.billingAttentionTo || '—'} />
+              <ReadField label="Shipping Attention To" value={quote.shippingAttentionTo || '—'} />
+              <div className="md:col-span-2"><ReadField label="Billing Address" value={quote.billingAddress || '—'} /></div>
+              <div className="md:col-span-2"><ReadField label="Shipping Address" value={quote.shippingAddress || '—'} /></div>
+              <div className="md:col-span-2"><ReadField label="Install Address" value={quote.installAddress || '—'} /></div>
             </div>
           </>
         ) : (
-          <form onSubmit={saveHeader} className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Opportunity</span><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Select opportunity</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Customer Contact Role</span><input value={customerContactRole} onChange={(e) => setCustomerContactRole(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Sales Rep</span><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Project Manager</span><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Unassigned</option>{users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Quote Date</span><input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Due Date</span><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Expiration Date</span><input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Billing Attention To</span><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
-            <label className="text-sm"><span className="mb-1 block text-zinc-300">Shipping Attention To</span><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></label>
+          <form onSubmit={saveHeader} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <FormField label="Opportunity"><select value={opportunityId} onChange={(e) => setOpportunityId(e.target.value)} className="field"><option value="">Select opportunity</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.name} — {o.customer}</option>)}</select></FormField>
+            <FormField label="Customer Contact Role"><input value={customerContactRole} onChange={(e) => setCustomerContactRole(e.target.value)} className="field" /></FormField>
+            <FormField label="Sales Rep"><select value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} className="field"><option value="">Unassigned</option>{users.filter((u) => u.type === 'SALES_REP' || u.type === 'SALES' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
+            <FormField label="Project Manager"><select value={projectManagerId} onChange={(e) => setProjectManagerId(e.target.value)} className="field"><option value="">Unassigned</option>{users.filter((u) => u.type === 'PROJECT_MANAGER' || u.type === 'ADMIN').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></FormField>
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule Dates</p>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <FormField label="Quote Date"><input type="date" value={quoteDate} onChange={(e) => setQuoteDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Due Date"><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="field" /></FormField>
+                <FormField label="Expiration Date"><input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="field" /></FormField>
+              </div>
+            </div>
+            <FormField label="Billing Attention To"><input value={billingAttentionTo} onChange={(e) => setBillingAttentionTo(e.target.value)} className="field" /></FormField>
+            <FormField label="Shipping Attention To"><input value={shippingAttentionTo} onChange={(e) => setShippingAttentionTo(e.target.value)} className="field" /></FormField>
             <div className="md:col-span-2"><AddressAutocomplete label="Billing Address" value={billingAddress} onChange={setBillingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Shipping Address" value={shippingAddress} onChange={setShippingAddress} /></div>
             <div className="md:col-span-2"><AddressAutocomplete label="Install Address" value={installAddress} onChange={setInstallAddress} /></div>
-            <div className="sticky bottom-2 md:col-span-2 flex gap-2 rounded bg-zinc-950/90 p-2 backdrop-blur"><button disabled={savingHeader} className="rounded bg-blue-600 px-4 py-2 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Quote Header'}</button><button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="rounded border border-zinc-600 px-4 py-2">Cancel</button></div>
+            <div className="md:col-span-2 flex gap-2 pt-2">
+              <button disabled={savingHeader} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60">{savingHeader ? 'Saving…' : 'Save Header'}</button>
+              <button type="button" onClick={() => { setEditingHeader(false); load(id); }} className="inline-flex h-11 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium hover:bg-slate-50">Cancel</button>
+            </div>
           </form>
         )}
         </details>
-      </div>
+      </section>
 
-      <form onSubmit={addLine} className="mb-4 space-y-2 rounded border border-zinc-800 p-3">
+      <form onSubmit={addLine} className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <details open>
-          <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-          <label className="text-xs text-zinc-300">Product
-            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setNewAttributeValues(defaults); recalcNewLinePrice(pid, newQty, defaults); } else { setNewAttributeValues({}); } }} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
-          </label>
-          <label className="text-xs text-zinc-300">Description
-            <input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">Quantity
-            <input value={newQty} onChange={(e) => { const q = e.target.value; setNewQty(q); recalcNewLinePrice(newProductId, q, newAttributeValues); }} type="number" min="1" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">Unit Cost
-            <input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-          </label>
-          <label className="text-xs text-zinc-300">Taxable
-            <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span>
-          </label>
-          <div className="flex items-end"><button className="w-full rounded bg-blue-600 px-3 py-2">+ Add Line</button></div>
+          <summary className="cursor-pointer list-none text-base font-semibold">Add Line Item</summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-6">
+          <FormField label="Product">
+            <select value={newProductId} onChange={(e) => { const pid = e.target.value; setNewProductId(pid); const p = products.find((x) => x.id === pid); if (p) { setNewDescription(p.name); const defaults = Object.fromEntries((p.attributes || []).map((a) => [a.code, a.defaultValue || ''])); setNewAttributeValues(defaults); recalcNewLinePrice(pid, newQty, defaults); } else { setNewAttributeValues({}); } }} className="field"><option value="">Custom / no product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name}</option>)}</select>
+          </FormField>
+          <FormField label="Description"><input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="field" required /></FormField>
+          <FormField label="Quantity"><input value={newQty} onChange={(e) => { const q = e.target.value; setNewQty(q); recalcNewLinePrice(newProductId, q, newAttributeValues); }} type="number" min="1" className="field" required /></FormField>
+          <FormField label="Unit Cost"><input value={newUnitCost} onChange={(e) => { const v = e.target.value; setNewUnitCost(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(v, newGpmPercent)); }} type="number" min="0" step="0.01" className="field" /></FormField>
+          <FormField label="Taxable"><span className="field flex h-11 items-center"><input type="checkbox" checked={newTaxable} onChange={(e) => setNewTaxable(e.target.checked)} /></span></FormField>
+          <div className="flex items-end"><button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700">+ Add Line</button></div>
         </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <label className="text-xs text-zinc-300">Unit Price
-            <input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" required />
-          </label>
-          <label className="text-xs text-zinc-300">GPM %
-            <input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            <span className="mt-1 block text-[11px] text-zinc-500">+ Fee {Number(quote?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%</span>
-          </label>
-          <label className="text-xs text-zinc-300">Extended Price
-            <input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="mt-1 w-full rounded border border-zinc-700 bg-zinc-100 p-2 text-zinc-700" />
-          </label>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <FormField label="Unit Price"><input value={newUnitPrice} onChange={(e) => setNewUnitPrice(e.target.value)} type="number" min="0" step="0.01" className="field" required /></FormField>
+          <FormField label="GPM %"><><input value={newGpmPercent} onChange={(e) => { const v = e.target.value; setNewGpmPercent(v); setNewUnitPrice(calculateUnitPriceFromCostGpm(newUnitCost, v)); }} type="number" min="0" max="99.99" step="0.01" className="field" /><span className="mt-1 block text-[11px] text-slate-500">+ Fee {Number(quote?.opportunity?.customer?.additionalFeePercent || 0).toFixed(2)}%</span></></FormField>
+          <FormField label="Extended Price"><input value={(Number(newQty || 0) * Number(newUnitPrice || 0)).toFixed(2)} disabled className="field bg-slate-100 text-slate-700" /></FormField>
         </div>
         {(() => {
           const selected = products.find((p) => p.id === newProductId);
           if (!selected?.attributes?.length) return null;
           return (
-            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-4">
               {selected.attributes.map((attr) => (
-                <label key={attr.id} className="text-xs text-zinc-300">
-                  {attr.name}
-                  {['width', 'height'].includes(attr.code.toLowerCase()) ? <span className="ml-1 text-[10px] text-zinc-500">(in inches)</span> : null}
-                  {attr.inputType === 'SELECT' ? (
-                    <select
-                      value={newAttributeValues[attr.code] || ''}
-                      required={Boolean(attr.required)}
-                      onChange={(e) => {
-                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
-                        setNewAttributeValues(next);
-                        applySelectCostToUnitCost(e.target.value);
-                        recalcNewLinePrice(newProductId, newQty, next);
-                      }}
-                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-                    >
-                      <option value="">Select</option>
-                      {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  ) : attr.inputType === 'BOOLEAN' ? (
-                    <span className="mt-1 flex h-[42px] items-center rounded border border-zinc-700 bg-white px-2 text-zinc-900">
-                      <input
+                <FormField key={attr.id} label={attr.name}>
+                  <>
+                    {['width', 'height'].includes(attr.code.toLowerCase()) ? <span className="mb-1 block text-[10px] text-slate-500">in inches</span> : null}
+                    {attr.inputType === 'SELECT' ? (
+                      <select
+                        value={newAttributeValues[attr.code] || ''}
+                        required={Boolean(attr.required)}
+                        onChange={(e) => {
+                          const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                          setNewAttributeValues(next);
+                          applySelectCostToUnitCost(e.target.value);
+                          recalcNewLinePrice(newProductId, newQty, next);
+                        }}
+                        className="field"
+                      >
+                        <option value="">Select</option>
+                        {(attr.options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : attr.inputType === 'BOOLEAN' ? (
+                      <span className="field flex h-11 items-center"><input
                         type="checkbox"
                         checked={(newAttributeValues[attr.code] || '').toLowerCase() === 'true'}
                         onChange={(e) => {
@@ -651,22 +654,22 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
                           setNewAttributeValues(next);
                           recalcNewLinePrice(newProductId, newQty, next);
                         }}
+                      /></span>
+                    ) : (
+                      <input
+                        value={newAttributeValues[attr.code] || ''}
+                        onChange={(e) => {
+                          const next = { ...newAttributeValues, [attr.code]: e.target.value };
+                          setNewAttributeValues(next);
+                          recalcNewLinePrice(newProductId, newQty, next);
+                        }}
+                        type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
+                        className="field"
+                        required={Boolean(attr.required)}
                       />
-                    </span>
-                  ) : (
-                    <input
-                      value={newAttributeValues[attr.code] || ''}
-                      onChange={(e) => {
-                        const next = { ...newAttributeValues, [attr.code]: e.target.value };
-                        setNewAttributeValues(next);
-                        recalcNewLinePrice(newProductId, newQty, next);
-                      }}
-                      type={attr.inputType === 'NUMBER' ? 'number' : 'text'}
-                      className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900"
-                      required={Boolean(attr.required)}
-                    />
-                  )}
-                </label>
+                    )}
+                  </>
+                </FormField>
               ))}
             </div>
           );
@@ -706,22 +709,22 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
         </details>
       </div>
 
-      <details open className="mb-3 rounded border border-zinc-700 p-3">
+      <details open className="mb-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <summary className="cursor-pointer list-none text-base font-semibold">Line Items</summary>
-      <div className="mb-3 mt-2"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></div>
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-zinc-700 p-2 text-xs">
-        <span className="text-zinc-400">Selected: {selectedLineIds.length}</span>
-        <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
+      <div className="mb-3 mt-3"><input value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Filter lines..." className="field w-full" /></div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+        <span>Selected: {selectedLineIds.length}</span>
+        <select value={bulkParentId} onChange={(e) => setBulkParentId(e.target.value)} className="field h-9 w-auto min-w-44 py-1">
           <option value="">Top level</option>
           {roots.filter((r) => !selectedLineIds.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
         </select>
-        <button onClick={() => bulkMakeChild(bulkParentId || null)} className="rounded border border-zinc-600 px-2 py-1">Apply rollup</button>
-        <button onClick={() => setSelectedLineIds([])} className="rounded border border-zinc-600 px-2 py-1">Clear</button>
+        <button onClick={() => bulkMakeChild(bulkParentId || null)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Apply rollup</button>
+        <button onClick={() => setSelectedLineIds([])} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium hover:bg-slate-50">Clear</button>
       </div>
 
-      <div className="overflow-hidden rounded border border-zinc-800">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-900 text-zinc-300"><tr><th className="p-3">Sel</th><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
+          <thead className="bg-slate-50 text-slate-600"><tr><th className="p-3">Sel</th><th className="p-3">Drag</th><th className="p-3">Description</th><th className="p-3">Qty</th><th className="p-3">Unit Price</th><th className="p-3">Taxable</th><th className="p-3">Total</th><th className="p-3">Actions</th></tr></thead>
           <tbody>
             {visibleLines.map(({ line, depth }) => (
               <QuoteLineRow
@@ -764,6 +767,33 @@ export default function QuoteDetailPage({ params }: { params: Promise<{ id: stri
 
       <ModuleNotesTasks entityType="QUOTE" entityId={id} />
     </main>
+  );
+}
+
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function ReadField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="text-sm">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -849,82 +879,100 @@ function QuoteLineRow({ line, depth, roots, displayTotal, hasChildren, onSave, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showProofs]);
 
+  const proofTone = {
+    NONE: 'bg-slate-100 text-slate-600',
+    UNSENT: 'bg-amber-100 text-amber-700',
+    PENDING: 'bg-sky-100 text-sky-700',
+    APPROVED: 'bg-emerald-100 text-emerald-700',
+    REJECTED: 'bg-rose-100 text-rose-700',
+    RESEND_NEEDED: 'bg-orange-100 text-orange-700',
+  }[proofState];
+
   return (
     <>
-    <tr className="border-t border-zinc-800" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
-      <td className="p-3 align-top"><input type="checkbox" checked={selectedLineIds.includes(line.id)} onChange={(e) => onToggleLineSelection(line.id, e.target.checked)} /></td>
-      <td className="p-3 align-top">
+    <tr className="border-t border-slate-200 hover:bg-slate-50/60" onDragOver={(e) => e.preventDefault()} onDragEnter={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const sourceId = e.dataTransfer.getData('text/plain'); if (sourceId) onDragMove(sourceId, line.id); }}>
+      <td className="px-4 py-3 align-top"><input type="checkbox" checked={selectedLineIds.includes(line.id)} onChange={(e) => onToggleLineSelection(line.id, e.target.checked)} /></td>
+      <td className="px-4 py-3 align-top">
         <span
           draggable
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', line.id);
           }}
-          className="inline-flex cursor-grab select-none rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300"
+          className="inline-flex cursor-grab select-none rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-500"
           title="Drag to reorder"
         >
           ⋮⋮
         </span>
       </td>
-      <td className="p-3">
+      <td className="px-4 py-3">
         <div style={{ paddingLeft: `${depth * 22}px` }} className="flex items-center gap-2">
           {hasChildren ? (
-            <button onClick={() => onToggleCollapse(line)} className="rounded border border-zinc-600 px-1 text-xs">{line.collapsed ? '+' : '-'}</button>
+            <button onClick={() => onToggleCollapse(line)} className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 text-xs text-slate-600">{line.collapsed ? '+' : '-'}</button>
           ) : depth > 0 ? (
-            <span className="text-zinc-500">↳</span>
+            <span className="text-slate-400">↳</span>
           ) : (
             <span className="inline-block w-4" />
           )}
-          <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
+          <input value={draft.description} onChange={(e) => { setDirty(true); setDraft({ ...draft, description: e.target.value }); }} className="field w-full" />
         </div>
       </td>
-      <td className="p-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="w-24 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="w-28 rounded border border-zinc-700 bg-white p-2 text-zinc-900" /></td>
-      <td className="p-3"><label className="flex items-center gap-2"><input type="checkbox" checked={Number(draft.taxRate ?? 0) > 0} onChange={(e) => { setDirty(true); setDraft({ ...draft, taxRate: e.target.checked ? 0.075 : 0 }); }} /><span className="text-xs">Taxable</span></label></td>
-      <td className="p-3">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
-      <td className="p-3 space-x-1">
-        <button onClick={() => onSave(draft)} className="rounded border border-zinc-600 px-2 py-1">Save now</button>
-        <button onClick={() => onDelete(line.id)} className="rounded border border-red-700 px-2 py-1 text-red-400">Delete</button>
-        <button onClick={() => onMove(line.id, -1)} className="rounded border border-zinc-700 px-2 py-1">↑</button>
-        <button onClick={() => onMove(line.id, 1)} className="rounded border border-zinc-700 px-2 py-1">↓</button>
-        <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="rounded border border-zinc-700 bg-white p-1 text-zinc-900">
-          <option value="">Top level</option>
-          {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
-        </select>
+      <td className="px-4 py-3"><input value={draft.qty} onChange={(e) => { setDirty(true); setDraft({ ...draft, qty: Number(e.target.value) }); }} type="number" min="1" className="field w-24" /></td>
+      <td className="px-4 py-3"><input value={draft.unitPrice} onChange={(e) => { setDirty(true); setDraft({ ...draft, unitPrice: Number(e.target.value) }); }} type="number" min="0" step="0.01" className="field w-28" /></td>
+      <td className="px-4 py-3"><label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={Number(draft.taxRate ?? 0) > 0} onChange={(e) => { setDirty(true); setDraft({ ...draft, taxRate: e.target.checked ? 0.075 : 0 }); }} /><span>Taxable</span></label></td>
+      <td className="px-4 py-3 font-medium text-slate-800">${displayTotal.toFixed(2)}{hasChildren ? ' (rollup)' : ''}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={() => onSave(draft)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Save</button>
+          <button onClick={() => setShowProofs((v) => !v)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{showProofs ? 'Hide Proofs' : 'Proofs'}</button>
+          <span className={`inline-flex h-8 items-center rounded-full px-2.5 text-[11px] font-semibold ${proofTone}`}>{proofState.replace('_', ' ')}</span>
+          <button onClick={() => onMove(line.id, -1)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50">↑</button>
+          <button onClick={() => onMove(line.id, 1)} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50">↓</button>
+          <select value={line.parentLineId || ''} onChange={(e) => onMakeChild(line.id, e.target.value || null)} className="field h-8 w-40 py-1 text-xs">
+            <option value="">Top level</option>
+            {roots.filter((r) => r.id !== line.id).map((r) => <option key={r.id} value={r.id}>{r.description}</option>)}
+          </select>
+          <button onClick={() => onDelete(line.id)} className="inline-flex h-8 items-center rounded-md border border-rose-300 bg-rose-50 px-2.5 text-xs font-medium text-rose-700 hover:bg-rose-100">Delete</button>
+        </div>
       </td>
     </tr>
     {showProofs ? (
-      <tr className="border-t border-zinc-800 bg-zinc-950/30">
-        <td className="p-3" colSpan={8}>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <label className="text-xs text-zinc-300 md:col-span-2">Upload proof
-              <div className="mt-1 flex gap-2">
-                <input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-                <button type="button" onClick={uploadProof} className="rounded bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Upload</button>
-              </div>
-            </label>
-            <label className="text-xs text-zinc-300">Approval email
-              <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="mt-1 w-full rounded border border-zinc-700 bg-white p-2 text-zinc-900" />
-            </label>
-          </div>
-          <div className="mt-2 space-y-2">
-            {proofs.map((proof) => (
-              <div key={proof.id} className="flex items-center justify-between gap-2 rounded border border-zinc-700 p-2 text-xs">
-                <div>
-                  <p className="font-medium">v{proof.version} • {proof.fileName}</p>
-                  <p className="text-zinc-400">{proof.status}{proof.approvalNotes ? ` • ${proof.approvalNotes}` : ''}</p>
+      <tr className="border-t border-slate-200 bg-slate-50/70">
+        <td className="px-4 py-4" colSpan={8}>
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <FormField label="Upload proof">
+                <div className="flex gap-2">
+                  <input type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="field w-full" />
+                  <button type="button" onClick={uploadProof} className="inline-flex h-11 items-center rounded-lg bg-emerald-500 px-4 text-sm font-semibold text-white hover:bg-emerald-600">Upload</button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="inline-flex items-center gap-1 text-[11px] text-zinc-300">
-                    <input type="checkbox" checked={selectedProofIds.includes(proof.id)} onChange={(e) => onToggleProofSelection(proof.id, e.target.checked)} />
-                    Select
-                  </label>
-                  <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="text-sky-300">Open</a>
-                  <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="rounded border border-zinc-600 px-2 py-1">{sendingProofId === proof.id ? 'Sending…' : 'Send'}</button>
-                </div>
+              </FormField>
+              <FormField label="Approval email">
+                <input value={proofEmail} onChange={(e) => setProofEmail(e.target.value)} placeholder="customer@email.com" className="field" />
+              </FormField>
+              <div className="flex items-end">
+                <div className={`inline-flex h-11 items-center rounded-full px-4 text-xs font-semibold ${proofTone}`}>Proof status: {proofState.replace('_', ' ')}</div>
               </div>
-            ))}
-            {proofs.length === 0 ? <p className="text-xs text-zinc-400">No proofs uploaded yet for this line.</p> : null}
+            </div>
+            <div className="mt-3 space-y-2">
+              {proofs.map((proof) => (
+                <div key={proof.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                  <div>
+                    <p className="font-semibold text-slate-800">v{proof.version} • {proof.fileName}</p>
+                    <p className="text-slate-500">{proof.status}{proof.approvalNotes ? ` • ${proof.approvalNotes}` : ''}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                      <input type="checkbox" checked={selectedProofIds.includes(proof.id)} onChange={(e) => onToggleProofSelection(proof.id, e.target.checked)} />
+                      Select
+                    </label>
+                    <a href={`/api/proofs/file/${proof.id}`} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50">Open</a>
+                    <button type="button" onClick={() => sendProofApproval(proof.id)} disabled={sendingProofId === proof.id} className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">{sendingProofId === proof.id ? 'Sending…' : 'Send'}</button>
+                  </div>
+                </div>
+              ))}
+              {proofs.length === 0 ? <p className="text-xs text-slate-500">No proofs uploaded yet for this line.</p> : null}
+            </div>
           </div>
         </td>
       </tr>
