@@ -192,6 +192,7 @@ model Company {
   timeEntries          TimeEntry[]
   payPeriodLocks       PayPeriodLock[]
   payrollExportConfig  PayrollExportConfig?
+  communicationSettings CompanyCommunicationSettings?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -1979,6 +1980,31 @@ model PayPeriodLock {
   lockedBy    User      @relation("PayPeriodLockCreator", fields: [lockedById], references: [id], onDelete: Cascade)
 
   @@index([companyId, startDate, endDate])
+}
+
+model CompanyCommunicationSettings {
+  id                        String   @id @default(cuid())
+  companyId                 String?  @unique
+  emailEnabled              Boolean  @default(false)
+  emailProvider             String   @default("SMTP")
+  smtpHost                  String?
+  smtpPort                  Int?
+  smtpSecure                Boolean  @default(false)
+  smtpUser                  String?
+  smtpPassEncrypted         String?
+  smtpFromEmail             String?
+  smtpFromName              String?
+  smtpReplyTo               String?
+  smsEnabled                Boolean  @default(false)
+  smsProvider               String   @default("TWILIO")
+  twilioAccountSid          String?
+  twilioAuthTokenEncrypted  String?
+  twilioFromNumber          String?
+  twilioMessagingServiceSid String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  company                   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
 model PayrollExportConfig {

@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         const html = `<p>You were mentioned by ${note.createdBy?.name || 'a teammate'}.</p><p><strong>Note:</strong> ${text}</p><p>Entity: ${entityType} / ${entityId}</p>${noteLink ? `<p><a href="${noteLink}">Open note</a></p>` : ''}`;
         const textBody = `You were mentioned in a note: ${text}${noteLink ? `\n\nOpen note: ${noteLink}` : ''}`;
         try {
-          await sendMail({ to: user.email, subject, html, text: textBody });
+          await sendMail({ companyId, to: user.email, subject, html, text: textBody });
         } catch {
           // ignore email errors for now; note creation should still succeed
         }

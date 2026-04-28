@@ -47,6 +47,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (canEmail) {
       try {
         await sendTaskAssignedEmail({
+          companyId,
           to: updated.assignee.email,
           assigneeName: updated.assignee.name,
           taskTitle: updated.title,

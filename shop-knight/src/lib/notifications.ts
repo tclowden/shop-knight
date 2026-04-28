@@ -20,6 +20,7 @@ export async function shouldSendEmailNotification(params: {
 }
 
 export async function sendTaskAssignedEmail(params: {
+  companyId?: string | null;
   to: string;
   assigneeName: string;
   taskTitle: string;
@@ -30,6 +31,7 @@ export async function sendTaskAssignedEmail(params: {
   const taskUrl = `${appUrl}/tasks#task-${params.taskId}`;
 
   await sendMail({
+    companyId: params.companyId,
     to: params.to,
     subject: `Task assigned: ${params.taskTitle}`,
     html: `<p>Hi ${params.assigneeName},</p><p>You were assigned a task: <strong>${params.taskTitle}</strong>.</p><p><a href="${taskUrl}">Open task</a></p>`,

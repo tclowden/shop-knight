@@ -28,6 +28,7 @@ const adminLinks = [
   { href: '/admin/pricing', label: 'Pricing', permissions: ['admin.products.manage'] },
   { href: '/admin/users', label: 'Users', permissions: ['admin.users.manage'] },
   { href: '/admin/users/org-chart', label: 'Org Chart', permissions: ['admin.users.manage'] },
+  { href: '/admin/company-communications', label: 'Company Communications', permissions: ['admin.users.manage'] },
   { href: '/admin/products', label: 'Products', permissions: ['admin.products.manage'] },
   { href: '/admin/machines', label: 'Machines', permissions: ['admin.products.manage'] },
   { href: '/admin/substrates', label: 'Substrates', permissions: ['admin.products.manage'] },

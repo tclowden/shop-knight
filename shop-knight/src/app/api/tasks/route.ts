@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     if (canEmail) {
       try {
         await sendTaskAssignedEmail({
+          companyId,
           to: task.assignee.email,
           assigneeName: task.assignee.name,
           taskTitle: task.title,

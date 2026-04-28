@@ -56,7 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   try {
-    const result = await sendSms({ to, body: message });
+    const result = await sendSms({ companyId, to, body: message });
     await prisma.quote.update({
       where: { id: quote.id },
       data: { lastEmailedDate: new Date() },

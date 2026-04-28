@@ -1,4 +1,4 @@
-import twilio from 'twilio';
+import { sendCompanySms } from '@/lib/company-communications';
 
 export function formatPhoneForSms(value: string) {
   const trimmed = String(value || '').trim();
@@ -19,19 +19,6 @@ export function formatPhoneForSms(value: string) {
   throw new Error('Phone number must include 10 digits or be valid E.164');
 }
 
-export async function sendSms(params: { to: string; body: string }) {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
-
-  if (!accountSid || !authToken || !from) {
-    throw new Error('Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER.');
-  }
-
-  const client = twilio(accountSid, authToken);
-  return client.messages.create({
-    from,
-    to: formatPhoneForSms(params.to),
-    body: params.body,
-  });
+export async function sendSms(params: { companyId?: string | null; to: string; body: string }) {
+  return sendCompanySms(params);
 }

@@ -1,13 +1,14 @@
 import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireRoles } from '@/lib/api-auth';
+import { getSessionCompanyId, requireRoles } from '@/lib/api-auth';
 import { sendMail } from '@/lib/mailer';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRoles(['SUPER_ADMIN', 'ADMIN', 'SALES', 'OPERATIONS', 'PURCHASING', 'PROJECT_MANAGER', 'FINANCE']);
   if (!auth.ok) return auth.response;
 
+  const companyId = getSessionCompanyId(auth.session);
   const { id } = await params;
   const body = await req.json();
   const recipientEmail = String(body?.recipientEmail || '').trim();
@@ -32,6 +33,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const approveUrl = `${appUrl}/proofs/approve?token=${token}`;
 
   await sendMail({
+    companyId,
     to: recipientEmail,
     subject: `Proof approval requested: ${proof.fileName}`,
     html: `
